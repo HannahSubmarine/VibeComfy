@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
@@ -2919,3 +2920,53 @@ def test_materialized_input_alias_rejects_any_descriptor_difference(
     assert "alias_amount" not in workflow.inputs
     with pytest.raises(ValueError, match="conflicts with an existing alias"):
         workflow.register_input("alias_amount", "1", "amount", 1)
+
+
+def test_e0_canonical_source_uses_handles_without_importer_identity_or_native_payloads() -> None:
+    """E0 characterization: ordinary constructor calls must be source-editable."""
+    source = emit_canonical_python(_sample_workflow())
+    tree = ast.parse(source)
+    forbidden: list[tuple[str, str]] = []
+    for call in ast.walk(tree):
+        if not isinstance(call, ast.Call):
+            continue
+        for keyword in call.keywords:
+            if keyword.arg in {"_id", "_uid", "_native_ports"}:
+                forbidden.append((keyword.arg, f"line {call.lineno}"))
+    assert forbidden == [], f"routine constructor custody leaked into calls: {forbidden}"
+
+
+def test_e0_canonical_source_has_no_replay_topology_tail() -> None:
+    """E0 characterization: effective topology must be expressed once."""
+    source = emit_canonical_python(_sample_workflow())
+    tree = ast.parse(source)
+    replay_assignments = [
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Attribute)
+        and isinstance(node.targets[0].value, ast.Subscript)
+        and isinstance(node.targets[0].value.value, ast.Attribute)
+        and isinstance(node.targets[0].value.value.value, ast.Name)
+        and node.targets[0].value.value.value.id == "wf"
+        and node.targets[0].value.value.attr == "nodes"
+    ]
+    assert "wf.connect(" not in source
+    assert replay_assignments == [], f"post-construction replay remains at lines {replay_assignments}"
+
+
+def test_e0_constructor_edit_survives_rebuild_without_later_replay() -> None:
+    """E0 characterization: editing an emitted default changes the graph."""
+    source = emit_canonical_python(_sample_workflow())
+    edited = source.replace("filename_prefix='out/sample',", "filename_prefix='out/edited',", 1)
+    namespace: dict[str, Any] = {"__file__": "edited-emitted.py"}
+    exec(compile(edited, "edited-emitted.py", "exec"), namespace)  # noqa: S102 - generated source under test
+    rebuilt = namespace["build"]()
+    assert rebuilt.nodes["20"].inputs["filename_prefix"] == "out/edited"
+
+
+def test_e0_h3_source_lowers_resolver_owned_reroutes() -> None:
+    """E0 characterization: resolver-owned reroutes must not be emitted as nodes."""
+    fixture = Path(__file__).parent / "fixtures/h3_generated_editability.py"
+    source = fixture.read_text(encoding="utf-8")
+    assert "raw_call('Reroute'" not in source
