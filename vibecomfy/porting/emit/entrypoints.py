@@ -85,10 +85,17 @@ def emit_canonical_python(
             "custom_nodes": list(getattr(workflow.requirements, "custom_nodes", ()) or ()),
         }
     if registered_inputs is None:
-        registered_inputs = {
-            str(name): (str(item.node_id), str(item.field))
-            for name, item in getattr(workflow, "inputs", {}).items()
-        }
+        authored_inputs = getattr(workflow, "inputs", {})
+        # Keep ``None`` distinct from an explicitly supplied empty retained
+        # map.  The latter requests role-based reconciliation (for example,
+        # adding an inferred prompt beside a retained voice input); an
+        # implicit empty map means this workflow has no authored public-input
+        # contract and must keep ordinary constructor values literal.
+        if authored_inputs:
+            registered_inputs = {
+                str(name): (str(item.node_id), str(item.field))
+                for name, item in authored_inputs.items()
+            }
     return _render_canonical_python(
         workflow,
         ready_metadata=metadata,
