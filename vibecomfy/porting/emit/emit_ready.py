@@ -294,7 +294,11 @@ def _public_input_specs(
     used_names: set[str] = set()
     used_targets: set[tuple[str, str]] = set()
 
-    def add(binding: _PublicInputBinding) -> None:
+    def add(
+        binding: _PublicInputBinding,
+        *,
+        retained_node_ref: str | None = None,
+    ) -> None:
         if binding.name in used_names:
             return
         node = workflow_nodes.get(str(binding.node_id))
@@ -344,7 +348,15 @@ def _public_input_specs(
             default_expr = "''"
         node_var = _first_output_var(output_var_names.get(str(binding.node_id))) or var_names.get(str(binding.node_id))
         node_ref = node_var if node_var is not None else repr(str(binding.node_id))
-        metadata_node_ref = f"ref({node_var!r})" if node_var is not None else repr(str(binding.node_id))
+        metadata_node_ref = (
+            retained_node_ref
+            if retained_node_ref is not None
+            else (
+                repr(str(binding.node_id))
+                if registered_inputs is not None
+                else (f"ref({node_var!r})" if node_var is not None else repr(str(binding.node_id)))
+            )
+        )
         specs.append(
             _PublicInputSpec(
                 name=binding.name,
@@ -379,9 +391,16 @@ def _public_input_specs(
             resolved = resolve_widget_key_with_provenance(cls, field, input_aliases=aliases)
             if resolved.name is not None:
                 resolved_field = resolved.name
-        add(_PublicInputBinding(name=input_name, node_id=str(old_id), field=resolved_field))
+        add(
+            _PublicInputBinding(name=input_name, node_id=str(old_id), field=resolved_field),
+            retained_node_ref=repr(str(old_id)),
+        )
 
-    if registered_inputs is None:
+    # A supplied retained map (including an explicitly empty one) permits
+    # ordinary inference for targets it does not occupy.  ``None`` means the
+    # caller did not request retained-input reconciliation and preserves the
+    # legacy no-inference surface.
+    if registered_inputs is not None:
         inferred = _infer_public_input_bindings(
             workflow_nodes,
             edges_in,
@@ -389,7 +408,11 @@ def _public_input_specs(
             reserved_targets=used_targets,
         )
         for binding in inferred:
-            add(binding)
+            # Retained-input reconciliation fills the role-based controls
+            # that can be safely inferred without changing unrelated asset or
+            # output configuration bindings supplied by the caller.
+            if binding.name in {"prompt", "negative_prompt", "seed"}:
+                add(binding)
     return specs
 
 
@@ -915,6 +938,21 @@ def _emit_ready_template_python_inner(
         workflow_nodes,
         subgraph_definitions,
     )
+    # Direct spec inspection keeps the retained source node id (needed by the
+    # remapper and its unit contract); emitted Python metadata binds the
+    # corresponding canonical node object.
+    node_ids_by_var = {str(variable): str(node_id) for node_id, variable in var_names.items()}
+    public_inputs_for_metadata = [
+        replace(
+            spec,
+            metadata_node_ref=(
+                f"ref({spec.node_ref!r})"
+                if spec.metadata_node_ref == repr(node_ids_by_var.get(spec.node_ref))
+                else spec.metadata_node_ref
+            ),
+        )
+        for spec in public_inputs_for_metadata
+    ]
     public_input_metadata_lines = _format_public_inputs_block(public_inputs_for_metadata, metadata=True)
     if public_input_metadata_lines:
         out_lines.append("")

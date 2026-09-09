@@ -176,6 +176,7 @@ WIDGET_SCHEMA: dict[str, list[str | None]] = {
     "ImageScaleBy": ["upscale_method", "scale_by"],
     "ImageScaleToTotalPixels": ["upscale_method", "megapixels", "resolution_steps"],
     "KSampler": ["seed", None, "steps", "cfg", "sampler_name", "scheduler", "denoise"],
+    "WanImageToVideo": ["width", "height", "length", "batch_size"],
     "KSamplerAdvanced": [
         "add_noise",
         "noise_seed",
