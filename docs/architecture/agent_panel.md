@@ -99,6 +99,24 @@ issues modal does not change normal UI transcript, detail, or event render
 semantics; those paths still flow through the response adapter, selector
 modules, and renderer modules above.
 
+## Workflow integrity boundary
+
+The panel may display draft conversion and export diagnostics, but it must not
+turn them into readiness or execution claims. Unresolved node schema is a
+draft-state diagnostic; strict-ready eligibility is a separate backend gate.
+Supported native `inputNode`/`outputNode` subgraphs arrive through the shared
+ingest/materialization owner as ordinary canonical nodes and named handles.
+Malformed, ambiguous, or unsupported boundaries remain fail-closed and are
+shown as `unsupported_boundary_encoding` rather than partially rendered as a
+different graph.
+
+Canonical workflow identity, node UIDs, source provenance, semantic/revision
+evidence, and any native-expansion source hash belong to the backend workflow
+bundle. UI layout, groups, and editor-only furniture may be carried by the
+optional `.layout.json` sidecar. The sidecar can support UI export/preservation
+but is not semantic or runtime authority; normal panel payloads receive the
+allowlisted projection, not raw sidecar/session internals.
+
 ## Boundaries enforced by tests
 
 - `test_pristine_architecture_guardrails.py` proves internal outcome kinds

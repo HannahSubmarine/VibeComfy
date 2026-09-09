@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -42,13 +43,29 @@ def is_api_link(
 
 
 def is_canonical_api_link(value: Any) -> bool:
-    """Return whether *value* has the canonical stored Comfy API link shape."""
+    """Return whether *value* has the canonical stored Comfy API link shape.
+
+    Native-subgraph materialization uses scoped numeric node IDs such as
+    ``105::6``.  Those IDs are still canonical API references; accepting them
+    here lets the normal API door promote the link into the sole ``VibeEdge``
+    authority instead of leaving a compound reference embedded in a node.
+    """
+    if isinstance(value, list) and isinstance(value[0] if len(value) > 0 else None, str):
+        source_id = value[0]
+        # The legacy corpus also contains single-colon IDs (for example
+        # ``238:240``) inside already-authored Python.  They are handled by
+        # the emitter's broader scoped-link recognizer, but remain outside
+        # this strict API-door classifier for backward compatibility.  Native
+        # subgraph IDs use the unambiguous ``scope::local`` form.
+        if ":" in source_id and "::" not in source_id:
+            return False
     return is_api_link(
         value,
         allow_tuple=False,
         require_string_node_id=True,
         require_numeric_node_id=True,
         allow_negative_node_id=True,
+        allow_compound_node_id=True,
         require_int_slot=True,
     )
 
@@ -69,7 +86,16 @@ def _is_numeric_node_id(
     allow_negative: bool = False,
     allow_compound: bool,
 ) -> bool:
-    parts = str(node_id).split(":") if allow_compound else [str(node_id)]
+    text = str(node_id)
+    if not allow_compound:
+        parts = [text]
+    else:
+        # ComfyUI has used both ``76:67`` and the native-subgraph scoped form
+        # ``105::6``.  Keep both forms numeric and reject empty/malformed
+        # segments rather than treating arbitrary strings as graph IDs.
+        if not re.fullmatch(r"-?\d+(?::\d+|::\d+)*", text):
+            return False
+        parts = re.split(r"::|:", text)
     return all(
         part.isdigit()
         or (allow_negative and part.startswith("-") and part[1:].isdigit())

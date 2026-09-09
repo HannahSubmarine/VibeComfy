@@ -5,6 +5,7 @@ import copy
 import pytest
 
 from vibecomfy.ingest.native_subgraph import NativeSubgraphError, expand_native_subgraphs
+from vibecomfy.ingest.normalize import from_ui
 
 
 def _graph() -> dict:
@@ -59,6 +60,26 @@ def test_repairs_missing_output_backlink_and_retains_provenance() -> None:
     expanded = expand_native_subgraphs(raw)
     assert any(d["kind"] == "repaired_output_backlink" and d["link_id"] == 4 for d in expanded["_native_subgraph_diagnostics"])
     assert expanded["_native_subgraph_provenance"]["source_kind"] == "comfyui_native_subgraph"
+
+
+def test_materialized_scoped_and_outer_links_use_the_shared_edge_channel() -> None:
+    expanded = expand_native_subgraphs(_graph())
+    workflow = from_ui(
+        expanded,
+        source_path="native-subgraph.json",
+        use_comfy_converter=False,
+    )
+
+    assert len(workflow.edges) == 3
+    assert {
+        (edge.from_node, edge.from_output, edge.to_node, edge.to_input)
+        for edge in workflow.edges
+    } == {
+        ("source", "0", "box-1::a", "video"),
+        ("source", "0", "box-1::b", "video"),
+        ("box-1::b", "0", "sink", "video"),
+    }
+    assert all("video" not in node.inputs for node in workflow.nodes.values())
 
 
 def test_rejects_contradictory_backlink_and_ambiguous_boundary() -> None:

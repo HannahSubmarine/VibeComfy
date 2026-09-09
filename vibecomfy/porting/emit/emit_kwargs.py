@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import keyword
 import re
+import unicodedata
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -127,7 +128,11 @@ def _is_link(value: Any) -> bool:
     nid, slot = value
     if not isinstance(slot, int):
         return False
-    return all(part.isdigit() for part in str(nid).split(":"))
+    # Native-subgraph expansion uses scoped numeric IDs (``105::6``).  They
+    # are still ordinary Comfy link pairs, and must enter the same Handle
+    # emission path as root numeric IDs.  Keep the accepted shape narrow so a
+    # two-item list-valued widget is not mistaken for a graph reference.
+    return bool(re.fullmatch(r"\d+(?::\d+|::\d+)*", str(nid)))
 
 
 def _is_any_link(value: Any) -> bool:
@@ -1113,7 +1118,14 @@ def _node_kwargs(
         ordered_static_keys = sorted(static_inputs.keys())
 
     def _is_python_ident(name: str) -> bool:
-        return name.isidentifier() and not keyword.iskeyword(name)
+        # Python normalizes Unicode identifiers at parse time. A field such as
+        # U+0149 (``ŉ``) would therefore round-trip as a different dictionary
+        # key if emitted as a keyword; preserve such names through ``_extras``.
+        return (
+            name.isidentifier()
+            and not keyword.iskeyword(name)
+            and unicodedata.normalize("NFKC", name) == name
+        )
 
     def _format_static_value(key: str, value: Any) -> str:
         """Format a static value, substituting constant name if hoisted."""

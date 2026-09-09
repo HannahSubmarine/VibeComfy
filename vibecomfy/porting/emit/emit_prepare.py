@@ -168,11 +168,12 @@ def _prepare_workflow_for_emit(
                     for nid in broadcast_ids
                 }
             )
+            preserved_node_ids = broadcast_ids | set(mode_nodes)
             incident_authored_edges = [
                 copy.deepcopy(edge)
                 for edge in workflow.edges
-                if str(edge.from_node) in broadcast_ids
-                or str(edge.to_node) in broadcast_ids
+                if str(edge.from_node) in preserved_node_ids
+                or str(edge.to_node) in preserved_node_ids
             ]
             # The lowered projection may contain a direct edge spanning the
             # helper chain. Remove that projected edge before restoring the
@@ -207,6 +208,13 @@ def _prepare_workflow_for_emit(
         # a rebuilt workflow will lower it through the shared compiler.
         workflow_nodes = authored_nodes
         emission_edges = copy.deepcopy(workflow.edges)
+
+    # Retained non-enabled nodes (for example a bypassed filter feeding a
+    # SetNode) are added after execution projection so they do not affect the
+    # projected runtime graph. They must nevertheless be present before the
+    # edge index is built: authored helper edges depend on those nodes to
+    # preserve broadcast resolution in regenerated Python.
+    workflow_nodes.update(mode_nodes)
 
     if omit_terminal_ui_only:
         # PreviewAny is editor furniture when it is only a terminal display.

@@ -363,6 +363,30 @@ def test_canonical_emitter_does_not_duplicate_imported_link_views(tmp_path: Path
     assert reloaded.compile("api") == expected.compile("api")
 
 
+def test_scoped_api_link_emission_uses_handles(tmp_path: Path) -> None:
+    workflow = from_api(
+        {
+            "1::1": {"class_type": "ScopedSource", "inputs": {"value": 3}},
+            "2::2": {"class_type": "ScopedSink", "inputs": {"value": ["1::1", 0]}},
+        },
+        source_path="scoped.json",
+    )
+
+    assert len(workflow.edges) == 1
+    assert not workflow.nodes["2::2"].inputs
+    source = emit_canonical_python(workflow)
+    build_source = source[source.index("def build") :]
+    assert "['1::1', 0]" not in build_source
+    assert "scopedsource.out(0)" in build_source
+    assert "wf.connect(" not in build_source
+
+    path = tmp_path / "scoped.py"
+    path.write_text(source, encoding="utf-8")
+    reloaded = load_agent_generated_scratchpad(path)
+    assert reloaded.semantic_digest() == workflow.semantic_digest()
+    assert reloaded.compile("api") == workflow.compile("api")
+
+
 def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
     tmp_path: Path,
 ) -> None:

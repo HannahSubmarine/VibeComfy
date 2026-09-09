@@ -591,13 +591,67 @@ def _validate_api_shape(
                 and input_provenance.get(name) == "widget"
             ):
                 continue
-            if is_canonical_api_link(value):
+            if is_canonical_api_link(value) or _is_endpoint_backed_api_link_candidate(
+                value,
+                nodes_by_id=nodes_by_id,
+                input_provenance=input_provenance,
+                input_name=name,
+            ):
                 if (not isinstance(value[0], str) or not value[0].strip()
                         or "#" in value[0] or "/" in value[0]
                         or value[0] in {"-10", "-20"}
                         or isinstance(value[1], bool) or not isinstance(value[1], int)
                         or value[1] < 0 or value[0] not in nodes_by_id):
                     raise ValueError(f"node {node_id!r} input {name!r} has malformed API link")
+
+
+def _is_endpoint_backed_api_link_candidate(
+    value: Any,
+    *,
+    nodes_by_id: Mapping[str, Any],
+    input_provenance: Mapping[str, Any] | None = None,
+    input_name: str | None = None,
+) -> bool:
+    """Recognize UI/native links with endpoint or provenance evidence.
+
+    The UI normalizer records an explicit ``edge`` provenance marker.  Native
+    expansion can also produce scoped IDs with nonnumeric local names, so a
+    direct API payload may use that form when its source endpoint is present.
+    An explicit UI widget marker always wins and keeps a two-item literal on
+    the widget channel.
+    """
+    if not (isinstance(value, list) and len(value) == 2 and isinstance(value[0], str)):
+        return False
+    if value[0] not in nodes_by_id:
+        return False
+    provenance = input_provenance.get(input_name) if input_provenance is not None else None
+    if provenance == "widget":
+        return False
+    return provenance == "edge" or "::" in value[0]
+
+
+def _is_api_input_link(
+    value: Any,
+    *,
+    nodes_by_id: Mapping[str, Any],
+    input_provenance: Mapping[str, Any] | None = None,
+    input_name: str | None = None,
+) -> bool:
+    """Return whether an API input belongs to the edge channel."""
+    if is_canonical_api_link(value):
+        return True
+    if not _is_endpoint_backed_api_link_candidate(
+        value,
+        nodes_by_id=nodes_by_id,
+        input_provenance=input_provenance,
+        input_name=input_name,
+    ):
+        return False
+    return (
+        isinstance(value[1], int)
+        and not isinstance(value[1], bool)
+        and value[1] >= 0
+    )
 
 
 def _definition_entries(raw: Any, *, path: str) -> list[dict[str, Any]]:
@@ -2511,7 +2565,12 @@ def _from_api_impl(
         widgets: dict[str, Any] = {}
         class_type = str(node.get("class_type", "Unknown"))
         for key, value in raw_inputs.items():
-            if input_provenance.get(key) != "widget" and is_canonical_api_link(value):
+            if input_provenance.get(key) != "widget" and _is_api_input_link(
+                value,
+                nodes_by_id=api_workflow,
+                input_provenance=input_provenance,
+                input_name=key,
+            ):
                 continue
             if key.startswith("widget_") or _is_exec_widget_key(class_type, key):
                 widgets[key] = value
@@ -2676,7 +2735,12 @@ def _from_api_impl(
         if not isinstance(input_provenance, dict):
             input_provenance = {}
         for name, value in dict(node.get("inputs", {})).items():
-            if input_provenance.get(name) != "widget" and is_canonical_api_link(value):
+            if input_provenance.get(name) != "widget" and _is_api_input_link(
+                value,
+                nodes_by_id=api_workflow,
+                input_provenance=input_provenance,
+                input_name=name,
+            ):
                 workflow.edges.append(VibeEdge(str(value[0]), str(value[1]), str(node_id), name))
 
     workflow.requirements = _infer_requirements(workflow)

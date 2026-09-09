@@ -1211,18 +1211,27 @@ def _canonical_widget_channels(
     """Map constructor field names back to their authored widget channel."""
     from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
 
+    # ``_ui`` is presentation/provenance evidence, never naming authority for
+    # generated Python.  A detached copy keeps the importer-owned metadata
+    # available to the custody manifest while preventing UI aliases from
+    # changing the canonical widget roster used by the emitter.
+    semantic_node = node
+    metadata = getattr(node, "metadata", None)
+    if isinstance(metadata, Mapping) and "_ui" in metadata:
+        semantic_node = copy.deepcopy(node)
+        semantic_node.metadata.pop("_ui", None)
     resolution = compact_widget_names_for_node(
-        node,
-        str(node.class_type),
+        semantic_node,
+        str(semantic_node.class_type),
         name_authority=name_authority,
     )
     aliases = list(resolution.names)
     result: dict[str, str] = {}
-    for authored_name in node.widgets:
+    for authored_name in semantic_node.widgets:
         constructed_name = str(authored_name)
         if constructed_name.startswith("widget_"):
             resolved = resolve_widget_key_with_provenance(
-                str(node.class_type),
+                str(semantic_node.class_type),
                 constructed_name,
                 input_aliases=aliases or None,
             ).name
@@ -1233,7 +1242,7 @@ def _canonical_widget_channels(
         if existing is not None and existing != str(authored_name):
             raise ValueError(
                 "ambiguous_authored_channel: "
-                f"{node.class_type}.{constructed_name} maps to both {existing!r} "
+                f"{semantic_node.class_type}.{constructed_name} maps to both {existing!r} "
                 f"and {authored_name!r}"
             )
         result[constructed_name] = str(authored_name)

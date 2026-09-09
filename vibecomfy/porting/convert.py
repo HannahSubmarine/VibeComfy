@@ -226,7 +226,17 @@ def port_convert_workflow(
 
     emission_diagnostics: list[EmissionDiagnostic] = []
 
-    registered_inputs = dict(registered_inputs or {})
+    if registered_inputs is None:
+        # Direct SDK callers already carry the authored public interface on
+        # the workflow. Preserve it by default so conversion/rebuild parity
+        # does not depend on the CLI wrapper supplying a second registration
+        # map; an explicit empty mapping still opts out of that inference.
+        registered_inputs = {
+            str(name): (str(binding.node_id), str(binding.field))
+            for name, binding in workflow.inputs.items()
+        }
+    else:
+        registered_inputs = dict(registered_inputs)
     if raw_workflow is not None:
         _definitions = raw_workflow.get("definitions")
         if _definitions is not None:

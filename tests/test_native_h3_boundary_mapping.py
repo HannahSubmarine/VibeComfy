@@ -14,6 +14,8 @@ import pytest
 
 from vibecomfy.ingest.normalize import from_ui
 from vibecomfy.ingest.native_subgraph import NativeSubgraphError, expand_native_subgraphs
+from vibecomfy.porting.emitter import emit_canonical_python
+from vibecomfy.security.agent_generated_loader import load_agent_generated_scratchpad
 
 
 SOURCE = (
@@ -166,4 +168,11 @@ def test_native_h3_expansion_is_accepted_by_canonical_ui_ingest() -> None:
     )
     assert "105" not in workflow.nodes
     assert "105::168" in workflow.nodes
-    assert workflow.nodes["92"].inputs["video"] == ["105::168", 0]
+    assert "video" not in workflow.nodes["92"].inputs
+    assert any(
+        edge.from_node == "105::168"
+        and edge.from_output == "0"
+        and edge.to_node == "92"
+        and edge.to_input == "video"
+        for edge in workflow.edges
+    )

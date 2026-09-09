@@ -413,6 +413,16 @@ def coerce_node_kwargs(
     for key, value in kwargs.items():
         if _is_node_builder(value):
             value = _auto_resolve_node_builder(value)
+        elif isinstance(value, list) and len(value) == 2:
+            # Keep legacy authored sources readable and executable when they
+            # still spell a previously constructed connection as a Comfy API
+            # pair.  The canonical representation is a Handle/VibeEdge; this
+            # bounded coercion only applies when the referenced node already
+            # exists, so ordinary two-item widget lists remain literals.
+            from vibecomfy._compile._graph import is_canonical_api_link
+
+            if is_canonical_api_link(value) and str(value[0]) in wf.nodes:
+                value = Handle(node_id=str(value[0]), output_slot=int(value[1]))
         if isinstance(value, ModelAsset) and key in _FILENAME_KWARGS:
             value = value.filename
         elif isinstance(value, InputSpec):
@@ -928,7 +938,9 @@ def _apply_canonical_custody(
                 raise TypeError(f"canonical custody widget channel {label!r} must use strings")
             if authored_name in candidate.widgets:
                 continue
-            if constructed_name in candidate.inputs:
+            if authored_name in candidate.inputs:
+                candidate.widgets[authored_name] = candidate.inputs.pop(authored_name)
+            elif constructed_name in candidate.inputs:
                 candidate.widgets[authored_name] = candidate.inputs.pop(constructed_name)
             else:
                 raise ValueError(

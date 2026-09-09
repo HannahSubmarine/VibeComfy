@@ -71,7 +71,7 @@ def register(subparsers) -> None:
 
     convert = port_subparsers.add_parser(
         "convert",
-        help="Emit an importable Python scratchpad, or a ready-template candidate with --ready-id.",
+        help="Materialize supported native subgraphs into a Python draft, or emit a strict-ready candidate with --ready-id.",
         description=PORT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -139,7 +139,7 @@ def register(subparsers) -> None:
     widgets.add_argument("--json", action="store_true")
     widgets.set_defaults(func=_cmd_port_widgets)
 
-    export = port_subparsers.add_parser("export", help="Export a loaded workflow as API JSON.")
+    export = port_subparsers.add_parser("export", help="Export a loaded workflow as API JSON or UI JSON with optional layout-sidecar preservation.")
     export.add_argument("workflow")
     export.add_argument("--ready", action="store_true")
     export.add_argument("--to", default="json")
@@ -149,7 +149,7 @@ def register(subparsers) -> None:
     export.add_argument(
         "--persist-sidecar",
         action="store_true",
-        help="Persist the layout sidecar next to the loaded Python source (also implied when --out is omitted).",
+        help="Persist the optional layout sidecar next to the loaded Python source; implied only when --out is omitted.",
     )
     export.add_argument("--strict", action="store_true", help="Raise ValueError on schema-less or low-confidence node class types.")
     export.add_argument("--main-positions", action="store_true", help="Include main positions in emitted UI JSON (no-op, wired for future use).")

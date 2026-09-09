@@ -52,9 +52,10 @@ def test_generated_h3_build_retains_effective_wire_references() -> None:
         for field, value in node.inputs.items()
         if isinstance(value, (list, tuple)) and len(value) == 2
     ]
-    # The expanded source has 28 links; nine are root-to-inner effective
-    # connections and the remaining internal links are retained as references.
-    assert len(workflow.edges) == 9
+    # The legacy fixture keeps importer-shaped pairs in inputs for draft
+    # compatibility, while the shared constructor also materializes the
+    # effective links in the canonical edge channel.
+    assert len(workflow.edges) == 19
     assert len(references) >= 20
     assert workflow.nodes["92"].inputs["video"] == ["105::168", 0]
 

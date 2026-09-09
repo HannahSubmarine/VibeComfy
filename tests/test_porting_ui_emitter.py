@@ -1370,9 +1370,12 @@ _STARTER_SET = (
     "edit-source-sink",
 )
 
-_LEGACY_NATIVE_STARTERS = (
+_SUPPORTED_NATIVE_STARTERS = (
     "ready_templates/sources/official/image/z_image.json",
     "ready_templates/sources/official/image/flux2_klein_4b_t2i.json",
+)
+
+_LEGACY_NATIVE_STARTERS = (
     "ready_templates/sources/official/edit/qwen_image_edit.json",
     "ready_templates/sources/official/edit/flux2_klein_4b_image_edit_base.json",
 )
@@ -1438,6 +1441,19 @@ def test_offline_parity_gate_green_on_starter_set(case: str) -> None:
     wf = _starter_workflow(case)
     ok, diffs = offline_emitter_normalizer_self_consistency_check(wf, schema_provider=_local_provider())
     assert ok, f"{case}: {diffs[:5]}"
+
+
+@pytest.mark.parametrize("path", _SUPPORTED_NATIVE_STARTERS)
+def test_native_starters_expand_into_the_shared_ingestion_path(path: str) -> None:
+    from vibecomfy.ingest.normalize import from_ui
+
+    with open(path) as handle:
+        raw = json.load(handle)
+    workflow = from_ui(raw, source_path=path, use_comfy_converter=False)
+    assert workflow.nodes
+    assert workflow.edges
+    assert workflow.metadata.get("_native_subgraph_provenance")
+    assert not {"-10", "-20"}.intersection(workflow.nodes)
 
 
 @pytest.mark.parametrize("path", _LEGACY_NATIVE_STARTERS)

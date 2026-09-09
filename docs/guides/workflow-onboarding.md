@@ -29,7 +29,7 @@ vibecomfy workflows list --ready
 vibecomfy inspect image/z_image --json
 ```
 
-`inspect` and `analyze info` describe the graph and public inputs; they do not prove that models, custom nodes, a ComfyUI checkout, or a server are available. If a class schema is missing, `doctor` identifies the gap and the supported recovery command is `vibecomfy schemas ensure <workflow>`; provisioning is an environment change and should be treated separately.
+`inspect` and `analyze info` describe the graph and public inputs; they do not prove that models, custom nodes, a ComfyUI checkout, or a server are available. If a class schema is missing, `doctor` identifies the gap and the supported recovery command is `vibecomfy schemas ensure <workflow>`; provisioning is an environment change and should be treated separately. A missing schema does not by itself prevent a draft scratchpad from being emitted.
 
 ## 3. Materialize the editable Python candidate
 
@@ -63,6 +63,20 @@ def build():
 
 Use `vibecomfy inspect <candidate> --field <PUBLIC_INPUTS field>` when you need to resolve one public handle. Use `vibecomfy nodes spec <ClassType>` before relying on a custom node's sockets or widgets.
 
+### Native subgraphs
+
+Native ComfyUI definitions with a complete `inputNode`/`outputNode` boundary are
+supported on the normal import path. VibeComfy materializes each instance into
+namespaced nodes (for example, `105::6`), maps boundary inputs/outputs and
+fan-out into ordinary named edges, and carries a source hash and expansion
+diagnostics as provenance. The expanded graph then uses the same canonical
+normalizer and Python emitter as any other workflow.
+
+The expansion is deliberately fail-closed. Missing or ambiguous boundary
+rosters, unsupported nesting, contradictory socket backlinks, malformed links,
+or unmapped native edges produce `unsupported_boundary_encoding` and do not
+write a candidate. Preserve the original JSON and provenance when this occurs.
+
 ## 4. Edit, validate, and inspect readiness
 
 Make the smallest change in the Python candidate, then run structural and dependency checks:
@@ -84,10 +98,28 @@ vibecomfy run out/scratchpads/my_workflow.py \
 
 ## Evidence and blockers
 
-There are three distinct claims:
+There are four distinct claims:
 
 1. **Source evidence:** the saved JSON, provenance, and inspection output show what the upstream graph contains.
-2. **Executable candidate:** conversion produced Python, and `validate`/`doctor` passed for the candidate and its available schemas.
-3. **Runtime readiness:** the selected ComfyUI runtime, custom nodes, models, and server or embedded environment were checked.
+2. **Draft candidate:** conversion produced a structurally valid Python scratchpad. Unresolved class schemas remain visible in the report and may make fields unavailable; this is not a claim of strict readiness or runtime execution.
+3. **Strict readiness:** `port check --strict-ready-template`, `port convert --strict-ready-template`, or ready-template promotion with `--ready-id` passed the provider-backed gates, including required schema/widget resolution.
+4. **Runtime readiness:** the selected ComfyUI runtime, custom nodes, models, and server or embedded environment were checked.
 
-Do not promote one claim into another. In particular, the H3 example currently contains a native recursive subgraph boundary (`inputNode`/`outputNode`). VibeComfy reports `unsupported_boundary_encoding` and does not create a runnable Python candidate until the source has an explicit Python-owned boundary mapping. That is an import representation blocker, not proof that the upstream graph or models are invalid. Retain the source provenance and reopen with a resolved export or an explicit boundary contract, then rerun `port check`, `port convert`, `validate`, and `doctor`.
+Do not promote one claim into another. The H3 example's supported native
+recursive boundary is expanded during conversion; unresolved schemas can still
+leave the result as a draft, and strict-ready promotion can still refuse it
+until schema evidence is available. A malformed or unsupported boundary still
+reports `unsupported_boundary_encoding` and writes no candidate. That is an
+import representation blocker, not proof that the upstream graph or models are
+invalid.
+
+For a durable authored candidate, `load_bundle()` binds the Python source to a
+workflow identity, semantic digest, provenance, revision, and optional UI
+sidecar. `emit_bundle()` publishes the Python and canonical `.vibe.json` pair
+atomically; reload validates that identity and revision before approval. The
+legacy `.layout.json` sidecar is presentation-only and optional: `port export
+--to ui` uses it for layout preservation, persists it on the canonical output
+path, and does not update it for an explicit `--out` unless
+`--persist-sidecar` is supplied. Use `--from` for an explicit prior UI source,
+`--fresh` to discard preservation evidence, and `--dry-run` for a no-write
+preview.

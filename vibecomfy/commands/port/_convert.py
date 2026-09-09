@@ -92,20 +92,10 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
 
         loaded = load_port_source(args.workflow, schema_provider=schema_provider)
         # ``from_ui`` is the sole native-boundary materialization owner.  The
-        # loader retains the authored source as evidence, but passing that
-        # native payload back into conversion would re-enter the recursive
-        # definition normalizer and can refuse an already-expanded graph.
-        conversion_raw_workflow = loaded.raw_workflow
-        if conversion_raw_workflow is not None:
-            from vibecomfy.ingest.native_subgraph import expand_native_subgraphs
-
-            definitions = conversion_raw_workflow.get("definitions")
-            if (
-                isinstance(conversion_raw_workflow.get("nodes"), list)
-                and isinstance(definitions, Mapping)
-                and isinstance(definitions.get("subgraphs"), list)
-            ):
-                conversion_raw_workflow = expand_native_subgraphs(conversion_raw_workflow)
+        # the loader retains the authored source as evidence, but conversion
+        # consumes only the normalized IR.  Passing raw source back into the
+        # emitter would re-enter recursive-boundary handling outside the
+        # normalization owner.
         # Draft emission is intentionally schema-tolerant: unresolved source
         # diagnostics stay attached to ``report`` above, while the canonical
         # emitter validates the editable module structurally and against
@@ -124,7 +114,6 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             workflow_shape=report.workflow_shape,
             registered_inputs=registered_inputs,
             schema_provider=conversion_schema_provider,
-            raw_workflow=conversion_raw_workflow,
             keep_virtual_wires=bool(getattr(args, "keep_virtual_wires", False)),
         )
     except Exception as exc:
