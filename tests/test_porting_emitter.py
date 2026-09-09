@@ -525,6 +525,34 @@ def test_emit_ready_template_python_has_ready_metadata_contract() -> None:
     assert namespace["build"]().semantic_digest() == _sample_workflow().semantic_digest()
 
 
+def test_ready_emitter_does_not_embed_native_subgraph_source_graph() -> None:
+    text = emit_ready_template_python(
+        _sample_workflow(),
+        ready_metadata={
+            "ready_template": "video/h3",
+            "_native_subgraph_source": {
+                "nodes": [{"id": "inner", "type": "Loader"}],
+                "links": [[1, "inner", 0, "sink", 0, "VIDEO"]],
+                "boundary": {"inputs": [], "outputs": []},
+            },
+            "_native_subgraph_provenance": {"source_sha256": "h3-sha"},
+            "_native_subgraph_diagnostics": [{"kind": "repaired_output_backlink"}],
+        },
+        ready_requirements={"models": [], "custom_nodes": []},
+        template_id="video/h3",
+    )
+
+    metadata_start = text.index("READY_METADATA =")
+    metadata_end = text.index("\n\n", metadata_start)
+    metadata = text[metadata_start:metadata_end]
+    assert "_native_subgraph_source" not in metadata
+    assert "'nodes':" not in metadata
+    assert "'links':" not in metadata
+    assert "'boundary':" not in metadata
+    assert "_native_subgraph_provenance" in metadata
+    assert "_native_subgraph_diagnostics" in metadata
+
+
 def test_ready_template_provenance_paths_are_repo_relative() -> None:
     source_path = find_repo_root() / "ready_templates/sources" / "source.json"
     text = emit_ready_template_python(
