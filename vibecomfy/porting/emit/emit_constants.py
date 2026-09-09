@@ -683,6 +683,8 @@ def _hoist_constants(
     edges_in: dict[str, list[Any]],
     var_names: dict[str, str],
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
+    *,
+    resolve_graph_strings: bool = True,
 ) -> tuple[list[str], dict[tuple[str, str], str]]:
     """Scan workflow nodes for hoistable constants.
 
@@ -707,7 +709,8 @@ def _hoist_constants(
             translated = _translate_widget_for_key(key, input_aliases, cls)
             if translated is None:
                 continue
-            value = _resolve_graph_field_get_string(value, workflow_nodes)
+            if resolve_graph_strings:
+                value = _resolve_graph_field_get_string(value, workflow_nodes)
             category = _classify_value_category(translated, value, cls)
             if category is not None:
                 candidates.append((nid, translated, value, category))
@@ -719,7 +722,8 @@ def _hoist_constants(
             translated = _translate_widget_for_key(key, input_aliases, cls)
             if translated is None:
                 continue
-            value = _resolve_graph_field_get_string(value, workflow_nodes)
+            if resolve_graph_strings:
+                value = _resolve_graph_field_get_string(value, workflow_nodes)
             category = _classify_value_category(translated, value, cls)
             if category is not None:
                 candidates.append((nid, translated, value, category))
@@ -798,7 +802,8 @@ def _hoist_constants(
             translated = _translate_widget_for_key(key, input_aliases, cls)
             if translated is None:
                 continue
-            value = _resolve_graph_field_get_string(value, workflow_nodes)
+            if resolve_graph_strings:
+                value = _resolve_graph_field_get_string(value, workflow_nodes)
             # Only track string values that are not already categorized
             if not isinstance(value, str):
                 continue

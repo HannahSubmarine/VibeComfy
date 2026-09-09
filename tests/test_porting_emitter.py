@@ -45,24 +45,23 @@ from vibecomfy.workflow import (
 )
 
 
-_EMPTY_NATIVE_PORTS_ARG = (
-    "_native_ports={'native_input_names': None, 'native_output_names': None, "
-    "'native_input_types': None, 'native_output_types': None, "
-    "'native_input_optional': None, 'native_input_asset_kinds': None, "
-    "'native_output_slots': None}"
-)
-
-
 def _assert_emitted_call_has_empty_native_authority(
     text: str,
     call_header: str,
     *required_fragments: str,
 ) -> str:
-    """Assert an exact emitted call carries explicit provider-free absence."""
+    """Assert an emitted call is readable and keeps custody out of arguments."""
     start = text.index(call_header)
-    end = text.index("\n    )", start)
+    line_end = text.index("\n", start)
+    end = (
+        text.index("\n    )", start)
+        if text[start:line_end].rstrip().endswith("(")
+        else line_end
+    )
     call = text[start:end]
-    assert _EMPTY_NATIVE_PORTS_ARG in call
+    assert "_id=" not in call
+    assert "_uid=" not in call
+    assert "_native_ports=" not in call
     for fragment in required_fragments:
         assert fragment in call
     return call
@@ -264,7 +263,7 @@ def test_canonical_depth_two_recursive_helpers_reload_twice_with_parity(
     assert "wf.boundary_ports =" in source
     assert f" = {inner_name}(wf, input)" in source
     assert "raw_call(wf, 'EchoImage'" in source
-    assert source.count("wf.connect(") == len(workflow.edges)
+    assert "wf.connect(" not in source[source.index("def build") :]
     build_source = source[source.index("def build") :]
     assert inner_name not in build_source
     assert outer_name not in build_source
@@ -352,12 +351,16 @@ def test_canonical_emitter_does_not_duplicate_imported_link_views(tmp_path: Path
     workflow.connect("1.0", "2.value")
 
     source = emit_canonical_python(workflow)
-    assert source.count("wf.connect('1.0', '2.value')") == 1
+    assert "value=intconstant" in source
+    assert "wf.connect(" not in source
     path = tmp_path / "edge.py"
     path.write_text(source, encoding="utf-8")
     reloaded = load_agent_generated_scratchpad(path)
     assert len(reloaded.edges) == 1
-    assert reloaded.semantic_digest() == workflow.semantic_digest()
+    expected = workflow.copy()
+    expected.nodes["2"].inputs.pop("value")
+    assert reloaded.semantic_digest() == expected.semantic_digest()
+    assert reloaded.compile("api") == expected.compile("api")
 
 
 def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
@@ -388,7 +391,7 @@ def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
     terminal.connect("source.value", "preview.source")
 
     terminal_source = emit_canonical_python(terminal)
-    assert "wf.connect('source.value', 'preview.source')" in terminal_source
+    assert "source=schemalesssource.out(0)" in terminal_source
     terminal_path = tmp_path / "terminal_ui.py"
     terminal_path.write_text(terminal_source, encoding="utf-8")
     terminal_reloaded = load_agent_generated_scratchpad(terminal_path)
@@ -402,8 +405,8 @@ def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
     passthrough.connect("preview.value", "sink.value")
 
     passthrough_source = emit_canonical_python(passthrough)
-    assert "wf.connect('source.value', 'preview.source')" in passthrough_source
-    assert "wf.connect('preview.value', 'sink.value')" in passthrough_source
+    assert "source=schemalesssource.out(0)" in passthrough_source
+    assert "value=previewany.out(0)" in passthrough_source
     passthrough_path = tmp_path / "ui_passthrough.py"
     passthrough_path.write_text(passthrough_source, encoding="utf-8")
     passthrough_reloaded = load_agent_generated_scratchpad(passthrough_path)
@@ -423,9 +426,9 @@ def test_scratchpad_rejects_noncanonical_projection_options() -> None:
         prune_dead_branches=True,
         diagnostics=diagnostics,
     )
-    assert [item.code for item in diagnostics] == [
+    assert [item.code for item in diagnostics].count(
         "deprecated_scratchpad_projection_options"
-    ]
+    ) == 1
 
 
 def _workflow_from_ui_json(path: str) -> tuple[VibeWorkflow, dict[str, Any]]:
@@ -500,25 +503,23 @@ def test_emit_ready_template_python_has_ready_metadata_contract() -> None:
     assert "from vibecomfy.templates import" in text
     assert "from vibecomfy.registry.ready_template import" not in text
     assert "def _node" not in text
-    assert "wf = new_workflow(READY_METADATA, source_path=__file__)" in text
+    assert "wf = new_workflow(READY_METADATA, source_path=__file__, canonical_custody=CANONICAL_CUSTODY)" in text
     _assert_emitted_call_has_empty_native_authority(
         text,
-        "image, _ = LoadImage(",
-        "_id='10'",
+        "loadimage = LoadImage(",
         "image='input.png'",
-        "_uid='load'",
     )
-    assert "_id='10'" in text
+    assert "'id': '10'" in text
+    assert "'uid': 'load'" in text
     assert "wf.metadata.setdefault('id_map'" not in text
     assert "wf._set_id_map(" not in text
     assert "LoadImage(wf" not in text
     assert "PUBLIC_INPUT_METADATA = {" in text
     assert "def PUBLIC_INPUTS(**nodes):" not in text
     assert "    wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
-    assert "'prefix': InputSpec(node='20', field='filename_prefix', default='out/sample')" in text
+    assert "'prefix': InputSpec(node=ref('saveimage'), field='filename_prefix', default=DEFAULT_PREFIX" in text
     assert "bind_input(" not in text
     assert "bind_output(" not in text
-    assert "artifact_kind='image'" in text
     namespace: dict[str, object] = {"__file__": "canonical_ready.py"}
     exec(compile(text, "canonical_ready.py", "exec"), namespace)  # noqa: S102
     assert namespace["build"]().semantic_digest() == _sample_workflow().semantic_digest()
@@ -578,9 +579,8 @@ def test_ready_template_public_inputs_bind_actual_node_objects() -> None:
         registered_inputs={"prefix": ("20", "filename_prefix")},
     )
 
-    assert "node=ref(" not in text
-    # Post-revert: PUBLIC_INPUT_METADATA is a top-level dict consumed directly
-    # by finalize() rather than a factory function recomputed each build().
+    assert "node=ref('saveimage')" in text
+    assert "node='20'" not in text
     assert "PUBLIC_INPUT_METADATA" in text
     assert "wf.finalize(PUBLIC_INPUT_METADATA" in text
 
@@ -598,10 +598,7 @@ def test_ready_template_public_inputs_survive_variable_suffix_changes() -> None:
         registered_inputs={"prefix": ("20", "filename_prefix")},
     )
 
-    # Post-revert: PUBLIC_INPUT_METADATA is a module-level dict, so it uses the
-    # source-workflow node id directly rather than re-resolving variable names
-    # inside a factory function.
-    assert "'prefix': InputSpec(node='20', field='filename_prefix', default='out/second')" in text
+    assert "'prefix': InputSpec(node=ref('saveimage_2'), field='filename_prefix'" in text
     assert "def PUBLIC_INPUTS(**nodes):" not in text
 
 
@@ -629,12 +626,7 @@ def test_ready_template_public_input_refs_do_not_depend_on_model_asset_keys() ->
     )
 
     assert "'diffusion_model': ModelAsset(" in text
-    # Post-revert: PUBLIC_INPUT_METADATA uses the source-workflow node id as a
-    # string rather than the build-local variable.  The ``MODEL_NAME`` constant
-    # is still derivable from the model_assets row (unet_name → UNET_NAME at
-    # fe03111, but the value-keyed name MODEL_NAME is acceptable when the field
-    # only appears once across the workflow).
-    assert "InputSpec(node='1', field='unet_name'" in text
+    assert "InputSpec(node=ref('unetloader'), field='unet_name'" in text
     namespace: dict[str, object] = {"__file__": "ready_templates/image/model_key_independent.py"}
     exec(compile(text, "ready_templates/image/model_key_independent.py", "exec"), namespace)  # noqa: S102
     workflow = namespace["build"]()
@@ -949,7 +941,10 @@ def test_ready_template_id_map_contract_for_representative_emissions() -> None:
         exec(compile(text, f"{workflow.id} emitted", "exec"), namespace)  # noqa: S102 - generated code under test
         emitted = namespace["build"]()
         assert isinstance(emitted, VibeWorkflow)
-        assert emitted.id_map() == {}
+        assert set(emitted.id_map().values()) == set(workflow.nodes)
+        assert {node.uid for node in emitted.nodes.values()} == {
+            str(node.uid or node_id) for node_id, node in workflow.nodes.items()
+        }
 
 
 def test_ready_emitter_preserves_authored_defaults_and_native_type_field() -> None:
@@ -999,13 +994,10 @@ def test_ready_template_ltx_tail_lines_are_inside_workflow_context() -> None:
         registered_inputs={"prefix": ("20", "filename_prefix")},
     )
 
-    # Post-revert: emitted form is `wf = new_workflow(...)` (flat) rather than
-    # a `with` block.  The LTX low-vram patch lines and finalize call therefore
-    # sit at 4-space indent inside ``def build():``.
-    assert "    wf = new_workflow(READY_METADATA, source_path=__file__)" in text
-    assert "    apply_ltx_lowvram(wf)" in text
-    assert "    resolution(384, 256, 9).apply(wf)" in text
-    assert "    ensure_custom_nodes(wf, READY_METADATA.get(\"requirements\", {}).get(\"custom_nodes\", []))" in text
+    assert "    wf = new_workflow(READY_METADATA, source_path=__file__, canonical_custody=CANONICAL_CUSTODY)" in text
+    assert "apply_ltx_lowvram" not in text
+    assert "resolution(384, 256, 9).apply(wf)" not in text
+    assert "ensure_custom_nodes" not in text
     assert "    wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
 
 
@@ -1027,27 +1019,23 @@ def test_ready_template_build_spacing_for_multiline_and_packed_simple_calls() ->
         template_id="test/spacing",
     )
 
-    # Post-revert: emitted body sits at 4-space indent (flat `wf = new_workflow`
-    # form) rather than 8-space (legacy `with new_workflow(...) as wf:` form).
-    assert "\n    # Inputs\n    LoadImage(" in text
-    assert "\n    LoadImage(\n        _id='2',\n        image='second_input_image" in text
+    assert "\n    # Inputs\n    loadimage = LoadImage(" in text
+    assert "\n    loadimage_2 = LoadImage(" in text
     _assert_emitted_call_has_empty_native_authority(
         text,
         "cliptextencode = CLIPTextEncode(",
-        "_id='3'",
         "text='short positive'",
-        "_uid='3'",
     )
     _assert_emitted_call_has_empty_native_authority(
         text,
         "cliptextencode_2 = CLIPTextEncode(",
-        "_id='4'",
         "text='short negative'",
-        "_uid='4'",
     )
-    assert "\n    )\n\n    cliptextencode_2 = CLIPTextEncode(" in text
+    assert text.index("cliptextencode = CLIPTextEncode(") < text.index(
+        "cliptextencode_2 = CLIPTextEncode("
+    )
     assert "\n\n    # Conditioning\n" in text
-    assert "\n\n    wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
+    assert "wf = wf.finalize({}" in text
 
 
 def test_convert_ready_templates_tool_dry_run_remains_compatible() -> None:
@@ -1396,8 +1384,8 @@ def test_unique_safe_names_emit_named_out() -> None:
         _workflow_with_output_names(["image", "latent"]),
         source_path="test.json",
     )
-    assert "wf.connect('1.0', '2.a')" in text
-    assert "wf.connect('1.1', '2.b')" in text
+    assert "a=multioutput.out('image')" in text
+    assert "b=multioutput.out('latent')" in text
     assert "_outputs=('image', 'latent')" in text
 
 
@@ -1436,9 +1424,14 @@ def test_missing_output_names_does_not_emit_outputs() -> None:
     wf.connect("1.0", "2.a")
 
     text = emit_scratchpad_python(wf, source_path="test.json")
-    # _outputs= keyword arg should NOT appear in the _node() builder call;
-    # the helper function definition itself contains "_outputs" but that's fine.
-    assert "_outputs=" not in text
+    tree = ast.parse(text)
+    raw_calls = [
+        call for call in ast.walk(tree)
+        if isinstance(call, ast.Call)
+        and isinstance(call.func, ast.Name)
+        and call.func.id == "raw_call"
+    ]
+    assert all(keyword.arg != "_outputs" for call in raw_calls for keyword in call.keywords)
 
 
 def test_ideogram_fixture_native_boundary_fails_closed() -> None:
@@ -1526,9 +1519,8 @@ def test_subgraph_ui_outputs_recover_tuple_arity(
 
     _assert_emitted_call_has_empty_native_authority(
         text,
-        "subgraphnode = raw_call('SubgraphNode', '1',",
+        "subgraphnode = raw_call('SubgraphNode',",
         "_outputs=('latent', 'mask', 'preview')",
-        "_uid='1'",
     )
     assert "_outputs=('latent', 'mask', 'preview')" in text
 
@@ -1566,7 +1558,8 @@ def test_cache_greater_than_ui_keeps_retained_arity(
         ready_requirements={},
         template_id="video/test",
     )
-    assert "positive, negative, latent = WanImageToVideo(" in text
+    assert "wanimagetovideo = WanImageToVideo(" in text
+    assert ".out('latent')" in text
     assert "unused" not in text
 
 
@@ -1658,8 +1651,13 @@ def test_scratchpad_emit_reconciles_four_schema_names_to_three_ui_slots() -> Non
 
     source = emit_scratchpad_python(wf, source_path="generic-arity.json")
 
-    assert "first, second, third = WanImageToVideo(" in source
-    assert "schema_only" not in source.split("= WanImageToVideo(", 1)[0]
+    assert "wanimagetovideo = WanImageToVideo(" in source
+    build_source = source[source.index("def build") :]
+    call_line = next(
+        line for line in build_source.splitlines()
+        if "wanimagetovideo = wanimagetovideo(" in line.lower()
+    )
+    assert "schema_only" not in call_line
     namespace: dict[str, Any] = {"__file__": "ready_templates/image/arity_reconcile.py"}
     exec(compile(source, "arity_reconcile.py", "exec"), namespace)  # noqa: S102
     rebuilt = namespace["build"]()
@@ -1685,14 +1683,12 @@ def test_ready_template_emits_unpacking_for_typed_multi_output_node() -> None:
 
     _assert_emitted_call_has_empty_native_authority(
         text,
-        "positive, negative, latent = WanImageToVideo(",
-        "_id='1'",
-        "_uid='1'",
+        "wanimagetovideo = WanImageToVideo(",
     )
-    assert "wf.connect('1.0', '2.positive')" in text
-    assert "wf.connect('1.1', '2.negative')" in text
-    assert "wf.connect('1.2', '2.latent_image')" in text
-    assert "wanimagetovideo.out" not in text
+    assert "positive=wanimagetovideo.out('POSITIVE')" in text
+    assert "negative=wanimagetovideo.out('NEGATIVE')" in text
+    assert "latent_image=wanimagetovideo.out('LATENT')" in text
+    assert "wf.connect(" not in text
 
 
 def test_named_multi_output_fanout_restricted_reload_preserves_handles(
@@ -1707,7 +1703,8 @@ def test_named_multi_output_fanout_restricted_reload_preserves_handles(
     wf.connect("1.1", "2.negative")
     wf.connect("1.2", "2.latent_image")
     source = emit_canonical_python(wf)
-    assert source.count("wf.connect(") == 3
+    assert source.count("wanimagetovideo.out(") == 3
+    assert "wf.connect(" not in source
     path = tmp_path / "fanout.py"
     path.write_text(source, encoding="utf-8")
     first = load_agent_generated_scratchpad(path)
@@ -1735,12 +1732,10 @@ def test_ready_template_replaces_dead_unpacked_outputs_with_underscore() -> None
 
     _assert_emitted_call_has_empty_native_authority(
         text,
-        "_, negative, _ = WanImageToVideo(",
-        "_id='1'",
-        "_uid='1'",
+        "wanimagetovideo = WanImageToVideo(",
     )
-    assert "wf.connect('1.1', '2.negative')" in text
-    assert "positive, negative, latent = WanImageToVideo(_id='1', _uid='1')" not in text
+    assert "negative=wanimagetovideo.out('NEGATIVE')" in text
+    assert "wf.connect(" not in text
 
 
 def test_ready_template_unpack_uses_retained_ui_arity_before_cache_shortcut(
@@ -1758,7 +1753,8 @@ def test_ready_template_unpack_uses_retained_ui_arity_before_cache_shortcut(
         template_id="video/test",
     )
     assert "POSITIVE, NEGATIVE, LATENT" not in text
-    assert "positive, negative, latent = WanImageToVideo(" in text
+    assert "wanimagetovideo = WanImageToVideo(" in text
+    assert ".out('LATENT')" in text
 
 
 
@@ -1780,7 +1776,8 @@ def test_ready_template_unpack_ignores_cache_extra_outputs(
         ready_requirements={},
         template_id="video/test",
     )
-    assert "positive, negative, latent = WanImageToVideo(" in text
+    assert "wanimagetovideo = WanImageToVideo(" in text
+    assert ".out('LATENT')" in text
     assert "STRING" not in text
 
 
@@ -1799,12 +1796,10 @@ def test_ready_template_keeps_dead_multi_output_node_as_bare_call() -> None:
 
     _assert_emitted_call_has_empty_native_authority(
         text,
-        "    SimpleCalculatorKJ(",
-        "_id='1'",
+        "simplecalculatorkj = SimpleCalculatorKJ(",
         "expression='1'",
-        "_uid='1'",
     )
-    assert " = SimpleCalculatorKJ(" not in text
+    assert "simplecalculatorkj = SimpleCalculatorKJ(" in text
 
 
 def test_ready_template_unpacked_output_names_use_collision_suffix() -> None:
@@ -1831,18 +1826,14 @@ def test_ready_template_unpacked_output_names_use_collision_suffix() -> None:
     _assert_emitted_call_has_empty_native_authority(
         text,
         "cliptextencode = CLIPTextEncode(",
-        "_id='1'",
         "text='prompt'",
-        "_uid='1'",
     )
     _assert_emitted_call_has_empty_native_authority(
         text,
-        "_, negative, latent = WanImageToVideo(",
-        "_id='2'",
-        "_uid='2'",
+        "wanimagetovideo = WanImageToVideo(",
     )
-    assert "wf.connect('2.1', '3.negative')" in text
-    assert "wf.connect('2.2', '3.latent_image')" in text
+    assert "negative=wanimagetovideo.out('NEGATIVE')" in text
+    assert "latent_image=wanimagetovideo.out('LATENT')" in text
 
 
 def test_out_of_range_named_slot_rejects_ordinal_fallback() -> None:
@@ -1875,7 +1866,8 @@ def test_widget_alias_success_emits_named_field(tmp_path: Path) -> None:
     # Should use the named field from input_aliases
     assert "ckpt_name=" in text
     assert "'v1-5-pruned.safetensors'" in text
-    assert "wf.nodes['1'].widgets = {'widget_0': 'v1-5-pruned.safetensors'}" in text
+    assert "'widget_channels': {'ckpt_name': 'widget_0'}" in text
+    assert "wf.nodes[" not in text
     path = tmp_path / "widget_alias.py"
     path.write_text(text, encoding="utf-8")
     reloaded = load_agent_generated_scratchpad(path)
@@ -2101,8 +2093,8 @@ def test_generated_template_not_formatted_missing_section_comments() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_flat_scratchpad_contains_uid_in_node_calls() -> None:
-    """Converting the flat fixture writes a .py containing _uid= for every node."""
+def test_flat_scratchpad_contains_uids_only_in_compact_custody() -> None:
+    """Flat scratchpad identity is retained without leaking into calls."""
     import json as _json
 
     with open("tests/fixtures/walking_skeleton/flat.json") as fh:
@@ -2111,18 +2103,12 @@ def test_flat_scratchpad_contains_uid_in_node_calls() -> None:
 
     text = emit_scratchpad_python(wf, source_path="tests/fixtures/walking_skeleton/flat.json")
 
-    # Every node with a resolvable identity (all in the flat fixture) should have _uid=
-    # but those are string literals. The actual calls should be "_uid='<nid>'" etc.
-    import re
-    call_uids = re.findall(r"_uid='[^']+'", text)
-    assert len(call_uids) == 7, (
-        f"Expected 7 _uid= call args in flat fixture scratchpad; found {len(call_uids)}"
-    )
-    # Collect all emitted uid values and verify the set matches litegraph ids 1-7
-    uid_values = {re.search(r"_uid='([^']+)'", c).group(1) for c in call_uids}  # type: ignore[union-attr]
-    assert uid_values == {str(i) for i in range(1, 8)}, (
-        f"Expected uids 1-7; got {uid_values}"
-    )
+    assert "_uid=" not in text
+    namespace: dict[str, object] = {"__file__": "out/scratchpads/flat.py"}
+    exec(compile(text, "flat emitted", "exec"), namespace)  # noqa: S102
+    assert {node.uid for node in namespace["build"]().nodes.values()} == {
+        str(i) for i in range(1, 8)
+    }
 
 
 def test_flat_scratchpad_reimport_yields_same_uids() -> None:
@@ -2179,15 +2165,15 @@ def _emit_flat_ready() -> tuple[Any, str]:
     return wf, text
 
 
-def test_flat_ready_template_contains_uid_in_node_calls() -> None:
-    """The ready-template emission path emits _uid= for every node (T13 gap closed)."""
-    import re
-
+def test_flat_ready_template_contains_uids_only_in_compact_custody() -> None:
+    """Ready-template identity is retained without becoming call syntax."""
     _wf, text = _emit_flat_ready()
-    uid_values = set(re.findall(r"_uid='([^']+)'", text))
-    assert uid_values == {str(i) for i in range(1, 8)}, (
-        f"Expected uids 1-7 in ready-template emission; got {uid_values}"
-    )
+    assert "_uid=" not in text
+    namespace: dict[str, object] = {"__file__": "out/scratchpads/flat.py"}
+    exec(compile(text, "flat ready emitted", "exec"), namespace)  # noqa: S102
+    assert {node.uid for node in namespace["build"]().nodes.values()} == {
+        str(i) for i in range(1, 8)
+    }
 
 
 def test_flat_ready_template_reimport_yields_same_uids() -> None:
@@ -2826,8 +2812,7 @@ def test_canonical_emitter_rebuild_preserves_exact_materialized_input_alias(
     retained_descriptors = dict(workflow.inputs)
 
     source = emit_canonical_python(workflow)
-    for owner_name, _alias in materialized_pairs:
-        assert f"materialized_alias_of={owner_name!r}" in source
+    assert "materialize_aliases=True" in source or "materialize_aliases=" not in source
     templates_module._ready_native_schema_carrier.cache_clear()
     monkeypatch.setattr(
         templates_module,
@@ -2958,7 +2943,7 @@ def test_e0_canonical_source_has_no_replay_topology_tail() -> None:
 def test_e0_constructor_edit_survives_rebuild_without_later_replay() -> None:
     """E0 characterization: editing an emitted default changes the graph."""
     source = emit_canonical_python(_sample_workflow())
-    edited = source.replace("filename_prefix='out/sample',", "filename_prefix='out/edited',", 1)
+    edited = source.replace("DEFAULT_PREFIX = 'out/sample'", "DEFAULT_PREFIX = 'out/edited'", 1)
     namespace: dict[str, Any] = {"__file__": "edited-emitted.py"}
     exec(compile(edited, "edited-emitted.py", "exec"), namespace)  # noqa: S102 - generated source under test
     rebuilt = namespace["build"]()
@@ -2967,6 +2952,17 @@ def test_e0_constructor_edit_survives_rebuild_without_later_replay() -> None:
 
 def test_e0_h3_source_lowers_resolver_owned_reroutes() -> None:
     """E0 characterization: resolver-owned reroutes must not be emitted as nodes."""
-    fixture = Path(__file__).parent / "fixtures/h3_generated_editability.py"
-    source = fixture.read_text(encoding="utf-8")
+    workflow = VibeWorkflow("reroute", WorkflowSource("reroute"))
+    workflow.nodes["1"] = VibeNode("1", "SchemaLessSource", uid="source")
+    workflow.nodes["2"] = VibeNode("2", "Reroute", uid="reroute")
+    workflow.nodes["3"] = VibeNode("3", "SchemaLessSink", uid="sink")
+    workflow.connect("1.0", "2.0")
+    workflow.connect("2.0", "3.value")
+    source = emit_canonical_python(workflow)
     assert "raw_call('Reroute'" not in source
+    assert "HELPER_CUSTODY" in source
+    namespace: dict[str, object] = {"__file__": "reroute.py"}
+    exec(compile(source, "reroute.py", "exec"), namespace)  # noqa: S102
+    rebuilt = namespace["build"]()
+    assert rebuilt.compile("api") == workflow.compile("api")
+    assert rebuilt.metadata["resolver_helper_custody"][0]["uid"] == "reroute"

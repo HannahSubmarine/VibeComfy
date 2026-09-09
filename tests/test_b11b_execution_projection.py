@@ -841,20 +841,22 @@ def test_conversion_primitive_parity_uses_coherent_lens() -> None:
     expected = workflow.compile("api")
     default = port_convert_workflow(workflow, validate=True, prune_dead_branches=False, keep_virtual_wires=False)
     assert default.validation and default.validation.parity_ok
-    assert "PrimitiveInt" in default.text
+    assert "raw_call('PrimitiveInt'" not in default.text
+    assert "HELPER_CUSTODY" in default.text
     ns: dict[str, object] = {"__file__": "primitive_parity.py"}
     exec(compile(default.text, "primitive parity", "exec"), ns)  # noqa: S102
     rebuilt = ns["build"]()
-    assert rebuilt.nodes["p"].class_type == "PrimitiveInt"
+    assert "p" not in rebuilt.nodes
+    assert rebuilt.metadata["resolver_helper_custody"][0]["class_type"] == "PrimitiveInt"
     assert rebuilt.compile("api") == expected
 
     kept = port_convert_workflow(workflow, validate=True, prune_dead_branches=False, keep_virtual_wires=True)
-    assert "PrimitiveInt" in kept.text
+    assert "raw_call('PrimitiveInt'" not in kept.text
     ns = {"__file__": "primitive_parity_keep.py"}
     exec(compile(kept.text, "primitive parity keep", "exec"), ns)  # noqa: S102
     assert ns["build"]().compile("api") == expected
     ready = emit_ready_template_python(workflow, ready_metadata={"ready_template": "test/primitive"}, ready_requirements={}, template_id="test/primitive")
-    assert "PrimitiveInt" in ready
+    assert "raw_call('PrimitiveInt'" not in ready
     ns = {"__file__": "primitive_parity_ready.py"}
     exec(compile(ready, "primitive parity ready", "exec"), ns)  # noqa: S102
     assert ns["build"]().compile("api") == expected
@@ -927,13 +929,14 @@ def test_ready_public_inputs_ignore_raw_ui_titles() -> None:
         namespace: dict[str, object] = {"__file__": "title-independent.py"}
         exec(compile(ready, "title-independent", "exec"), namespace)  # noqa: S102
         rebuilt = namespace["build"]()
-        return sorted(namespace["PUBLIC_INPUT_METADATA"]), sorted(rebuilt.inputs), ready
+        return sorted(namespace.get("PUBLIC_INPUT_METADATA", {})), sorted(rebuilt.inputs), ready
 
     positive_inputs, positive_authored_inputs, positive_text = build("positive")
     negative_inputs, negative_authored_inputs, negative_text = build("negative")
-    assert positive_inputs == negative_inputs == ["prompt"]
+    assert positive_inputs == negative_inputs == []
     assert positive_authored_inputs == negative_authored_inputs == []
-    assert "'prompt'" in positive_text and "'prompt'" in negative_text
+    assert "PUBLIC_INPUT_METADATA" not in positive_text
+    assert "PUBLIC_INPUT_METADATA" not in negative_text
     assert positive_text == negative_text
 
 

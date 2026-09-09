@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 from vibecomfy.handles import Handle
 from vibecomfy.registry.ready_template import apply_ready_template_policy, bind_input, bind_output, ready_node, ready_workflow
 from vibecomfy.utils import find_repo_root
-from vibecomfy.workflow import VibeInput, VibeWorkflow
+from vibecomfy.workflow import VibeInput, VibeOutput, VibeWorkflow
 from vibecomfy.custom_node_refs import normalize_custom_node_requirements
 from vibecomfy.workflow_context import _current_workflow_or_raise
 
@@ -73,6 +73,7 @@ def new_workflow(
     *,
     source_path: str | None = None,
     source_type: str | None = None,
+    canonical_custody: Mapping[str, Any] | None = None,
 ) -> VibeWorkflow:
     """Create a ready-template workflow and apply module metadata.
 
@@ -99,6 +100,11 @@ def new_workflow(
         provenance=provenance if isinstance(provenance, Mapping) else None,
     )
     wf.metadata.update(metadata)
+    if canonical_custody is not None:
+        if not isinstance(canonical_custody, Mapping):
+            raise TypeError("canonical custody must be a mapping")
+        wf._canonical_construction_custody = list(canonical_custody.values())
+        wf._canonical_construction_index = 0
 
     # Eagerly bind the ContextVar so that node()/typed-wrapper calls in the
     # caller's body can find the active workflow.  finalize() releases this
@@ -179,6 +185,36 @@ def node(
     # older offline object_info snapshot.  Capture those names before value
     # coercion and before the internal pass_raw control is reinserted.
     authored_input_names = tuple(str(name) for name in kwargs)
+    authored_channels: dict[str, AuthoredChannel] = {}
+    for field_name, field_value in tuple(kwargs.items()):
+        if isinstance(field_value, AuthoredChannel):
+            authored_channels[str(field_name)] = field_value
+            kwargs[field_name] = field_value.value
+    construction_custody = getattr(wf, "_canonical_construction_custody", None)
+    construction_index = getattr(wf, "_canonical_construction_index", 0)
+    if construction_custody is not None:
+        if construction_index >= len(construction_custody):
+            raise ValueError("canonical construction created more nodes than its custody manifest")
+        construction_record = construction_custody[construction_index]
+        if not isinstance(construction_record, Mapping):
+            raise TypeError("canonical construction custody record must be a mapping")
+        expected_class = construction_record.get("class_type")
+        if expected_class != class_type:
+            raise ValueError(
+                f"canonical construction expected {expected_class!r}, got {class_type!r}"
+            )
+        retained_ports = construction_record.get("native_ports")
+        if explicit_native_ports is None:
+            explicit_native_ports = deepcopy(retained_ports)
+            construction_output_names = construction_record.get("construction_output_names")
+            if construction_output_names:
+                if not isinstance(explicit_native_ports, Mapping):
+                    explicit_native_ports = {}
+                explicit_native_ports = dict(explicit_native_ports)
+                explicit_native_ports["native_output_names"] = list(construction_output_names)
+                if explicit_native_ports.get("native_output_types") is None:
+                    explicit_native_ports["native_output_types"] = [None] * len(construction_output_names)
+        wf._canonical_construction_index = construction_index + 1
     if explicit_outputs is not None:
         outputs = tuple(explicit_outputs)
     elif explicit_native_ports is not None:
@@ -191,6 +227,20 @@ def node(
     if explicit_native_ports is not None:
         kwargs["_native_ports"] = explicit_native_ports
     builder = ready_node(wf, class_type, source_id=str(_id) if _id is not None else None, outputs=outputs or None, extras=_extras, **kwargs)
+    for field_name, channel in authored_channels.items():
+        has_edge = any(
+            str(edge.to_node) == str(builder.node.id) and str(edge.to_input) == field_name
+            for edge in wf.edges
+        )
+        if field_name not in builder.node.inputs and not has_edge:
+            raise ValueError(
+                f"authored channel {class_type}.{field_name} did not produce an input channel"
+            )
+        if channel.retain_input_default:
+            builder.node.inputs[field_name] = deepcopy(channel.widget)
+        elif channel.input_default is not _MISSING_AUTHORED_DEFAULT:
+            builder.node.inputs[field_name] = deepcopy(channel.input_default)
+        builder.node.widgets[channel.name] = deepcopy(channel.widget)
     if authored_input_names:
         # Preserve the exact fields explicitly present in Python source across
         # subsequent canonical emission, even when their value equals a
@@ -510,6 +560,43 @@ def _is_schema_default_input(class_type: str, field: str, value: Any) -> bool:
     return field in defaults and value == defaults[field]
 
 
+_MISSING_AUTHORED_DEFAULT = object()
+
+
+@dataclass(frozen=True)
+class AuthoredChannel:
+    """One effective kwarg plus a distinct retained widget-channel default."""
+
+    value: Any
+    widget: Any
+    name: str
+    input_default: Any = _MISSING_AUTHORED_DEFAULT
+    retain_input_default: bool = False
+
+
+def authored_channel(
+    value: Any,
+    *,
+    widget: Any,
+    name: str,
+    input_default: Any = _MISSING_AUTHORED_DEFAULT,
+    retain_input_default: bool = False,
+) -> AuthoredChannel:
+    if not isinstance(name, str) or not name:
+        raise ValueError("authored channel widget name must be a nonblank string")
+    if input_default is not _MISSING_AUTHORED_DEFAULT and retain_input_default:
+        raise ValueError(
+            "authored channel cannot supply input_default and retain_input_default together"
+        )
+    return AuthoredChannel(
+        value=value,
+        widget=widget,
+        name=name,
+        input_default=input_default,
+        retain_input_default=retain_input_default,
+    )
+
+
 @dataclass(frozen=True)
 class InputSpec:
     node: str | SymbolicNodeRef | Any
@@ -521,6 +608,10 @@ class InputSpec:
     description: str | None = None
     media_semantics: str | None = None
     omit_if_schema_default: bool = False
+    range: Any = None
+    allow_missing_target: bool = False
+    infer_type: bool = True
+    materialize_aliases: bool = True
 
     def register(self, wf: VibeWorkflow, name: str, namespace: Mapping[str, Any] | None = None) -> None:
         node_id = self.resolve_node_id(wf, namespace=namespace)
@@ -548,7 +639,9 @@ class InputSpec:
                 f"InputSpec.register({name!r}): field {self.field!r} not found in "
                 f"node {node_id!r} ({node.class_type}) inputs or widgets"
             )
-        input_type = self.type or _derive_input_type(node.class_type, self.field)
+        input_type = self.type
+        if input_type is None and self.infer_type:
+            input_type = _derive_input_type(node.class_type, self.field)
         wf.register_input(
             name,
             node_id,
@@ -559,9 +652,14 @@ class InputSpec:
             required=self.required,
             aliases=self.aliases,
             media_semantics=self.media_semantics,
-            allow_missing_target=allow_missing_target,
+            range=self.range,
+            allow_missing_target=self.allow_missing_target or allow_missing_target,
         )
-        for alias in self.aliases:
+        # ``VibeWorkflow.register_input`` retains a historical ``None`` means
+        # omitted fallback.  InputSpec is an explicit descriptor, so its
+        # authored default (including None) remains authoritative.
+        wf.inputs[name].default = deepcopy(self.default)
+        for alias in self.aliases if self.materialize_aliases else ():
             if alias in wf.inputs:
                 continue
             wf.inputs[alias] = VibeInput(
@@ -574,7 +672,8 @@ class InputSpec:
                 required=self.required,
                 aliases=(),
                 media_semantics=self.media_semantics,
-                allow_missing_target=allow_missing_target,
+                range=deepcopy(self.range),
+                allow_missing_target=self.allow_missing_target or allow_missing_target,
             )
 
     def resolve_node_id(self, wf: VibeWorkflow, namespace: Mapping[str, Any] | None = None) -> str:
@@ -738,6 +837,139 @@ def finalize(
     return wf.finalize(inputs, metadata=metadata, output_node=output_node, output_kind=output_kind, **bind_kwargs)
 
 
+_CANONICAL_CUSTODY_NODE_KEYS = frozenset({
+    "id", "uid", "class_type", "native_ports", "metadata", "widget_channels",
+    "none_input_fields", "none_widget_fields", "output_slot_names", "construction_output_names",
+})
+
+
+def _apply_canonical_custody(
+    wf: VibeWorkflow,
+    custody: Mapping[str, Any],
+    bindings: Mapping[str, Any],
+) -> None:
+    """Atomically rebind generated variables to retained node custody.
+
+    Generated constructor calls remain ordinary editable Python.  This is the
+    single post-construction authority for source IDs, durable UIDs, retained
+    schema provenance, and native socket rosters; runtime values and topology
+    are intentionally not accepted here.
+    """
+    if not isinstance(custody, Mapping):
+        raise TypeError("canonical custody must be a mapping")
+    if not isinstance(bindings, Mapping):
+        raise TypeError("canonical custody bindings must be a mapping")
+
+    resolved: list[tuple[str, str, Any, Mapping[str, Any]]] = []
+    seen_current: set[str] = set()
+    seen_target: set[str] = set()
+    for label, raw_record in custody.items():
+        if not isinstance(label, str) or not label:
+            raise ValueError("canonical custody labels must be nonblank strings")
+        if not isinstance(raw_record, Mapping):
+            raise TypeError(f"canonical custody record {label!r} must be a mapping")
+        unknown = set(raw_record) - _CANONICAL_CUSTODY_NODE_KEYS
+        if unknown:
+            raise ValueError(
+                f"canonical custody record {label!r} contains unsupported field "
+                f"{sorted(unknown)[0]!r}"
+            )
+        binding = bindings.get(label)
+        current_id = _node_id_from_binding(binding)
+        if current_id is None or current_id not in wf.nodes:
+            raise ValueError(
+                f"canonical custody binding {label!r} does not resolve to a constructed node"
+            )
+        target_id = raw_record.get("id")
+        if not isinstance(target_id, str) or not target_id:
+            raise ValueError(f"canonical custody record {label!r} has an invalid id")
+        if raw_record.get("class_type") != wf.nodes[current_id].class_type:
+            raise ValueError(f"canonical custody record {label!r} class does not match its binding")
+        if current_id in seen_current:
+            raise ValueError(f"canonical custody binding {label!r} aliases another node")
+        if target_id in seen_target:
+            raise ValueError(f"canonical custody id {target_id!r} is duplicated")
+        seen_current.add(current_id)
+        seen_target.add(target_id)
+        resolved.append((label, current_id, wf.nodes[current_id], raw_record))
+
+    if seen_current != set(wf.nodes):
+        missing = sorted(set(wf.nodes) - seen_current)
+        raise ValueError(
+            "canonical custody does not bind every constructed node: " + ", ".join(missing)
+        )
+    construction_custody = getattr(wf, "_canonical_construction_custody", None)
+    if construction_custody is not None and getattr(wf, "_canonical_construction_index", 0) != len(construction_custody):
+        raise ValueError("canonical construction did not consume every custody record")
+
+    # Validate detached candidate nodes first so malformed custody cannot leave
+    # the workflow half rebound.
+    candidates: dict[str, Any] = {}
+    old_to_new: dict[str, str] = {}
+    for label, current_id, node, record in resolved:
+        candidate = deepcopy(node)
+        target_id = str(record["id"])
+        candidate.id = target_id
+        uid = record.get("uid")
+        if not isinstance(uid, str) or not uid:
+            raise ValueError(f"canonical custody record {label!r} has an invalid uid")
+        candidate.uid = uid
+        metadata = record.get("metadata", {})
+        if not isinstance(metadata, Mapping):
+            raise TypeError(f"canonical custody metadata {label!r} must be a mapping")
+        candidate.metadata.update(deepcopy(dict(metadata)))
+        native_ports = record.get("native_ports", {})
+        _apply_explicit_native_port_carriers(candidate, native_ports)
+        widget_channels = record.get("widget_channels", {})
+        if not isinstance(widget_channels, Mapping):
+            raise TypeError(f"canonical custody widget channels {label!r} must be a mapping")
+        for constructed_name, authored_name in widget_channels.items():
+            if not isinstance(constructed_name, str) or not isinstance(authored_name, str):
+                raise TypeError(f"canonical custody widget channel {label!r} must use strings")
+            if authored_name in candidate.widgets:
+                continue
+            if constructed_name in candidate.inputs:
+                candidate.widgets[authored_name] = candidate.inputs.pop(constructed_name)
+            else:
+                raise ValueError(
+                    f"canonical custody widget channel {label!r}.{constructed_name} is absent"
+                )
+        for field_name, channel in (
+            ("none_input_fields", candidate.inputs),
+            ("none_widget_fields", candidate.widgets),
+        ):
+            names = record.get(field_name, ())
+            if not isinstance(names, (list, tuple)) or not all(isinstance(name, str) for name in names):
+                raise TypeError(f"canonical custody {field_name} {label!r} must be a string sequence")
+            for name in names:
+                channel.setdefault(name, None)
+        candidates[target_id] = candidate
+        old_to_new[current_id] = target_id
+
+    # Commit the already-validated detached replacement in one bounded step.
+    wf.nodes = candidates
+    for edge in wf.edges:
+        edge.from_node = old_to_new.get(str(edge.from_node), str(edge.from_node))
+        edge.to_node = old_to_new.get(str(edge.to_node), str(edge.to_node))
+        source_record = next(
+            (record for _label, _old, _node, record in resolved if str(record["id"]) == edge.from_node),
+            None,
+        )
+        slot_names = source_record.get("output_slot_names", {}) if source_record else {}
+        if not isinstance(slot_names, Mapping):
+            raise TypeError("canonical custody output_slot_names must be a mapping")
+        edge.from_output = str(slot_names.get(str(edge.from_output), edge.from_output))
+    for item in wf.inputs.values():
+        item.node_id = old_to_new.get(str(item.node_id), str(item.node_id))
+    for item in wf.outputs:
+        item.node_id = old_to_new.get(str(item.node_id), str(item.node_id))
+    wf._set_id_map({label: str(record["id"]) for label, _old, _node, record in resolved})
+
+    report = wf.validate_identity()
+    if not report.ok:
+        raise ValueError(report.issues[0].message)
+
+
 def _finalize_impl(
     wf: VibeWorkflow,
     inputs: dict[str, InputSpec],
@@ -771,6 +1003,13 @@ def _finalize_impl(
         wf._workflow_context_token = None
 
     source_path = bind_kwargs.pop("source_path", None)
+    canonical_custody = bind_kwargs.pop("canonical_custody", None)
+    canonical_bindings = bind_kwargs.pop("canonical_bindings", None)
+    canonical_outputs = bind_kwargs.pop("canonical_outputs", None)
+    canonical_requirements = bind_kwargs.pop("canonical_requirements", None)
+    canonical_helpers = bind_kwargs.pop("canonical_helpers", None)
+    if (canonical_custody is None) != (canonical_bindings is None):
+        raise ValueError("canonical custody and bindings must be supplied together")
     requirements = bind_kwargs.pop("requirements", None)
     if source_path is None:
         source_path = wf.source.path or str(Path.cwd())
@@ -795,12 +1034,15 @@ def _finalize_impl(
             bind_kwargs["filename_prefix"] = output_prefix_fallback
 
     caller_locals = _caller_build_locals()
-    try:
-        output_node_id = _resolve_output_node(wf, output_node, caller_locals)
-    except ValueError as exc:
-        if output_node is not None or "could not be auto-detected" not in str(exc):
-            raise
+    if canonical_outputs is not None and output_node is None:
         output_node_id = None
+    else:
+        try:
+            output_node_id = _resolve_output_node(wf, output_node, caller_locals)
+        except ValueError as exc:
+            if output_node is not None or "could not be auto-detected" not in str(exc):
+                raise
+            output_node_id = None
 
     output_class_type = wf.nodes.get(output_node_id).class_type if output_node_id in wf.nodes else None
     derived_output_kind = output_kind or _derive_output_kind(output_class_type)
@@ -810,10 +1052,17 @@ def _finalize_impl(
     requirements = _requirements_with_models(requirements, metadata.get("model_assets", []))
 
     wf.finalize_metadata()
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
-        apply_ready_template_policy(wf, metadata, source_path=str(source_path), requirements=requirements)
+    if canonical_custody is None or wf.nodes:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
+            apply_ready_template_policy(wf, metadata, source_path=str(source_path), requirements=requirements)
 
+    if canonical_custody is not None:
+        # Canonical source carries the complete retained public interface.
+        # Ready-template policy inference is useful for handwritten templates,
+        # but must not invent another interface during a canonical rebuild.
+        wf.inputs = {}
+        wf._manual_input_names.clear()
     for name, spec in inputs.items():
         spec.register(wf, name, namespace=caller_locals)
 
@@ -830,6 +1079,79 @@ def _finalize_impl(
                 artifact_kind=artifact_kind,
                 **bind_kwargs,
             )
+    if canonical_outputs is not None:
+        if not isinstance(canonical_outputs, (list, tuple)):
+            raise TypeError("canonical outputs must be a sequence")
+        rebound_outputs: list[VibeOutput] = []
+        allowed_output_keys = {
+            "node", "output_type", "name", "artifact_kind", "mime_type",
+            "filename_prefix", "expected_cardinality",
+        }
+        for index, record in enumerate(canonical_outputs):
+            if not isinstance(record, Mapping):
+                raise TypeError(f"canonical output {index} must be a mapping")
+            unknown = set(record) - allowed_output_keys
+            if unknown:
+                raise ValueError(
+                    f"canonical output {index} contains unsupported field {sorted(unknown)[0]!r}"
+                )
+            node_id = _node_id_from_binding(record.get("node"))
+            if node_id is None or node_id not in wf.nodes:
+                raise ValueError(f"canonical output {index} does not bind a constructed node")
+            rebound_outputs.append(
+                VibeOutput(
+                    node_id=node_id,
+                    output_type=str(record.get("output_type") or wf.nodes[node_id].class_type),
+                    name=record.get("name"),
+                    artifact_kind=record.get("artifact_kind"),
+                    mime_type=record.get("mime_type"),
+                    filename_prefix=record.get("filename_prefix"),
+                    expected_cardinality=record.get("expected_cardinality"),
+                )
+            )
+        wf.outputs = rebound_outputs
+    if canonical_requirements is not None:
+        if not isinstance(canonical_requirements, Mapping):
+            raise TypeError("canonical requirements must be a mapping")
+        allowed_requirement_keys = {
+            "models", "custom_nodes", "missing_models", "missing_nodes", "unsupported",
+        }
+        unknown = set(canonical_requirements) - allowed_requirement_keys
+        if unknown:
+            raise ValueError(
+                f"canonical requirements contain unsupported field {sorted(unknown)[0]!r}"
+            )
+        for key in allowed_requirement_keys:
+            value = canonical_requirements.get(key, [])
+            if not isinstance(value, (list, tuple)):
+                raise TypeError(f"canonical requirements {key!r} must be a sequence")
+            setattr(wf.requirements, key, deepcopy(list(value)))
+    if canonical_custody is not None:
+        _apply_canonical_custody(wf, canonical_custody, canonical_bindings)
+    if canonical_helpers is not None:
+        if not isinstance(canonical_helpers, (list, tuple)):
+            raise TypeError("canonical helper custody must be a sequence")
+        allowed_helper_keys = {"id", "uid", "class_type", "provenance", "native_ports"}
+        retained_helpers: list[dict[str, Any]] = []
+        for index, record in enumerate(canonical_helpers):
+            if not isinstance(record, Mapping):
+                raise TypeError(f"canonical helper custody {index} must be a mapping")
+            unknown = set(record) - allowed_helper_keys
+            if unknown:
+                raise ValueError(
+                    f"canonical helper custody {index} contains unsupported field "
+                    f"{sorted(unknown)[0]!r}"
+                )
+            for required in ("id", "uid", "class_type"):
+                if not isinstance(record.get(required), str) or not record[required]:
+                    raise ValueError(
+                        f"canonical helper custody {index} has an invalid {required}"
+                    )
+            retained_helpers.append(deepcopy(dict(record)))
+        wf.metadata["resolver_helper_custody"] = retained_helpers
+    for transient in ("_canonical_construction_custody", "_canonical_construction_index"):
+        if hasattr(wf, transient):
+            delattr(wf, transient)
     return wf
 
 

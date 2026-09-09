@@ -987,6 +987,8 @@ def _node_kwargs(
     preserve_fields: set[str] | None = None,
     external_refs: dict[tuple[str, str], str] | None = None,
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
+    resolve_graph_strings: bool = True,
+    skip_widget_fields: set[str] | None = None,
 ) -> list[tuple[str, str]]:
     # Lazy imports to avoid circular dependency
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
@@ -1017,6 +1019,8 @@ def _node_kwargs(
         preserve_fields = set()
     if external_refs is None:
         external_refs = {}
+    if skip_widget_fields is None:
+        skip_widget_fields = set()
 
     def _translate_widget(key: str, value: Any = None) -> str | None:
         if key.startswith("unused_widget_"):
@@ -1044,7 +1048,11 @@ def _node_kwargs(
                 if expr is not None:
                     incoming_exprs[translated_link] = expr
             continue
-        incoming[target_name] = (str(edge.from_node), int(edge.from_output))
+        source_id = str(edge.from_node)
+        incoming[target_name] = (
+            source_id,
+            _edge_output_index(workflow_nodes, source_id, edge.from_output),
+        )
 
     raw_inputs: dict[str, Any] = {}
     for key, value in node.inputs.items():
@@ -1057,10 +1065,16 @@ def _node_kwargs(
         elif _is_link(value):
             translated_link = _translate_widget(key, value)
             if translated_link is not None:
-                incoming.setdefault(translated_link, (str(value[0]), int(value[1])))
+                source_id = str(value[0])
+                incoming.setdefault(
+                    translated_link,
+                    (source_id, _edge_output_index(workflow_nodes, source_id, value[1])),
+                )
         else:
             raw_inputs[key] = value
     for key, value in node.widgets.items():
+        if key in skip_widget_fields:
+            continue
         if _is_any_link(value) and str(value[0]) == "-10":
             translated_link = _translate_widget(key, value)
             if translated_link is not None:
@@ -1070,7 +1084,11 @@ def _node_kwargs(
         elif _is_link(value):
             translated_link = _translate_widget(key, value)
             if translated_link is not None:
-                incoming.setdefault(translated_link, (str(value[0]), int(value[1])))
+                source_id = str(value[0])
+                incoming.setdefault(
+                    translated_link,
+                    (source_id, _edge_output_index(workflow_nodes, source_id, value[1])),
+                )
         elif key not in raw_inputs:
             raw_inputs[key] = value
 
@@ -1079,7 +1097,8 @@ def _node_kwargs(
         translated = _translate_widget(key, value)
         if translated is None:
             continue
-        value = _resolve_graph_field_get_string(value, workflow_nodes)
+        if resolve_graph_strings:
+            value = _resolve_graph_field_get_string(value, workflow_nodes)
         if translated != key and translated not in raw_inputs and translated not in static_inputs:
             if translated not in incoming and translated not in incoming_exprs:
                 static_inputs[translated] = value
@@ -1191,6 +1210,41 @@ def _node_kwargs(
         extras_repr = "{" + ", ".join(f"{key!r}: {value}" for key, value in extras) + "}"
         out.append(("_extras", extras_repr))
     return out
+
+
+def _edge_output_index(
+    workflow_nodes: Mapping[str, Any] | None,
+    source_id: str,
+    output: Any,
+) -> int:
+    """Resolve a retained numeric or named edge output without guessing."""
+    if isinstance(output, int) and not isinstance(output, bool):
+        return output
+    text = str(output)
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    source = workflow_nodes.get(source_id) if workflow_nodes is not None else None
+    if source is None:
+        raise ValueError(
+            f"malformed_named_output_schema: missing source {source_id!r} for output {text!r}"
+        )
+    names = _node_output_names(source)
+    if not names:
+        native_names = getattr(source, "native_output_names", None)
+        if isinstance(native_names, (list, tuple)):
+            names = [str(name) if name is not None else "" for name in native_names]
+    exact = [index for index, name in enumerate(names) if str(name) == text]
+    if len(exact) == 1:
+        return exact[0]
+    folded = [index for index, name in enumerate(names) if str(name).casefold() == text.casefold()]
+    if len(folded) == 1:
+        return folded[0]
+    raise ValueError(
+        f"malformed_named_output_schema: {source.class_type} output {text!r} "
+        "does not identify exactly one retained slot"
+    )
 
 
 # ---------------------------------------------------------------------------

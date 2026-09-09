@@ -73,6 +73,7 @@ def _prepare_workflow_for_emit(
     keep_virtual_wires: bool = False,
     prune_dead_branches: bool = True,
     project_execution_edges: bool = True,
+    omit_terminal_ui_only: bool = False,
     diagnostics: list[Any] | None = None,
 ) -> dict[str, Any]:
     # Preserve fully disconnected canvases. Dead-branch pruning is useful when
@@ -118,7 +119,21 @@ def _prepare_workflow_for_emit(
     if project_execution_edges:
         # Select one detached execution graph and consume its nodes and edges
         # together.  Authored nodes plus projected edges are a hybrid graph.
-        projection = workflow._execution_projection()
+        # Canonical source describes the authored base graph, not an eagerly
+        # selected default variant.  Recursive definitions remain separately
+        # owned authoring scopes; projecting the root must not inline them and
+        # then also retain their declarations.
+        projection_source = workflow.copy()
+        projection_source.default_variant = None
+        projection_source.definitions = {}
+        projection_source.interfaces = {}
+        projection_source.boundary_ports = []
+        # Public descriptors are restored from the authored workflow after
+        # construction.  They must not turn source generation for a valid
+        # unfinished draft into an execution-readiness gate.
+        projection_source.inputs = {}
+        projection_source.outputs = []
+        projection = projection_source._execution_projection()
         workflow_nodes = copy.deepcopy(projection.nodes)
         emission_edges = copy.deepcopy(projection.edges)
     else:
@@ -126,6 +141,27 @@ def _prepare_workflow_for_emit(
         # a rebuilt workflow will lower it through the shared compiler.
         workflow_nodes = authored_nodes
         emission_edges = copy.deepcopy(workflow.edges)
+
+    if omit_terminal_ui_only:
+        # PreviewAny is editor furniture when it is only a terminal display.
+        # Keep it when another authored node consumes its value: in that case
+        # it remains part of the executable graph rather than a UI-only tail.
+        outgoing = {str(edge.from_node) for edge in emission_edges}
+        terminal_ui_only = {
+            str(nid)
+            for nid, node in workflow_nodes.items()
+            if str(node.class_type) == "PreviewAny" and str(nid) not in outgoing
+        }
+        if terminal_ui_only:
+            workflow_nodes = {
+                nid: node for nid, node in workflow_nodes.items()
+                if str(nid) not in terminal_ui_only
+            }
+            emission_edges = [
+                edge for edge in emission_edges
+                if str(edge.from_node) not in terminal_ui_only
+                and str(edge.to_node) not in terminal_ui_only
+            ]
     _sync_declared_exec_output_metadata(workflow_nodes)
     if not keep_virtual_wires and not project_execution_edges:
         for nid, node in workflow_nodes.items():

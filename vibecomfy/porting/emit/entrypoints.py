@@ -44,6 +44,7 @@ def emit_canonical_python(
     apply_overrides: dict[str, Any] | None = None,
     diagnostics: list[EmissionDiagnostic] | None = None,
     object_info_identities: dict[str, Any] | None = None,
+    omit_terminal_ui_only: bool = False,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -93,7 +94,7 @@ def emit_canonical_python(
         ready_metadata=metadata,
         ready_requirements=requirements,
         template_id=str(template_id or source_id),
-        registered_inputs=registered_inputs or None,
+        registered_inputs=registered_inputs,
         apply_overrides=None,
         diagnostics=diagnostics,
         # Canonical sources never consult raw UI evidence for semantics.  The
@@ -101,6 +102,7 @@ def emit_canonical_python(
         # recursive/variant data from the detached IR below.
         raw_workflow={},
         object_info_identities=object_info_identities,
+        omit_terminal_ui_only=omit_terminal_ui_only,
     )
 
 
@@ -130,6 +132,7 @@ def emit_ready_template_python(
         apply_overrides=apply_overrides,
         diagnostics=diagnostics,
         object_info_identities=object_info_identities,
+        omit_terminal_ui_only=True,
     )
 
 

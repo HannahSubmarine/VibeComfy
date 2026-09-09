@@ -1194,8 +1194,9 @@ def test_native_port_rosters_are_semantic_not_execution_data() -> None:
     assert workflow.compile("api") == api_before
 
     source = emit_scratchpad_python(workflow)
-    assert "native_input_names =" in source
-    assert "native_output_names =" in source
+    assert "'native_input_names':" in source
+    assert "'native_output_names':" in source
+    assert "_native_ports=" not in source
     assert "_ui=" not in source
     namespace: dict[str, object] = {"__file__": "generated.py"}
     exec(source, namespace)
