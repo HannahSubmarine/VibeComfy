@@ -1057,6 +1057,7 @@ def _metadata_extras_for_emit(metadata: Mapping[str, Any]) -> dict[str, Any]:
         "_workflow_snapshot",
         "_ingest_snapshot",
         "_native_subgraph_source",
+        "_ui_door",
     }
     extras = {
         str(key): value

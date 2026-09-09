@@ -537,6 +537,12 @@ def test_ready_emitter_does_not_embed_native_subgraph_source_graph() -> None:
             },
             "_native_subgraph_provenance": {"source_sha256": "h3-sha"},
             "_native_subgraph_diagnostics": [{"kind": "repaired_output_backlink"}],
+            "_ui_door": {
+                "nodes": [{"id": 1, "type": "Loader", "pos": [10, 20]}],
+                "links": [[1, 1, 0, 2, 0, "VIDEO"]],
+                "boundary": {"inputs": [], "outputs": []},
+                "presentation": {"last_node_id": 2, "groups": []},
+            },
         },
         ready_requirements={"models": [], "custom_nodes": []},
         template_id="video/h3",
@@ -546,9 +552,11 @@ def test_ready_emitter_does_not_embed_native_subgraph_source_graph() -> None:
     metadata_end = text.index("\n\n", metadata_start)
     metadata = text[metadata_start:metadata_end]
     assert "_native_subgraph_source" not in metadata
+    assert "_ui_door" not in metadata
     assert "'nodes':" not in metadata
     assert "'links':" not in metadata
     assert "'boundary':" not in metadata
+    assert "'presentation':" not in metadata
     assert "_native_subgraph_provenance" in metadata
     assert "_native_subgraph_diagnostics" in metadata
 

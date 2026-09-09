@@ -73,6 +73,7 @@ def test_generated_h3_source_has_controls_and_compact_custody_only() -> None:
     metadata_keys = {keyword.arg for keyword in metadata_call.keywords if keyword.arg is not None}
 
     assert "_native_subgraph_source" not in metadata_keys
+    assert "_ui_door" not in metadata_keys
     assert {"_native_subgraph_provenance", "_native_subgraph_diagnostics"} <= metadata_keys
     # These are meaningful user controls, not serialized graph structure.
     assert "DEFAULT_PROMPT =" in source
