@@ -2311,9 +2311,10 @@ def from_ui(
 ) -> VibeWorkflow:
     """Ingest a LiteGraph list-nodes graph into a :class:`VibeWorkflow`."""
     raw = deepcopy(raw)
-    # Native ComfyUI subgraph boundary markers are not an ingestible UI
-    # representation.  Classify the source before the optional H3 expander so
-    # expansion cannot turn an unsupported source into a misleading positive.
+    # Native ComfyUI subgraph definitions have one supported materialization
+    # owner.  Let that owner consume supported definitions before applying the
+    # generic refusal, so the remainder of this function stays the sole UI
+    # normalization/schema/emitter path for the expanded graph.
     def contains_native_marker(value: Any) -> bool:
         if isinstance(value, Mapping):
             if "inputNode" in value or "outputNode" in value:
@@ -2323,12 +2324,6 @@ def from_ui(
             return any(contains_native_marker(item) for item in value)
         return value in {-10, -20, "-10", "-20"}
 
-    if contains_native_marker(raw):
-        raise ValueError(
-            "unsupported_boundary_encoding: UI source contains native "
-            "inputNode/outputNode or -10/-20 markers; use an explicit "
-            "Python-owned boundary mapping"
-        )
     native_source = raw
     from vibecomfy.ingest.native_subgraph import expand_native_subgraphs
     try:
@@ -2337,6 +2332,12 @@ def from_ui(
         if type(exc).__name__ == "NativeSubgraphError":
             raise ValueError(f"unsupported_boundary_encoding: {exc}") from exc
         raise
+    if contains_native_marker(raw):
+        raise ValueError(
+            "unsupported_boundary_encoding: UI source contains native "
+            "inputNode/outputNode or -10/-20 markers that were not consumed; "
+            "use an explicit Python-owned boundary mapping"
+        )
     api = _ui_graph_to_api(
         raw,
         schema_provider=schema_provider,

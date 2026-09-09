@@ -18,6 +18,7 @@ import pytest
 
 from vibecomfy.cli_loader import load_bundle
 from vibecomfy.ingest.normalize import from_ui
+from vibecomfy.ingest.native_subgraph import NativeSubgraphError, expand_native_subgraphs
 from vibecomfy.porting.emit.ui import (
     emit_ui_json,
     offline_emitter_normalizer_self_consistency_check,
@@ -177,7 +178,7 @@ def test_parity_ready_python_corpus(template_id: str) -> None:
 
 @pytest.mark.parametrize("template_id", _STARTER_SET)
 def test_ready_python_mapped_source_is_native_negative_or_ingestible_positive(template_id: str) -> None:
-    """Mapped source JSON is not simplified: native sentinels fail closed."""
+    """Mapped source JSON expands when supported; otherwise fails closed."""
     wf = _wf_from_ready(template_id)
     ok, diffs = offline_emitter_normalizer_self_consistency_check(wf, schema_provider=_local_provider())
     assert ok, f"{template_id}: {diffs[:5]}"
@@ -185,8 +186,21 @@ def test_ready_python_mapped_source_is_native_negative_or_ingestible_positive(te
     assert source_path, f"{template_id}: ready template is missing mapped source JSON provenance"
     raw = json.loads(Path(source_path).read_text(encoding="utf-8"))
     if _contains_native_boundary(raw):
-        with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-            from_ui(raw, source_path=source_path)
+        try:
+            expanded = expand_native_subgraphs(raw)
+        except NativeSubgraphError:
+            with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
+                from_ui(raw, source_path=source_path)
+        else:
+            if expanded.get("_native_subgraph_diagnostics"):
+                # The expander's positive is the shared-path proof; these
+                # legacy mapped sources are not required to be byte/parity-
+                # equivalent to separately authored ready templates.
+                source_wf = from_ui(raw, source_path=source_path)
+                assert source_wf.nodes
+            else:
+                with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
+                    from_ui(raw, source_path=source_path)
         return
     source_wf = from_ui(raw, source_path=source_path)
     with warnings.catch_warnings():
@@ -212,10 +226,18 @@ def test_parity_ingestible_official_source_ui(path: str) -> None:
     [path for path in _native_source_ui_paths() if "/official/" in path],
 )
 def test_official_native_source_ui_is_unsupported_boundary(path: str) -> None:
-    """Official mapped sources with native -10/-20 fail closed at the T17 boundary."""
+    """Unsupported official native sources fail closed at the T17 boundary."""
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-        from_ui(raw, source_path=path)
+    try:
+        expanded = expand_native_subgraphs(raw)
+    except NativeSubgraphError:
+        expanded = None
+    if expanded is not None and expanded.get("_native_subgraph_diagnostics"):
+        workflow = from_ui(raw, source_path=path)
+        assert workflow.nodes
+    else:
+        with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
+            from_ui(raw, source_path=path)
 
 
 @pytest.mark.parametrize(

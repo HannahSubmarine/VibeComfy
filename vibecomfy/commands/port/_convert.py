@@ -70,7 +70,16 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         _inject_schema_source_metadata(report, args)
         if getattr(args, "strict_ready_template", False):
             _port._apply_strict_ready_template_gate(report)
-        if report.has_errors:
+        # Draft scratchpads intentionally retain preflight readiness/schema
+        # diagnostics in the payload.  The canonical emitter's own
+        # validation/parity gate below is the authority for whether the
+        # artifact can be written.  Promotion paths remain fail-closed at
+        # preflight so --ready-id and strict-ready cannot turn unresolved
+        # source evidence into a candidate.
+        hard_preflight = bool(
+            args.ready_id or getattr(args, "strict_ready_template", False)
+        )
+        if report.has_errors and hard_preflight:
             payload = {
                 "status": "error",
                 "report": report.to_json(),
@@ -82,6 +91,30 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             return 1
 
         loaded = load_port_source(args.workflow, schema_provider=schema_provider)
+        # ``from_ui`` is the sole native-boundary materialization owner.  The
+        # loader retains the authored source as evidence, but passing that
+        # native payload back into conversion would re-enter the recursive
+        # definition normalizer and can refuse an already-expanded graph.
+        conversion_raw_workflow = loaded.raw_workflow
+        if conversion_raw_workflow is not None:
+            from vibecomfy.ingest.native_subgraph import expand_native_subgraphs
+
+            definitions = conversion_raw_workflow.get("definitions")
+            if (
+                isinstance(conversion_raw_workflow.get("nodes"), list)
+                and isinstance(definitions, Mapping)
+                and isinstance(definitions.get("subgraphs"), list)
+            ):
+                conversion_raw_workflow = expand_native_subgraphs(conversion_raw_workflow)
+        # Draft emission is intentionally schema-tolerant: unresolved source
+        # diagnostics stay attached to ``report`` above, while the canonical
+        # emitter validates the editable module structurally and against
+        # parity. Ready promotion keeps provider-backed validation below.
+        conversion_schema_provider = schema_provider if hard_preflight else None
+        registered_inputs = {
+            str(name): (str(item.node_id), str(item.field))
+            for name, item in loaded.workflow.inputs.items()
+        }
         result = port_convert_workflow(
             loaded.workflow,
             ready_id=args.ready_id,
@@ -89,8 +122,9 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             provenance=report.provenance,
             source_hash=report.source_hash,
             workflow_shape=report.workflow_shape,
-            schema_provider=schema_provider,
-            raw_workflow=loaded.raw_workflow,
+            registered_inputs=registered_inputs,
+            schema_provider=conversion_schema_provider,
+            raw_workflow=conversion_raw_workflow,
             keep_virtual_wires=bool(getattr(args, "keep_virtual_wires", False)),
         )
     except Exception as exc:

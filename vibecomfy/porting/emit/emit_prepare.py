@@ -146,6 +146,62 @@ def _prepare_workflow_for_emit(
         else:
             workflow_nodes = copy.deepcopy(projection.nodes)
             emission_edges = copy.deepcopy(projection.edges)
+
+        # Broadcast helpers are authored canonical calls, not execution nodes.
+        # The execution projection intentionally lowers them, but canonical
+        # source still needs to retain SetNode/GetNode and the handle wiring
+        # that documents the authored graph. In explicit keep mode, Reroute is
+        # authored virtual-wire furniture too; Primitive lowering remains
+        # projection-owned in every mode.
+        restored_helper_types = {"SetNode", "GetNode"}
+        if keep_virtual_wires:
+            restored_helper_types.add("Reroute")
+        broadcast_ids = {
+            str(nid)
+            for nid, node in authored_nodes.items()
+            if str(node.class_type) in restored_helper_types
+        }
+        if broadcast_ids:
+            workflow_nodes.update(
+                {
+                    nid: copy.deepcopy(authored_nodes[nid])
+                    for nid in broadcast_ids
+                }
+            )
+            incident_authored_edges = [
+                copy.deepcopy(edge)
+                for edge in workflow.edges
+                if str(edge.from_node) in broadcast_ids
+                or str(edge.to_node) in broadcast_ids
+            ]
+            # The lowered projection may contain a direct edge spanning the
+            # helper chain. Remove that projected edge before restoring the
+            # authored helper edges, avoiding duplicate custody for one link.
+            authored_adjacency: dict[str, list[str]] = {}
+            for edge in workflow.edges:
+                authored_adjacency.setdefault(str(edge.from_node), []).append(str(edge.to_node))
+            lowered_helper_spans: set[tuple[str, str]] = set()
+            for source_id in authored_nodes:
+                pending = [(str(source_id), False)]
+                seen: set[tuple[str, bool]] = set()
+                while pending:
+                    current, crossed_helper = pending.pop()
+                    state = (current, crossed_helper)
+                    if state in seen:
+                        continue
+                    seen.add(state)
+                    for target in authored_adjacency.get(current, ()):
+                        target_crossed = crossed_helper or target in broadcast_ids or current in broadcast_ids
+                        if target not in broadcast_ids and target_crossed and target != str(source_id):
+                            lowered_helper_spans.add((str(source_id), target))
+                        if target in authored_nodes:
+                            pending.append((target, target_crossed))
+            emission_edges = [
+                edge
+                for edge in emission_edges
+                if (str(edge.from_node), str(edge.to_node)) not in lowered_helper_spans
+            ]
+            emission_edges.extend(incident_authored_edges)
     else:
         # Explicit keep/agent-edit output carries the authored graph unchanged;
         # a rebuilt workflow will lower it through the shared compiler.

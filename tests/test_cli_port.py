@@ -726,6 +726,42 @@ def test_port_convert_emits_importable_scratchpad_by_default(
     assert provenance["output_mode"] == "scratchpad"
 
 
+def test_h3_draft_convert_writes_with_schema_diagnostics_but_strict_refuses(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Unknown H3 schemas remain visible in draft conversion, not promotion."""
+    source = Path("docs/handover/unified-workflow-integrity-20260909/assets/h3/MiniMax_H3_AV_EncodeDecode_Inpaint.json")
+    monkeypatch.setenv("VIBECOMFY_ON_DEMAND_SCHEMAS", "0")
+    draft = tmp_path / "h3.py"
+    args = dict(
+        workflow=str(source),
+        out=str(draft),
+        ready_id=None,
+        json=True,
+        head_check_models=False,
+        strict_ready_template=False,
+        dry_run=False,
+        diff=False,
+        all=False,
+    )
+
+    assert _cmd_port_convert(argparse.Namespace(**args)) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert draft.is_file()
+    assert payload["status"] == "ok"
+    assert any(d["code"] == "unresolved_runtime_class" for d in payload["report"]["diagnostics"])
+    assert payload["conversion"]["validation"]["parity_ok"] is True
+
+    strict = tmp_path / "h3-strict.py"
+    args.update(out=str(strict), strict_ready_template=True)
+    assert _cmd_port_convert(argparse.Namespace(**args)) == 1
+    strict_payload = json.loads(capsys.readouterr().out)
+    assert strict_payload["status"] == "error"
+    assert not strict.exists()
+
+
 def test_port_convert_ready_template_mode_requires_ready_id_and_writes_metadata(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

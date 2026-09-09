@@ -748,6 +748,7 @@ def emit_ready_template_python(
     raw_workflow: dict[str, Any] | None = None,
     object_info_identities: dict[str, Any] | None = None,
     omit_terminal_ui_only: bool = False,
+    keep_virtual_wires: bool = False,
 ) -> str:
     from vibecomfy.porting.emitter import _use_object_info_identities, _drain_lookup_warning_diagnostics  # noqa: PLC0415
     with _use_object_info_identities(object_info_identities):
@@ -761,6 +762,7 @@ def emit_ready_template_python(
             diagnostics=diagnostics,
             raw_workflow=raw_workflow,
             omit_terminal_ui_only=omit_terminal_ui_only,
+            keep_virtual_wires=keep_virtual_wires,
         )
         lookup_warnings = _drain_lookup_warning_diagnostics(diagnostics)
         if lookup_warnings:
@@ -782,6 +784,7 @@ def _emit_ready_template_python_inner(
     diagnostics: list[Any] | None = None,
     raw_workflow: dict[str, Any] | None = None,
     omit_terminal_ui_only: bool = False,
+    keep_virtual_wires: bool = False,
 ) -> str:
     from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit  # noqa: PLC0415
     _preflight_object_info_identity_resolution(workflow)
@@ -843,7 +846,7 @@ def _emit_ready_template_python_inner(
         diagnostics=diagnostics,
         project_execution_edges=True,
         omit_terminal_ui_only=omit_terminal_ui_only,
-        keep_virtual_wires=False,
+        keep_virtual_wires=keep_virtual_wires,
         prune_dead_branches=False,
     )
     # UI widget labels/titles are presentation evidence, not constructor-name

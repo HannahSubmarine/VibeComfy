@@ -45,6 +45,7 @@ def emit_canonical_python(
     diagnostics: list[EmissionDiagnostic] | None = None,
     object_info_identities: dict[str, Any] | None = None,
     omit_terminal_ui_only: bool = False,
+    keep_virtual_wires: bool = False,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -110,6 +111,7 @@ def emit_canonical_python(
         raw_workflow={},
         object_info_identities=object_info_identities,
         omit_terminal_ui_only=omit_terminal_ui_only,
+        keep_virtual_wires=keep_virtual_wires,
     )
 
 
@@ -189,6 +191,7 @@ def emit_scratchpad_python(
         registered_inputs=registered_inputs,
         apply_overrides=apply_overrides,
         diagnostics=diagnostics,
+        keep_virtual_wires=keep_virtual_wires,
     )
 
 
