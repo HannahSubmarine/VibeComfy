@@ -134,8 +134,18 @@ def _prepare_workflow_for_emit(
         projection_source.inputs = {}
         projection_source.outputs = []
         projection = projection_source._execution_projection()
-        workflow_nodes = copy.deepcopy(projection.nodes)
-        emission_edges = copy.deepcopy(projection.edges)
+        # A disconnected authored canvas is still a real typed workflow.  The
+        # execution projection intentionally lowers resolver helpers, but with
+        # no edges there is no executable topology to project and lowering the
+        # node would make canonical Python emission lose the node entirely.
+        # Preserve the authored node roster so a captured sidecar can round-trip
+        # through emitted Python and revision publication.
+        if not workflow.edges:
+            workflow_nodes = copy.deepcopy(authored_nodes)
+            emission_edges = []
+        else:
+            workflow_nodes = copy.deepcopy(projection.nodes)
+            emission_edges = copy.deepcopy(projection.edges)
     else:
         # Explicit keep/agent-edit output carries the authored graph unchanged;
         # a rebuilt workflow will lower it through the shared compiler.

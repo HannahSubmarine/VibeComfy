@@ -132,6 +132,58 @@ def _has_frozen_schema_authority(provider: Any) -> bool:
     return isinstance(snapshot, SchemaSnapshot)
 
 
+def _is_safe_missing_downstream_schema_refusal(
+    workflow: VibeWorkflow,
+    operation: EditOp,
+    schema_provider: Any,
+    diagnostics: Sequence[CompactDiagnostic],
+) -> bool:
+    """Identify the one typed link refusal that may preserve prior edits.
+
+    A link to an existing node whose class is explicitly present in the
+    retained snapshot's missing set cannot be verified, but it is still a
+    well-formed downstream request.  Keep that refusal local to the link when
+    its source is schema-known; all other rejection classes remain atomic.
+    """
+    if not isinstance(operation, UpsertLinkOp):
+        return False
+    if not any(getattr(diagnostic, "code", "") == "missing_touched_schema" for diagnostic in diagnostics):
+        return False
+    snapshot = getattr(schema_provider, "snapshot", None)
+    if snapshot is None:
+        return False
+    try:
+        from vibecomfy.schema.types import _snapshot_known_and_missing
+
+        known, missing = _snapshot_known_and_missing(snapshot)
+    except Exception:
+        return False
+
+    def node_for(uid: str) -> Any | None:
+        return next(
+            (
+                node
+                for node in (getattr(workflow, "nodes", {}) or {}).values()
+                if str(getattr(node, "uid", "") or "") == str(uid)
+            ),
+            None,
+        )
+
+    source = node_for(operation.source.uid)
+    target = node_for(operation.target.uid)
+    if source is None or target is None:
+        return False
+    source_class = str(getattr(source, "class_type", "") or "")
+    target_class = str(getattr(target, "class_type", "") or "")
+    return (
+        bool(source_class)
+        and source_class in known
+        and source_class not in missing
+        and bool(target_class)
+        and target_class in missing
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class StatementOutcome:
     """Typed per-statement result of ``interpret``."""
@@ -2097,6 +2149,13 @@ class _InterpretRunner:
                 # never becomes a durable landed operation.
                 continue
             if outcome.status == "rejected" and is_edit:
+                if outcome.detail.get("nonfatal_typed_refusal"):
+                    # A missing downstream schema is a local typed refusal:
+                    # preserve already staged edits while reporting the
+                    # unverifiable link as not applied.  Other rejections
+                    # continue through the all-or-nothing rollback path.
+                    saw_failed_edit = True
+                    continue
                 # All-or-nothing commit: keep evaluating later statements so
                 # outcomes stay honest, then discard the working IR.
                 rollback = True
@@ -3291,7 +3350,31 @@ class _InterpretRunner:
                 op=effective_op,
             )
         if evaluation.outcome != "staged":
-            combined = tuple(value_diagnostics) + tuple(evaluation.diagnostics)
+            safe_missing_schema_refusal = _is_safe_missing_downstream_schema_refusal(
+                self.workflow,
+                effective_op,
+                self.schema_provider,
+                evaluation.diagnostics,
+            )
+            if safe_missing_schema_refusal:
+                missing_class = next(
+                    (
+                        str(getattr(node, "class_type", "") or "")
+                        for node in self.workflow.nodes.values()
+                        if str(getattr(node, "uid", "") or "")
+                        == str(effective_op.target.uid)
+                    ),
+                    "unknown",
+                )
+                refusal = _diag(
+                    "requires_custom_nodes",
+                    f"The downstream node class {missing_class!r} has no retained schema; its link was kept typed but not applied.",
+                    severity="error",
+                    detail={"missing_classes": (missing_class,)},
+                )
+                combined = tuple(value_diagnostics) + (refusal,)
+            else:
+                combined = tuple(value_diagnostics) + tuple(evaluation.diagnostics)
             self._last_transition = OperationTransition(
                 occurrence=len(self._transitions), submitted=op,
                 normalized=evaluation.normalized,
@@ -3307,6 +3390,7 @@ class _InterpretRunner:
                 op_kind=item.op_kind or getattr(op, "op", type(op).__name__),
                 diagnostics=combined,
                 op=effective_op,
+                detail={"nonfatal_typed_refusal": True} if safe_missing_schema_refusal else {},
             )
         before = self.workflow
         self.workflow = evaluation.workflow
