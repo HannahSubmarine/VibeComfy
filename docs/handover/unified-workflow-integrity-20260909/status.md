@@ -19,6 +19,26 @@ The latest user authorized one additional Astra high planning sense check (one c
 
 Astra found the architecture and whole-file clean-Python contract sound, with two required evidence clarifications now adopted: shared ingress-owner parity including refusal, and inspection of the exact exported graph plus whole Python file. The implementation evidence is now recorded in `evidence/entrypoint-parity/` and `evidence/h3/`.
 
+## Final implementation closure — candidate `56394461` plus renderer correction
+
+The isolated implementation checkout now contains the unified delivery candidate at
+`3c11d81313be5b6c33bddcdb1a6d5a855006564a` plus the bounded visualization correction
+being validated for commit. The current H3 PNG is regenerated from the exact exported
+graph and preserves the exported JSON and layout-sidecar hashes. The renderer keeps
+authored overview geometry unchanged and places complete ordered node/port text in a
+native-resolution detail band.
+
+- Independent focused renderer/H3/position checks: `9 passed`.
+- Independent full affected delivery matrix before the additional non-mutating test:
+  `1045 passed, 11 skipped, 0 failed/errors` in `659.17s`; the added renderer
+  non-mutation test separately passes as part of the `5 passed` renderer suite.
+- Current working tree validation: `git diff --check` clean; no generated graph or
+  sidecar changes; current PNG SHA-256 is recorded in `evidence/h3-correction/inspection.md`.
+- Astra final round 3 remains recorded as `REWORK` because it preceded this final
+  renderer/nested-fidelity correction and the declared three-round final-review ceiling
+  is exhausted. No extra reviewer call is claimed. The two cited implementation
+  findings were corrected locally and covered by the independent checks above.
+
 ## Delivery evidence — candidate `0ebbf076` (final review pending)
 
 - Q5 configured matrix: `617 passed, 2 skipped, 0 failed/errors`.

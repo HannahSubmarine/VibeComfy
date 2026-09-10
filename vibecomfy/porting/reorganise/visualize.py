@@ -64,6 +64,11 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
     except OSError:
         font = ImageFont.load_default()
+    # At small overview scales, fixed-size annotations become smaller than
+    # their glyphs and can cross neighboring authored cards.  The detail band
+    # below remains at native resolution, so omit only the lossy overview text
+    # while retaining the exact cards, ports, and links.
+    show_overview_labels = scale >= 0.7
 
     for group in groups:
         rect = _group_rect(group)
@@ -79,12 +84,13 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
             outline=(*color, 38 if is_support else 220),
             width=1 if is_support else 3,
         )
-        draw.text(
-            (tx(x) + 8, ty(y) + 7),
-            str(group.get("title") or "Group")[:30],
-            fill=(*color, 70 if is_support else 255),
-            font=font,
-        )
+        if show_overview_labels:
+            draw.text(
+                (tx(x) + 8, ty(y) + 7),
+                str(group.get("title") or "Group")[:30],
+                fill=(*color, 70 if is_support else 255),
+                font=font,
+            )
 
     # Links are deliberately drawn first so node cards and port labels remain
     # legible while the complete authored topology is still visible.
@@ -105,14 +111,17 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
         sx, sy, sw, sh = source_rect
         tx_, ty_, _tw, th = target_rect
         try:
-            source_y = sy + 34 + (int(source_slot) * 28)
+            source_index = int(source_slot)
         except (TypeError, ValueError):
-            source_y = sy + sh / 2
+            source_index = 0
+        source_count = len(source.get("outputs", [])) if isinstance(source.get("outputs"), list) else 0
+        source_y = _port_y(sy, sh, source_index, source_count)
         try:
             target_index = int(target_slot)
         except (TypeError, ValueError):
             target_index = input_slots.get(str(target_id), {}).get(str(target_slot), 0)
-        target_y = ty_ + 34 + (target_index * 28)
+        target_count = len(target.get("inputs", [])) if isinstance(target.get("inputs"), list) else 0
+        target_y = _port_y(ty_, th, target_index, target_count)
         draw.line([(tx(sx + sw), ty(source_y)), (tx(tx_), ty(target_y))], fill=(55, 75, 95, 210), width=max(2, round(scale * 2)))
 
     for node in nodes:
@@ -129,25 +138,28 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
             outline=(45, 45, 45, 32 if is_support else 170),
             width=1,
         )
-        draw.text((tx(x) + 8, ty(y) + 7), f"{class_type}  [{node.get('id')}]", fill=(20, 25, 30, 255), font=font)
+        if show_overview_labels:
+            draw.text((tx(x) + 8, ty(y) + 7), f"{class_type}  [{node.get('id')}]", fill=(20, 25, 30, 255), font=font)
         inputs = node.get("inputs", [])
         if isinstance(inputs, list):
             for index, item in enumerate(inputs):
                 if not isinstance(item, Mapping):
                     continue
-                py = ty(y + 34 + index * 28)
+                py = ty(_port_y(y, h, index, len(inputs)))
                 draw.ellipse([tx(x) - 4, py - 3, tx(x) + 3, py + 4], fill=(45, 75, 105, 255))
-                draw.text((tx(x) + 10, py - 9), str(item.get("name") or f"in{index}"), fill=(30, 45, 60, 255), font=font)
+                if show_overview_labels and len(inputs) <= 3:
+                    draw.text((tx(x) + 10, py - 9), str(item.get("name") or f"in{index}"), fill=(30, 45, 60, 255), font=font)
         outputs = node.get("outputs", [])
         if isinstance(outputs, list):
             for index, item in enumerate(outputs):
                 if not isinstance(item, Mapping):
                     continue
-                py = ty(y + 34 + index * 28)
+                py = ty(_port_y(y, h, index, len(outputs)))
                 draw.ellipse([tx(x + w) - 3, py - 3, tx(x + w) + 4, py + 4], fill=(105, 65, 45, 255))
                 label = str(item.get("name") or f"out{index}")
-                bbox = draw.textbbox((0, 0), label, font=font)
-                draw.text((tx(x + w) - (bbox[2] - bbox[0]) - 10, py - 9), label, fill=(70, 45, 30, 255), font=font)
+                if show_overview_labels and len(outputs) <= 3:
+                    bbox = draw.textbbox((0, 0), label, font=font)
+                    draw.text((tx(x + w) - (bbox[2] - bbox[0]) - 10, py - 9), label, fill=(70, 45, 30, 255), font=font)
 
     detail_top = canvas_h
     draw.line([(0, detail_top), (detail_w, detail_top)], fill=(110, 120, 130, 180), width=2)
@@ -203,13 +215,16 @@ def _node_rect(node: Mapping[str, Any]) -> tuple[float, float, float, float] | N
     if isinstance(size, list) and len(size) >= 2:
         width = _number(size[0], width)
         height = _number(size[1], height)
-    inputs = node.get("inputs") if isinstance(node.get("inputs"), list) else []
-    outputs = node.get("outputs") if isinstance(node.get("outputs"), list) else []
-    # Only the inspection rectangle is enlarged; authored positions and the
-    # exported graph remain untouched.  A 28px pitch is deliberately larger
-    # than the readable 14px label font.
-    height = max(height, 52.0 + 28.0 * max(len(inputs), len(outputs)))
     return (_number(pos[0], 0.0), _number(pos[1], 0.0), width, height)
+
+
+def _port_y(y: float, height: float, index: int, count: int) -> float:
+    """Place a port dot inside the authored card without changing its size."""
+    if count <= 1:
+        return y + height / 2.0
+    top = y + min(34.0, max(12.0, height * 0.42))
+    bottom = y + max(top, height - 10.0)
+    return top + (bottom - top) * min(max(index, 0), count - 1) / (count - 1)
 
 
 def _detail_lines(node: Mapping[str, Any]) -> tuple[str, str, str]:

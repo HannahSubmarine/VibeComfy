@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from PIL import Image
 
@@ -48,23 +49,23 @@ def test_render_layout_png_draws_link_titles_and_ports() -> None:
         assert any(sum(pixel) < 260 for pixel in colors)
 
 
-def test_render_layout_png_draws_link_titles_and_ports() -> None:
-    ui_json = {"nodes": [
-        {"id": 1, "type": "SourceNode", "pos": [0, 0], "size": [180, 100],
-         "outputs": [{"name": "IMAGE", "links": [7]}]},
-        {"id": 2, "type": "SinkNode", "pos": [320, 0], "size": [180, 100],
-         "inputs": [{"name": "image", "link": 7}]},
-    ], "links": [[7, 1, 0, 2, 0, "IMAGE"]], "groups": []}
+def test_render_layout_png_does_not_mutate_authored_graph() -> None:
+    ui_json = {
+        "nodes": [{
+            "id": 171,
+            "type": "DenseNode",
+            "pos": [520, 0],
+            "size": [320, 52],
+            "inputs": [{"name": f"input_{index}"} for index in range(7)],
+            "outputs": [{"name": "latent"}],
+        }],
+        "links": [],
+        "groups": [],
+    }
+    authored = deepcopy(ui_json)
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = Path(tmpdir) / "linked.png"
-        render_layout_png(ui_json, path)
-        from vibecomfy.porting.reorganise.visualize import _node_rect
-        assert _node_rect(ui_json["nodes"][1])[3] >= 80
-        assert _node_rect(ui_json["nodes"][0])[3] >= 80
-        colors = set(Image.open(path).convert("RGB").getdata())
-        assert len(colors) > 20
-        assert any(sum(pixel) < 260 for pixel in colors)
-
+        render_layout_png(ui_json, Path(tmpdir) / "dense.png")
+    assert ui_json == authored
 
 def test_render_layout_png_produces_non_empty_png_from_minimal_ui_json() -> None:
     """Smoke test: render_layout_png writes a non-empty PNG file for a minimal UI JSON."""
