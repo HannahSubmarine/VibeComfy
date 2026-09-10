@@ -64,21 +64,30 @@ def materialize_recursive_definitions(
         is_handle = hasattr(node, "node_id") and hasattr(node, "output_slot")
         source_node = None if is_handle else getattr(node, "node", node)
         values = deepcopy(getattr(source_node, "inputs", {})) if source_node is not None else {}
+        widgets = deepcopy(getattr(source_node, "widgets", {})) if source_node is not None else {}
         input_shape = identity.get("input_shape")
         if isinstance(input_shape, (list, tuple)):
-            values = [
-                {
-                    **{key: deepcopy(item[key]) for key in ("name", "type") if key in item},
-                    "link": link_by_target.get((str(identity.get("id")), str(item.get("name")))),
-                    "value": deepcopy(values.get(str(item.get("name")))) if isinstance(values, Mapping) else None,
-                }
-                for item in input_shape
-                if isinstance(item, Mapping)
-            ]
+            rows = []
+            for item in input_shape:
+                if not isinstance(item, Mapping):
+                    continue
+                row = deepcopy(dict(item))
+                field = str(item.get("name"))
+                link_id = link_by_target.get((str(identity.get("id")), field))
+                if link_id is not None or row.get("_has_link"):
+                    row["link"] = link_id
+                if row.get("_has_value"):
+                    row["value"] = deepcopy(values.get(field)) if isinstance(values, Mapping) else None
+                row.pop("_has_link", None)
+                row.pop("_has_value", None)
+                rows.append(row)
+            values = rows
         payload = {
             "id": identity.get("id"),
             "inputs": values,
         }
+        if widgets:
+            payload["widgets"] = widgets
         node_field = str(identity.get("node_field", "class_type"))
         payload[node_field] = str(getattr(source_node, "class_type", identity.get("class_type", "")))
         if identity.get("uid") is not None:

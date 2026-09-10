@@ -17,6 +17,9 @@ def test_render_layout_png_draws_link_titles_and_ports() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir) / "linked.png"
         render_layout_png(ui_json, path)
+        from vibecomfy.porting.reorganise.visualize import _node_rect
+        assert _node_rect(ui_json["nodes"][1])[3] >= 80
+        assert _node_rect(ui_json["nodes"][0])[3] >= 80
         colors = set(Image.open(path).convert("RGB").getdata())
         assert len(colors) > 20
         assert any(sum(pixel) < 260 for pixel in colors)

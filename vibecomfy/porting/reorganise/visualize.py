@@ -55,7 +55,10 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
 
     image = Image.new("RGB", (canvas_w, canvas_h), "#f7f7f4")
     draw = ImageDraw.Draw(image, "RGBA")
-    font = ImageFont.load_default()
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
+    except OSError:
+        font = ImageFont.load_default()
 
     for group in groups:
         rect = _group_rect(group)
@@ -97,14 +100,14 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
         sx, sy, sw, sh = source_rect
         tx_, ty_, _tw, th = target_rect
         try:
-            source_y = sy + 30 + (int(source_slot) * 18)
+            source_y = sy + 34 + (int(source_slot) * 28)
         except (TypeError, ValueError):
             source_y = sy + sh / 2
         try:
             target_index = int(target_slot)
         except (TypeError, ValueError):
             target_index = input_slots.get(str(target_id), {}).get(str(target_slot), 0)
-        target_y = ty_ + 30 + (target_index * 18)
+        target_y = ty_ + 34 + (target_index * 28)
         draw.line([(tx(sx + sw), ty(source_y)), (tx(tx_), ty(target_y))], fill=(55, 75, 95, 210), width=max(2, round(scale * 2)))
 
     for node in nodes:
@@ -121,25 +124,25 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
             outline=(45, 45, 45, 32 if is_support else 170),
             width=1,
         )
-        draw.text((tx(x) + 7, ty(y) + 6), f"{class_type}  [{node.get('id')}]", fill=(20, 25, 30, 255), font=font)
+        draw.text((tx(x) + 8, ty(y) + 7), f"{class_type}  [{node.get('id')}]", fill=(20, 25, 30, 255), font=font)
         inputs = node.get("inputs", [])
         if isinstance(inputs, list):
             for index, item in enumerate(inputs):
                 if not isinstance(item, Mapping):
                     continue
-                py = ty(y + 30 + index * 18)
+                py = ty(y + 34 + index * 28)
                 draw.ellipse([tx(x) - 4, py - 3, tx(x) + 3, py + 4], fill=(45, 75, 105, 255))
-                draw.text((tx(x) + 8, py - 6), str(item.get("name") or f"in{index}"), fill=(30, 45, 60, 255), font=font)
+                draw.text((tx(x) + 10, py - 9), str(item.get("name") or f"in{index}"), fill=(30, 45, 60, 255), font=font)
         outputs = node.get("outputs", [])
         if isinstance(outputs, list):
             for index, item in enumerate(outputs):
                 if not isinstance(item, Mapping):
                     continue
-                py = ty(y + 30 + index * 18)
+                py = ty(y + 34 + index * 28)
                 draw.ellipse([tx(x + w) - 3, py - 3, tx(x + w) + 4, py + 4], fill=(105, 65, 45, 255))
                 label = str(item.get("name") or f"out{index}")
                 bbox = draw.textbbox((0, 0), label, font=font)
-                draw.text((tx(x + w) - (bbox[2] - bbox[0]) - 8, py - 6), label, fill=(70, 45, 30, 255), font=font)
+                draw.text((tx(x + w) - (bbox[2] - bbox[0]) - 10, py - 9), label, fill=(70, 45, 30, 255), font=font)
 
     image.save(path)
 
@@ -181,6 +184,12 @@ def _node_rect(node: Mapping[str, Any]) -> tuple[float, float, float, float] | N
     if isinstance(size, list) and len(size) >= 2:
         width = _number(size[0], width)
         height = _number(size[1], height)
+    inputs = node.get("inputs") if isinstance(node.get("inputs"), list) else []
+    outputs = node.get("outputs") if isinstance(node.get("outputs"), list) else []
+    # Only the inspection rectangle is enlarged; authored positions and the
+    # exported graph remain untouched.  A 28px pitch is deliberately larger
+    # than the readable 14px label font.
+    height = max(height, 52.0 + 28.0 * max(len(inputs), len(outputs)))
     return (_number(pos[0], 0.0), _number(pos[1], 0.0), width, height)
 
 

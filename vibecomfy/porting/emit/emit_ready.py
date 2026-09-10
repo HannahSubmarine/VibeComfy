@@ -1532,7 +1532,11 @@ def _canonical_definition_helpers(
             if not isinstance(value, (list, tuple)):
                 return None
             return [
-                {key: copy.deepcopy(item[key]) for key in ("name", "type", "slot") if key in item}
+                {
+                    **{key: copy.deepcopy(item[key]) for key in ("name", "type", "slot") if key in item},
+                    "_has_link": "link" in item,
+                    "_has_value": "value" in item,
+                }
                 if isinstance(item, Mapping) else item
                 for item in value
             ]
@@ -1633,13 +1637,21 @@ def _canonical_definition_helpers(
             if isinstance(raw.get("widgets"), Mapping):
                 for key, value in raw["widgets"].items():
                     values.setdefault(str(key), value)
+            widget_channels = (
+                {str(key): copy.deepcopy(value) for key, value in raw["widgets"].items()}
+                if isinstance(raw.get("widgets"), Mapping) else {}
+            )
             raw_outputs = raw.get("outputs")
             outputs = tuple(
                 str(item.get("name", item.get("slot", index)))
                 if isinstance(item, Mapping) else str(item)
                 for index, item in enumerate(raw_outputs)
             ) if isinstance(raw_outputs, (list, tuple)) else ()
-            record = {"id": node_id, "class_type": class_type, "node_field": "class_type" if "class_type" in raw else "type", "uid": raw.get("uid"), "values": values, "outputs": outputs,
+            # Normalization adds ``class_type`` to legacy ``type`` rows.  A
+            # surviving type key is therefore the strongest authored spelling
+            # witness for the emitted definition source.
+            node_field = "type" if "type" in raw and "class_type" not in raw else "class_type"
+            record = {"id": node_id, "class_type": class_type, "node_field": node_field, "uid": raw.get("uid"), "values": values, "widget_channels": widget_channels, "outputs": outputs,
                       "input_shape": copy.deepcopy(raw_inputs) if isinstance(raw_inputs, (list, tuple)) else None,
                       "output_shape": copy.deepcopy(raw_outputs) if isinstance(raw_outputs, (list, tuple)) else None}
             for field in (
@@ -1798,6 +1810,12 @@ def _canonical_definition_helpers(
                         continue
                     else:
                         value_expr = render(value)
+                    if field in record.get("widget_channels", {}):
+                        value_expr = (
+                            f"authored_channel({value_expr}, "
+                            f"widget={render(record['widget_channels'][field])}, "
+                            f"name={field!r})"
+                        )
                     if (
                         _keyword.iskeyword(field)
                         or not field.isidentifier()
