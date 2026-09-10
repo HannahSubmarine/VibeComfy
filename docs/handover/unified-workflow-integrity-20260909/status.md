@@ -19,7 +19,7 @@ The latest user authorized one additional Astra high planning sense check (one c
 
 Astra found the architecture and whole-file clean-Python contract sound, with two required evidence clarifications now adopted: shared ingress-owner parity including refusal, and inspection of the exact exported graph plus whole Python file. The implementation evidence is now recorded in `evidence/entrypoint-parity/` and `evidence/h3/`.
 
-## Final implementation closure — candidate `56394461` plus renderer correction
+## Final implementation closure — candidate `949416c3`
 
 The isolated implementation checkout now contains the unified delivery candidate at
 `3c11d81313be5b6c33bddcdb1a6d5a855006564a` plus the bounded visualization correction
