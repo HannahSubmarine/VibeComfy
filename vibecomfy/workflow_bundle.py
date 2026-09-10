@@ -1851,9 +1851,8 @@ def _atomic_publish_pair(
             staged_workflow = load_scratchpad(staged[0][0], provenance_override=Provenance.USER_CONFIRMED)
             if staged_workflow.id != expected.workflow.id:
                 raise WorkflowBundleError("staged Python identity differs from intended bundle")
-            # Emit→load semantic digest may drift when emit normalizes a
-            # representable graph. Identity match plus a successful load is
-            # enough to publish; fail-closing here aborted implement apply.
+            if staged_workflow.semantic_digest() != expected.semantic_digest:
+                raise WorkflowBundleError("staged Python semantic digest differs from intended bundle")
             staged_sidecar_payload = None
             if sidecar is not None:
                 staged_sidecar_path = next(item for item, destination in staged if destination == _sidecar_path(path))

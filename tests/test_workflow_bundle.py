@@ -934,19 +934,15 @@ def test_capture_coerces_oversized_node_size_pair(
     assert bundle.ui_sidecar["nodes"]["source"]["pos"] == [1.0, 2.0]
 
 
-def test_emit_bundle_does_not_fail_closed_on_semantic_digest_drift(
+def test_emit_bundle_rejects_semantic_digest_drift_before_replacement(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Emit→load semantic digest drift must not abort publication.
-
-    Implement apply fail-closed with "staged Python identity or semantic
-    digest differs from intended bundle" on representable graphs whose emit
-    roundtrip is lossy (same workflow id, different semantic digest).
-    """
+    """A staged semantic mismatch leaves both existing artifacts untouched."""
     workflow = _workflow("drift-id")
     workflow.add_node("Integer", uid="integer-node", value=7)
     destination = tmp_path / "drift.py"
+    baseline = emit_bundle(workflow, destination, {"operation": "authored"})
     real_load_scratchpad = load_scratchpad
 
     def load_with_diagnostic_drift(*args, **kwargs):
@@ -958,11 +954,20 @@ def test_emit_bundle_does_not_fail_closed_on_semantic_digest_drift(
         "vibecomfy.scratchpad_loader.load_scratchpad",
         load_with_diagnostic_drift,
     )
-    bundle = emit_bundle(workflow, destination, {"operation": "authored"})
-    assert destination.is_file()
-    loaded = real_load_scratchpad(destination, provenance_override=Provenance.USER_CONFIRMED)
-    assert loaded.id == workflow.id == bundle.workflow.id
-    assert loaded.semantic_digest() == workflow.semantic_digest()
+    sidecar = destination.with_suffix(".vibe.json")
+    sidecar_payload = {
+        "format_version": 1,
+        "bind": {"workflow_identity": workflow.id, "semantic_digest": baseline.semantic_digest},
+        "nodes": {}, "links": [], "groups": [], "canvas": {},
+    }
+    sidecar.write_text(json.dumps(sidecar_payload, sort_keys=True) + "\n", encoding="utf-8")
+    python_before = destination.read_bytes()
+    sidecar_before = sidecar.read_bytes()
+    with pytest.raises(WorkflowBundleError, match="semantic digest"):
+        emit_bundle(workflow, destination, {"operation": "authored"})
+    assert destination.read_bytes() == python_before
+    assert sidecar.read_bytes() == sidecar_before
+    assert baseline.workflow.id == workflow.id
 
 
 @pytest.mark.parametrize(
