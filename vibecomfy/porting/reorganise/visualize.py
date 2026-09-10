@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
-from vibecomfy.ingest.normalize import door_get_nodes
+from vibecomfy.ingest.normalize import door_get_links, door_get_nodes
 def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
     """Write an abstract PNG of a ComfyUI workflow layout.
 
@@ -95,7 +95,7 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
     # Links are deliberately drawn first so node cards and port labels remain
     # legible while the complete authored topology is still visible.
     by_id = {str(node.get("id")): node for node in nodes}
-    link_rows = [row for row in ui_json.get("links", []) if isinstance(row, (list, tuple)) and len(row) >= 5]
+    link_rows = [row for row in door_get_links(ui_json, []) if isinstance(row, (list, tuple)) and len(row) >= 5]
     input_slots = {
         str(node.get("id")): {str(item.get("name")): index for index, item in enumerate(node.get("inputs", [])) if isinstance(item, Mapping)}
         for node in nodes

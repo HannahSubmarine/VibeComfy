@@ -18,6 +18,11 @@ from vibecomfy.utils import find_repo_root
 from vibecomfy.workflow import VibeInput, VibeOutput, VibeWorkflow
 from vibecomfy.custom_node_refs import normalize_custom_node_requirements
 from vibecomfy.workflow_context import _current_workflow_or_raise
+from vibecomfy.ingest.normalize import (
+    door_links,
+    door_setdefault_links,
+    door_setdefault_nodes,
+)
 
 
 def _record_recursive_definition_capture(
@@ -98,7 +103,10 @@ def materialize_recursive_definitions(
                 row = deepcopy(item) if isinstance(item, Mapping) else {"name": item}
                 source_links = links_by_source.get((str(identity.get("id")), str(slot)))
                 if source_links:
-                    row["links"] = list(source_links)
+                    if "links" in row:
+                        door_links(row)[:] = list(source_links)
+                    else:
+                        door_setdefault_links(row, list(source_links))
                 payload["outputs"].append(row)
         for field in (
             "native_input_names", "native_output_names", "native_input_types",
@@ -163,12 +171,12 @@ def materialize_recursive_definitions(
                     target_slot,
                     link_type,
                 ])
-        result["nodes"] = [
+        door_setdefault_nodes(result, [
             node_payload(node, identity, link_by_target, links_by_source)
             for node, identity in zip(runtime_nodes, identities)
             if isinstance(identity, Mapping)
-        ]
-        result["links"] = links
+        ])
+        door_setdefault_links(result, links)
         nested = definition.get("definitions")
         if nested not in (None, {}, []):
             result["definitions"] = {"subgraphs": [

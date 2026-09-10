@@ -10,6 +10,7 @@ added by an earlier operation in the same atomic batch.
 from __future__ import annotations
 
 import re
+import math
 
 from typing import Any, Mapping, Sequence
 
@@ -128,6 +129,61 @@ def _snapshot_input_spec(provider: Any, class_type: str, field: str) -> Any | No
     )
 
 
+def _is_json_literal(value: Any) -> bool:
+    """Return whether a replacement can be retained in canonical JSON IR."""
+    if value is None or isinstance(value, (bool, str, int)):
+        return True
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, Mapping):
+        return all(
+            isinstance(key, str) and _is_json_literal(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, (list, tuple)):
+        return all(_is_json_literal(item) for item in value)
+    return False
+
+
+def _recursive_untyped_literal_carrier(
+    node: Mapping[str, Any], field: str, resolved: tuple[str, Any]
+) -> bool:
+    """Prove a schema-less recursive field is one authored literal input.
+
+    Older recursive exports can retain a typed, unlinked list-form input even
+    when the frozen execution schema omits that input.  Permit only one
+    unambiguous authored record and reject channel shadows; canvas structure
+    is never sufficient evidence on its own.
+    """
+    if not resolved[0].startswith("inputs."):
+        return False
+    records = node.get("inputs")
+    if not isinstance(records, (list, tuple)):
+        return False
+    matches = [
+        item
+        for item in records
+        if isinstance(item, Mapping)
+        and item.get("name") == field
+        and "value" in item
+        and item.get("link") is None
+        and isinstance(item.get("type"), str)
+        and bool(item.get("type"))
+    ]
+    if len(matches) != 1:
+        return False
+    for channel in ("widgets", "semantic"):
+        values = node.get(channel)
+        if isinstance(values, Mapping) and field in values:
+            return False
+        if isinstance(values, (list, tuple)) and any(
+            isinstance(item, Mapping) and item.get("name") == field
+            for item in values
+        ):
+            return False
+    return True
+
+
 def _require_node(workflow: Any, uid: str) -> Any:
     node = _node_by_uid(workflow, uid)
     if node is None:
@@ -179,10 +235,16 @@ def _validate_recursive_field(workflow: Any, op: SetNodeFieldOp, provider: Any) 
         spec = _snapshot_input_spec(provider, class_type, field)
     if spec is None:
         if schema is not None:
-            raise ApplyOpsError(
-                "unknown_target_field",
-                f"field {field!r} has no exact authoring-schema witness on {class_type!r}; canvas/compiled fields are not schema authority.",
-            )
+            if not _recursive_untyped_literal_carrier(node, field, resolved):
+                raise ApplyOpsError(
+                    "unknown_target_field",
+                    f"field {field!r} has no exact authoring-schema witness on {class_type!r}; canvas/compiled fields are not schema authority.",
+                )
+            if not _is_json_literal(op.value):
+                raise ApplyOpsError(
+                    "value_type_mismatch",
+                    f"field {field!r} requires a JSON literal replacement.",
+                )
         return
     from vibecomfy.porting.authoring_surface import input_spec_is_literal_widget
 

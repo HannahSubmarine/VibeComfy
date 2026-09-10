@@ -11,6 +11,18 @@ import hashlib
 import json
 from typing import Any, Mapping
 
+from vibecomfy.ingest.normalize import (
+    canonical_definition_links,
+    canonical_definition_nodes,
+    door_get_links,
+    door_get_nodes,
+    door_get_widgets_values,
+    door_links,
+    door_nodes,
+    door_setdefault_links,
+    door_setdefault_widgets_values,
+)
+
 
 class NativeSubgraphError(ValueError):
     """The bounded native form cannot be expanded without guessing."""
@@ -78,7 +90,7 @@ def _set_socket_links(node: dict[str, Any], incoming: Mapping[int, Any], outgoin
         node["inputs"][i] = item
     for i, socket in enumerate(_node_outputs(node)):
         item = dict(socket)
-        item["links"] = list(outgoing.get(i, []))
+        door_setdefault_links(item, list(outgoing.get(i, [])))
         node["outputs"][i] = item
 
 
@@ -91,7 +103,7 @@ def _widget_target(definition: Mapping[str, Any], native_link: tuple[Any, str, i
     if not isinstance(widget, Mapping) or not isinstance(widget.get("name"), str):
         return None
     name = widget["name"]
-    values = target.get("widgets_values", [])
+    values = door_get_widgets_values(target, [])
     if not isinstance(values, list):
         _fail(f"node {target.get('id')} has malformed widgets_values")
     # ComfyUI widget metadata is represented by input sockets in the node's
@@ -119,7 +131,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(raw_ui, Mapping):
         _fail("UI graph must be a mapping")
     result = deepcopy(dict(raw_ui))
-    nodes = result.get("nodes")
+    nodes = door_get_nodes(result)
     defs_payload = result.get("definitions")
     definitions = defs_payload.get("subgraphs", []) if isinstance(defs_payload, Mapping) else []
     if not isinstance(nodes, list) or not isinstance(definitions, list):
@@ -128,7 +140,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
         return result
     if any(not isinstance(d, Mapping) for d in definitions):
         _fail("malformed subgraph definition")
-    root_links = [_link(x) for x in result.get("links", [])]
+    root_links = [_link(x) for x in door_get_links(result, [])]
     root_by_id = {x[0]: x for x in root_links}
     if len(root_by_id) != len(root_links):
         _fail("duplicate root link id")
@@ -155,27 +167,29 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             has_native_link = any(
                 isinstance(link, Mapping)
                 and (str(link.get("origin_id")) in {"-10", "-20"} or str(link.get("target_id")) in {"-10", "-20"})
-                for link in definition.get("links", ())
+                for link in canonical_definition_links(definition, ())
             )
             has_native_marker = any(
                 isinstance(node, Mapping) and str(node.get("id")) in {"-10", "-20"}
-                for node in definition.get("nodes", ())
+                for node in canonical_definition_nodes(definition, ())
             )
             if has_input_marker or has_output_marker or has_native_link or has_native_marker:
                 _fail("native boundary markers require both inputNode and outputNode")
             rebuilt_nodes.append(deepcopy(dict(original)))
             continue
         expanded = True
-        if definition.get("definitions") or not isinstance(definition.get("nodes"), list) or not isinstance(definition.get("links"), list):
+        definition_nodes = canonical_definition_nodes(definition)
+        definition_links = canonical_definition_links(definition)
+        if definition.get("definitions") or not isinstance(definition_nodes, list) or not isinstance(definition_links, list):
             _fail(f"unsupported nested or malformed definition {definition.get('name')!r}")
-        inner = { _id(n.get("id")): deepcopy(dict(n)) for n in definition["nodes"] if isinstance(n, Mapping) }
-        if len(inner) != len(definition["nodes"]):
+        inner = { _id(n.get("id")): deepcopy(dict(n)) for n in definition_nodes if isinstance(n, Mapping) }
+        if len(inner) != len(definition_nodes):
             _fail("duplicate or malformed inner node id")
         ns = _id(original.get("id")) + "::"
         renamed = {k: ns + k for k in inner}
         for n in inner.values():
             n["id"] = ns + _id(n.get("id"))
-        native = [_link(x) for x in definition["links"]]
+        native = [_link(x) for x in definition_links]
         native_by_id = {x[0]: x for x in native}
         if len(native_by_id) != len(native):
             _fail("duplicate definition link id")
@@ -188,7 +202,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             _fail("native boundary roster is empty")
         out_nodes = {k: inner[k] for k in inner}
         outer_inputs = {str(x.get("name")): x for x in original.get("inputs", []) if isinstance(x, Mapping) and x.get("name") is not None}
-        outer_values = original.get("widgets_values", [])
+        outer_values = door_get_widgets_values(original, [])
         if not isinstance(outer_values, list):
             _fail("outer instance has malformed widgets_values")
         widget_boundary_indices: list[int] = []
@@ -225,7 +239,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
                     if len(widget_boundary_indices) - 1 >= len(outer_values):
                         _fail(f"missing instance widget for {name!r}")
                     for target_node, target_pos in widgets:
-                        target_node.setdefault("widgets_values", [])[target_pos] = deepcopy(outer_values[len(widget_boundary_indices) - 1])
+                        door_setdefault_widgets_values(target_node, [])[target_pos] = deepcopy(outer_values[len(widget_boundary_indices) - 1])
                 elif source_link not in root_by_id:
                     _fail(f"outer link {source_link!r} is missing")
         # Rewrite all ordinary inner links and boundary inputs.
@@ -243,7 +257,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             origin_socket = _node_outputs(origin_node)[edge[2]] if edge[2] < len(_node_outputs(origin_node)) else None
             if origin_socket is None:
                 _fail("link origin_slot is outside output roster")
-            backlinks = origin_socket.get("links")
+            backlinks = door_get_links(origin_socket)
             if backlinks is None or edge[0] not in backlinks:
                 if backlinks in (None, []):
                     diagnostics.append({"kind": "repaired_output_backlink", "link_id": edge[0], "node_id": edge[1], "slot": edge[2]})
@@ -273,13 +287,14 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             source_node = out_nodes.get(edge[1])
             if source_node is None or edge[2] >= len(_node_outputs(source_node)):
                 _fail("native output source is missing")
-            backlinks = _node_outputs(source_node)[edge[2]].get("links")
+            backlinks = door_get_links(_node_outputs(source_node)[edge[2]])
             if backlinks is None or lid not in backlinks:
                 if backlinks in (None, []):
                     diagnostics.append({"kind": "repaired_output_backlink", "link_id": lid, "node_id": edge[1], "slot": edge[2]})
                 else:
                     _fail(f"contradictory output backlink for link {lid!r}")
-            instance_output_ids = original.get("outputs", [])[output_index].get("links", []) if output_index < len(original.get("outputs", [])) and isinstance(original.get("outputs", [])[output_index], Mapping) else []
+            instance_output = original.get("outputs", [])[output_index] if output_index < len(original.get("outputs", [])) else None
+            instance_output_ids = door_get_links(instance_output, []) if isinstance(instance_output, Mapping) else []
             root_consumers = [x for x in root_links if x[0] in instance_output_ids and x[1] == _id(original.get("id"))]
             if not root_consumers:
                 root_consumers = [x for x in root_links if x[0] in instance_output_ids]
@@ -318,8 +333,8 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
         outgoing[edge[1]].setdefault(edge[2], []).append(edge[0])
     for n in rebuilt_nodes:
         _set_socket_links(n, incoming[_id(n["id"])], outgoing[_id(n["id"])])
-    result["nodes"] = rebuilt_nodes
-    result["links"] = [[a, b, c, d, e, f] for a, b, c, d, e, f in final_links]
+    door_nodes(result)[:] = rebuilt_nodes
+    door_links(result)[:] = [[a, b, c, d, e, f] for a, b, c, d, e, f in final_links]
     if expanded:
         raw_bytes = json.dumps(raw_ui, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         result["_native_subgraph_provenance"] = {"source_sha256": hashlib.sha256(raw_bytes).hexdigest(), "source_kind": "comfyui_native_subgraph"}
