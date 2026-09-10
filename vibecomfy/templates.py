@@ -77,9 +77,10 @@ def materialize_recursive_definitions(
             ]
         payload = {
             "id": identity.get("id"),
-            "type": str(getattr(source_node, "class_type", identity.get("class_type", ""))),
             "inputs": values,
         }
+        node_field = str(identity.get("node_field", "class_type"))
+        payload[node_field] = str(getattr(source_node, "class_type", identity.get("class_type", "")))
         if identity.get("uid") is not None:
             payload["uid"] = identity["uid"]
         if isinstance(identity.get("output_shape"), (list, tuple)):

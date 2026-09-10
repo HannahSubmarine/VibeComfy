@@ -35,6 +35,7 @@ import ast
 import copy
 import json
 import keyword as _keyword
+import unicodedata
 from dataclasses import replace
 from dataclasses import dataclass
 from enum import Enum
@@ -1543,6 +1544,7 @@ def _canonical_definition_helpers(
                         "id": item["id"],
                         "uid": item.get("uid"),
                         "class_type": item["class_type"],
+                        "node_field": item.get("node_field", "class_type"),
                         "input_shape": copy.deepcopy(item.get("input_shape")),
                         "output_shape": copy.deepcopy(item.get("output_shape")),
                     },
@@ -1614,7 +1616,7 @@ def _canonical_definition_helpers(
                 if isinstance(item, Mapping) else str(item)
                 for index, item in enumerate(raw_outputs)
             ) if isinstance(raw_outputs, (list, tuple)) else ()
-            record = {"id": node_id, "class_type": class_type, "uid": raw.get("uid"), "values": values, "outputs": outputs,
+            record = {"id": node_id, "class_type": class_type, "node_field": "class_type" if "class_type" in raw else "type", "uid": raw.get("uid"), "values": values, "outputs": outputs,
                       "input_shape": copy.deepcopy(raw_inputs) if isinstance(raw_inputs, (list, tuple)) else None,
                       "output_shape": copy.deepcopy(raw_outputs) if isinstance(raw_outputs, (list, tuple)) else None}
             for field in (
@@ -1744,7 +1746,11 @@ def _canonical_definition_helpers(
                         continue
                     else:
                         value_expr = render(value)
-                    if _keyword.iskeyword(field) or not field.isidentifier():
+                    if (
+                        _keyword.iskeyword(field)
+                        or not field.isidentifier()
+                        or unicodedata.normalize("NFKC", field) != field
+                    ):
                         args.append(f"**{{{field!r}: {value_expr}}}")
                     else:
                         args.append(f"{field}={value_expr}")

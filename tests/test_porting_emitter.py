@@ -295,6 +295,8 @@ def test_nested_constructor_edit_is_authoritative_for_rebuilt_definition() -> No
     exec(compile(edited, "nested_edit.py", "exec"), namespace)  # noqa: S102
     rebuilt = namespace["build"]()
     node = rebuilt.definitions["subgraphs"][0]["nodes"][0]
+    assert node["type"] == "INTConstant"
+    assert "class_type" not in node
     assert node["inputs"]["value"] == 7
 
 
