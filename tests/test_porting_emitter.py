@@ -277,6 +277,27 @@ def test_canonical_depth_two_recursive_helpers_reload_twice_with_parity(
     assert first.compile("graphbuilder") == workflow.compile("graphbuilder")
 
 
+def test_nested_constructor_edit_is_authoritative_for_rebuilt_definition() -> None:
+    definition = {
+        "id": "nested-default",
+        "name": "NestedDefault",
+        "nodes": [{"id": "constant", "type": "INTConstant", "inputs": {"value": 2}}],
+        "links": [],
+    }
+    workflow = VibeWorkflow("canonical/nested-edit", WorkflowSource("canonical/nested-edit"))
+    workflow.nodes["1"] = VibeNode("1", "INTConstant", inputs={"value": 1}, uid="root")
+    workflow.definitions = {"subgraphs": [definition]}
+    source = emit_canonical_python(workflow)
+    assert scan_agent_generated_python(source).ok
+    assert "INTConstant(value=2)" in source
+    edited = source.replace("INTConstant(value=2)", "INTConstant(value=7)", 1)
+    namespace: dict[str, object] = {"__file__": "nested_edit.py"}
+    exec(compile(edited, "nested_edit.py", "exec"), namespace)  # noqa: S102
+    rebuilt = namespace["build"]()
+    node = rebuilt.definitions["subgraphs"][0]["nodes"][0]
+    assert node["inputs"]["value"] == 7
+
+
 def test_canonical_recursive_callable_source_has_known_unknown_local_nodes() -> None:
     from vibecomfy.identity.scope import sg_key
 

@@ -1525,8 +1525,48 @@ def _canonical_definition_helpers(
         used_names.add(name)
         return name
 
-    def literal_container(source: Any) -> str:
-        return render(source)
+    def constructor_custody(source: Any) -> Any:
+        """Retain shape/identity custody, leaving values to constructors."""
+        if isinstance(source, Mapping):
+            if "subgraphs" in source:
+                return {"subgraphs": [constructor_custody(item) for item in entries(source["subgraphs"])]}
+            result = {
+                str(key): copy.deepcopy(value)
+                for key, value in source.items()
+                if key not in {"nodes", "links", "definitions"}
+            }
+            result["_scope_key"] = sg_key(source)
+            records = node_records(source)
+            result["_constructor_nodes"] = [
+                {
+                    **{
+                        "id": item["id"],
+                        "uid": item.get("uid"),
+                        "class_type": item["class_type"],
+                        "input_shape": copy.deepcopy(item.get("input_shape")),
+                        "output_shape": copy.deepcopy(item.get("output_shape")),
+                    },
+                    **{
+                        field: copy.deepcopy(item[field])
+                        for field in (
+                            "native_input_names", "native_output_names", "native_input_types",
+                            "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                            "native_output_slots",
+                        )
+                        if field in item
+                    },
+                }
+                for item in records
+            ]
+            nested = source.get("definitions")
+            if nested not in (None, {}, []):
+                result["definitions"] = {
+                    "subgraphs": [constructor_custody(item) for item in entries(nested)]
+                }
+            return result
+        if isinstance(source, (list, tuple)):
+            return [constructor_custody(item) for item in source]
+        return copy.deepcopy(source)
 
     def safe_name(value: Any, fallback: str) -> str:
         candidate = "".join(char if char.isalnum() else "_" for char in str(value or ""))
@@ -1568,7 +1608,23 @@ def _canonical_definition_helpers(
             if isinstance(raw.get("widgets"), Mapping):
                 for key, value in raw["widgets"].items():
                     values.setdefault(str(key), value)
-            records.append({"id": node_id, "class_type": class_type, "uid": raw.get("uid"), "values": values})
+            raw_outputs = raw.get("outputs")
+            outputs = tuple(
+                str(item.get("name", item.get("slot", index)))
+                if isinstance(item, Mapping) else str(item)
+                for index, item in enumerate(raw_outputs)
+            ) if isinstance(raw_outputs, (list, tuple)) else ()
+            record = {"id": node_id, "class_type": class_type, "uid": raw.get("uid"), "values": values, "outputs": outputs,
+                      "input_shape": copy.deepcopy(raw_inputs) if isinstance(raw_inputs, (list, tuple)) else None,
+                      "output_shape": copy.deepcopy(raw_outputs) if isinstance(raw_outputs, (list, tuple)) else None}
+            for field in (
+                "native_input_names", "native_output_names", "native_input_types",
+                "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                "native_output_slots",
+            ):
+                if field in raw:
+                    record[field] = raw[field]
+            records.append(record)
         return records
 
     def link_records(definition: Mapping[str, Any], records: list[dict[str, Any]]) -> list[tuple[str, str, str, str]]:
@@ -1632,6 +1688,7 @@ def _canonical_definition_helpers(
             lines.append(f"    \"\"\"Typed recursive definition {key}.\"\"\"")
             records = node_records(definition)
             local_vars: dict[str, str] = {}
+            captured_vars: list[str] = []
             child_by_alias = {
                 alias: (child, child_names[index])
                 for index, child in enumerate(nested_entries)
@@ -1664,12 +1721,15 @@ def _canonical_definition_helpers(
                     child_inputs, _child_outputs = interface_members(sg_key(child_def), compose_scope_path((*parents, key, sg_key(child_def))))
                     child_args = [parameter_names.get(str(item.get("name")), "None") for item in child_inputs]
                     lines.append(f"    {var} = {child_function}(wf{', ' if child_args else ''}{', '.join(child_args)})")
+                    captured_vars.append(var)
                     continue
                 wrapper = _wrapper_symbol_for_class(class_type) if _wrapper_module_for_class(class_type) else None
                 call_name = wrapper or "raw_call"
                 args = [] if wrapper else [repr(class_type)]
                 if not wrapper:
                     args.append("pass_raw=True")
+                    if record.get("outputs"):
+                        args.append(f"_outputs={render(record['outputs'])}")
                 for field, value in record["values"].items():
                     parameter = boundary_inputs.get((node_id, field))
                     if parameter:
@@ -1679,7 +1739,7 @@ def _canonical_definition_helpers(
                         source_var = local_vars.get(source)
                         if source_var is None:
                             raise ValueError(f"recursive_definition_links_malformed: unknown source {source!r}")
-                        value_expr = f"{source_var}.out({int(slot) if str(slot).isdigit() else str(slot)!r})"
+                        value_expr = f"{source_var}.out({int(slot) if str(slot).isdigit() else 0!r})"
                     elif isinstance(value, (list, tuple)) and len(value) >= 2 and isinstance(value[0], (str, int)) and isinstance(value[1], int):
                         continue
                     else:
@@ -1689,6 +1749,12 @@ def _canonical_definition_helpers(
                     else:
                         args.append(f"{field}={value_expr}")
                 lines.append(f"    {var} = {call_name}({', '.join(args)})")
+                captured_vars.append(var)
+            captured_expr = "(" + ", ".join(captured_vars) + (",)" if captured_vars else ")")
+            lines.append(
+                f"    wf._recursive_definition_captures.append(({scope_path!r}, "
+                f"tuple(item for item in {captured_expr})))"
+            )
             boundary_outputs = {
                 str(port.get("name")): (str(port.get("node_uid")), str(port.get("field", "0")))
                 for port in (boundary_ports or ())
@@ -1710,7 +1776,8 @@ def _canonical_definition_helpers(
                     slot = next((i for i, item in enumerate(child_outputs) if str(item.get("name")) == field), 0)
                     output_exprs.append(f"{var}[{slot}]" if len(child_outputs) != 1 else var)
                 else:
-                    output_exprs.append(f"{var}.out({int(field) if str(field).isdigit() else field!r})")
+                    output_slot = int(field) if str(field).isdigit() else 0
+                    output_exprs.append(f"{var}.out({output_slot!r})")
             if not output_exprs:
                 lines.append("    return None")
             elif len(output_exprs) == 1:
@@ -1724,13 +1791,28 @@ def _canonical_definition_helpers(
 
     if not top_entries:
         return [], None
-    [walk(item, ()) for item in top_entries]
+    top_function_names = [walk(item, ()) for item in top_entries]
     if lines and lines[-1] == "":
         lines.pop()
     helper_name = "_build_recursive_definitions"
+    custody_expr = render(constructor_custody(definitions))
     lines.extend([
         f"def {helper_name}() -> dict[str, Any]:",
-        "    return " + literal_container(definitions),
+        '    _definition_wf = new_workflow({"ready_template": "recursive_definitions"})',
+        "    _definition_wf._recursive_definition_captures = []",
+    ])
+    for function_name, definition in zip(top_function_names, top_entries):
+        key = sg_key(definition)
+        input_members, _ = interface_members(key, key)
+        args = ", ".join("None" for _ in input_members)
+        lines.append(f"    {function_name}(_definition_wf{', ' if args else ''}{args})")
+    lines.extend([
+        "    _definition_result = _definition_wf._materialize_recursive_definitions(",
+        "        _definition_wf._recursive_definition_captures,",
+        f"            {custody_expr},",
+        "    )",
+        "    _definition_wf._release_context()",
+        "    return _definition_result",
         "",
     ])
     return lines, f"{helper_name}()"

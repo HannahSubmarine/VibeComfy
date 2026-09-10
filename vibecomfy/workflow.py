@@ -844,6 +844,20 @@ class VibeWorkflow:
         from vibecomfy.testing.canonical import canonical_digest
         return canonical_digest(self.semantic_projection())
 
+    def _materialize_recursive_definitions(
+        self,
+        captures: list[tuple[str, tuple[Any, ...]]],
+        custody: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Materialize emitted recursive constructors through the existing IR."""
+        from vibecomfy.templates import materialize_recursive_definitions
+
+        return materialize_recursive_definitions(self, captures, custody)
+
+    def _release_context(self) -> None:
+        """Release an eagerly-bound authoring context."""
+        self.__exit__(None, None, None)
+
     # Private spelling retained for callers that treat the projection as an
     # internal compiler leaf; both names intentionally delegate to one source.
     def _semantic_projection(self) -> dict[str, Any]:

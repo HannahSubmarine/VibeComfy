@@ -20,6 +20,137 @@ from vibecomfy.custom_node_refs import normalize_custom_node_requirements
 from vibecomfy.workflow_context import _current_workflow_or_raise
 
 
+def _record_recursive_definition_capture(
+    workflow: VibeWorkflow,
+    scope_path: str,
+    nodes: tuple[Any, ...],
+) -> None:
+    """Capture constructor products for the canonical recursive emitter.
+
+    This is deliberately a small bridge over the existing ``VibeWorkflow``
+    constructor kernel.  It records object references, never a second node or
+    link model; :func:`materialize_recursive_definitions` turns those objects
+    into the ordinary JSON-shaped definition payload after all constructors
+    have run.
+    """
+    captured = getattr(workflow, "_recursive_definition_captures", None)
+    if captured is None:
+        return
+    captured.append((str(scope_path), tuple(getattr(item, "node", item) for item in nodes)))
+
+
+def materialize_recursive_definitions(
+    workflow: VibeWorkflow,
+    captures: list[tuple[str, tuple[Any, ...]]],
+    custody: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build recursive definitions from executed constructor products.
+
+    ``custody`` contains only definition shape and stable identity fields.  All
+    semantic node values and topology below ``nodes``/``links`` come from the
+    temporary workflow populated by the emitted helper functions, so changing
+    a nested constructor or default cannot be shadowed by a replay literal.
+    """
+    by_scope = {scope: tuple(nodes) for scope, nodes in captures}
+
+    def entries(value: Any) -> list[Any]:
+        if isinstance(value, Mapping) and "subgraphs" in value:
+            return list(value["subgraphs"])
+        if isinstance(value, Mapping):
+            return list(value.values())
+        return list(value) if isinstance(value, (list, tuple)) else []
+
+    def node_payload(node: Any, identity: Mapping[str, Any]) -> dict[str, Any]:
+        is_handle = hasattr(node, "node_id") and hasattr(node, "output_slot")
+        source_node = None if is_handle else getattr(node, "node", node)
+        values = deepcopy(getattr(source_node, "inputs", {})) if source_node is not None else {}
+        input_shape = identity.get("input_shape")
+        if isinstance(input_shape, (list, tuple)):
+            values = [
+                {
+                    **{key: deepcopy(item[key]) for key in ("name", "type") if key in item},
+                    "link": None,
+                    "value": deepcopy(values.get(str(item.get("name")))) if isinstance(values, Mapping) else None,
+                }
+                for item in input_shape
+                if isinstance(item, Mapping)
+            ]
+        payload = {
+            "id": identity.get("id"),
+            "type": str(getattr(source_node, "class_type", identity.get("class_type", ""))),
+            "inputs": values,
+        }
+        if identity.get("uid") is not None:
+            payload["uid"] = identity["uid"]
+        if isinstance(identity.get("output_shape"), (list, tuple)):
+            payload["outputs"] = deepcopy(identity["output_shape"])
+        for field in (
+            "native_input_names", "native_output_names", "native_input_types",
+            "native_output_types", "native_input_optional", "native_input_asset_kinds",
+            "native_output_slots",
+        ):
+            value = getattr(node, field, None)
+            if field in identity and value is not None:
+                payload[field] = deepcopy(value)
+        return payload
+
+    def build_definition(definition: Mapping[str, Any], parents: tuple[str, ...]) -> dict[str, Any]:
+        key = str(definition.get("_scope_key") or definition.get("sg_key") or definition.get("id") or definition.get("name"))
+        scope = "/".join((*parents, key))
+        result = {
+            key_name: deepcopy(value)
+            for key_name, value in definition.items()
+            if key_name not in {"nodes", "links", "definitions"} and not str(key_name).startswith("_")
+        }
+        identities = definition.get("_constructor_nodes", ())
+        runtime_nodes = list(by_scope.get(scope, ()))
+        if not isinstance(identities, (list, tuple)):
+            identities = ()
+        result["nodes"] = [
+            node_payload(node, identity)
+            for node, identity in zip(runtime_nodes, identities)
+            if isinstance(identity, Mapping)
+        ]
+        runtime_ids = {
+            str(getattr(node, "id", getattr(node, "node_id", "")))
+            for node in runtime_nodes
+            if not (hasattr(node, "node_id") and hasattr(node, "output_slot"))
+        }
+        remap = {
+            str(getattr(node, "id", getattr(node, "node_id", ""))): str(identity.get("id"))
+            for node, identity in zip(runtime_nodes, identities)
+            if isinstance(identity, Mapping)
+        }
+        links: list[list[Any]] = []
+        for index, edge in enumerate(workflow.edges):
+            source = str(edge.from_node)
+            target = str(edge.to_node)
+            if source in runtime_ids and target in runtime_ids:
+                links.append([
+                    index + 1,
+                    remap[source],
+                    int(edge.from_output) if str(edge.from_output).isdigit() else edge.from_output,
+                    remap[target],
+                    edge.to_input,
+                    None,
+                ])
+        result["links"] = links
+        nested = definition.get("definitions")
+        if nested not in (None, {}, []):
+            result["definitions"] = {"subgraphs": [
+                build_definition(child, (*parents, key))
+                for child in entries(nested)
+                if isinstance(child, Mapping)
+            ]}
+        return result
+
+    return {"subgraphs": [
+        build_definition(definition, ())
+        for definition in entries(custody)
+        if isinstance(definition, Mapping)
+    ]}
+
+
 _OUTPUT_KIND_HEURISTIC: dict[str, str] = {
     "SaveImage": "image",
     "PreviewImage": "image",
