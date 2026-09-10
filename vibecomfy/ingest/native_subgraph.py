@@ -157,11 +157,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
                 and (str(link.get("origin_id")) in {"-10", "-20"} or str(link.get("target_id")) in {"-10", "-20"})
                 for link in definition.get("links", ())
             )
-            config_extra = (definition.get("config"), definition.get("extra"))
             has_native_marker = any(
-                str(value) in {"-10", "-20"}
-                for value in _walk_values(config_extra)
-            ) or any(
                 isinstance(node, Mapping) and str(node.get("id")) in {"-10", "-20"}
                 for node in definition.get("nodes", ())
             )

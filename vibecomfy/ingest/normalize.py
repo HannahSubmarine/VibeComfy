@@ -806,19 +806,6 @@ def _normalize_recursive_definitions(raw: Any) -> dict[str, Any]:
                 f"unsupported_boundary_encoding: definition {path!r} contains native inputNode/outputNode markers; "
                 "use an explicit Python-owned boundary mapping"
             )
-        for field in ("config", "extra"):
-            value = source.get(field)
-            def contains_marker(item: Any) -> bool:
-                if isinstance(item, Mapping):
-                    return any(contains_marker(child) for child in item.values())
-                if isinstance(item, (list, tuple)):
-                    return any(contains_marker(child) for child in item)
-                return item in {-10, -20, "-10", "-20"}
-            if contains_marker(value):
-                raise ValueError(
-                    f"unsupported_boundary_encoding: definition {path!r} {field} contains native -10/-20 markers; "
-                    "use an explicit Python-owned boundary mapping"
-                )
         nodes = source.get("nodes", ())
         if isinstance(nodes, Mapping):
             nodes = tuple(nodes.values())
@@ -2370,13 +2357,51 @@ def from_ui(
     # generic refusal, so the remainder of this function stays the sole UI
     # normalization/schema/emitter path for the expanded graph.
     def contains_native_marker(value: Any) -> bool:
-        if isinstance(value, Mapping):
-            if "inputNode" in value or "outputNode" in value:
+        """Inspect only graph-boundary carriers, never arbitrary payload values."""
+        if not isinstance(value, Mapping):
+            return False
+
+        def endpoint_marker(link: Any) -> bool:
+            if isinstance(link, Mapping):
+                endpoints = (link.get("origin_id"), link.get("target_id"))
+            elif isinstance(link, (list, tuple)) and len(link) == 6:
+                endpoints = (link[1], link[3])
+            else:
+                endpoints = ()
+            return any(str(endpoint) in {"-10", "-20"} for endpoint in endpoints)
+
+        def definition_marker(definition: Any) -> bool:
+            if not isinstance(definition, Mapping):
+                return False
+            if "inputNode" in definition or "outputNode" in definition:
                 return True
-            return any(contains_native_marker(item) for item in value.values())
-        if isinstance(value, (list, tuple)):
-            return any(contains_native_marker(item) for item in value)
-        return value in {-10, -20, "-10", "-20"}
+            nodes = definition.get("nodes", ())
+            if isinstance(nodes, Mapping):
+                nodes = nodes.values()
+            if isinstance(nodes, (list, tuple)) and any(
+                isinstance(node, Mapping) and str(node.get("id")) in {"-10", "-20"}
+                for node in nodes
+            ):
+                return True
+            if any(endpoint_marker(link) for link in definition.get("links", ())):
+                return True
+            nested = definition.get("definitions")
+            entries = nested.get("subgraphs", ()) if isinstance(nested, Mapping) else nested
+            return isinstance(entries, (list, tuple)) and any(definition_marker(item) for item in entries)
+
+        nodes = value.get("nodes", ())
+        if isinstance(nodes, Mapping):
+            nodes = nodes.values()
+        if isinstance(nodes, (list, tuple)) and any(
+            isinstance(node, Mapping) and str(node.get("id")) in {"-10", "-20"}
+            for node in nodes
+        ):
+            return True
+        if any(endpoint_marker(link) for link in value.get("links", ())):
+            return True
+        definitions = value.get("definitions")
+        entries = definitions.get("subgraphs", ()) if isinstance(definitions, Mapping) else definitions
+        return isinstance(entries, (list, tuple)) and any(definition_marker(item) for item in entries)
 
     native_source = raw
     from vibecomfy.ingest.native_subgraph import expand_native_subgraphs

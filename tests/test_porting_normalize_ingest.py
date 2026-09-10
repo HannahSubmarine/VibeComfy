@@ -243,8 +243,6 @@ def test_t06_rework_definition_boundary_missing_name_has_stable_error() -> None:
         {"inputNode": {"id": -10}},
         {"outputNode": {"id": -20}},
         {"nodes": [{"id": -10, "type": "Input", "inputs": [], "outputs": []}, {"id": -20, "type": "Output", "inputs": [], "outputs": []}]},
-        {"config": {"inputNode": -10, "outputNode": -20}},
-        {"extra": {"inputNode": -10, "outputNode": -20}},
     ],
 )
 def test_t06_rework_every_native_marker_shape_rejects_from_ui(marker_fields) -> None:
@@ -269,6 +267,15 @@ def test_t06_rework_nested_native_marker_and_envelope_reject() -> None:
     }
     with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
         from_envelope(envelope)
+
+
+@pytest.mark.parametrize("field", ["config", "extra"])
+@pytest.mark.parametrize("value", [-10, -20, "-10", "-20"])
+def test_t06_rework_scalar_boundary_sentinels_in_payload_survive(field: str, value: object) -> None:
+    raw = _t06_recursive_graph(**{field: {"nested": [value], "pos": value}})
+    workflow = from_ui(raw, use_comfy_converter=False)
+    assert workflow.definitions["subgraphs"][0][field]["nested"][0] == value
+    assert workflow.definitions["subgraphs"][0][field]["pos"] == value
 
 
 @pytest.mark.parametrize("marker_id", [-10, "-20"])
