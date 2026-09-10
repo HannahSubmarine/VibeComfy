@@ -45,6 +45,7 @@ from typing import Any, Mapping
 from vibecomfy._compile._helpers import RESOLVABLE_HELPER_CLASS_TYPES
 from vibecomfy.node_packs import LockEntry, read_lockfile
 from vibecomfy.porting.widgets.aliases import resolve_widget_key_with_provenance
+from vibecomfy.porting.widgets.schema import WIDGET_SCHEMA
 from vibecomfy.porting.emit.emit_constants import (
     _LOAD_IMAGE_FAMILY,
     _looks_like_placeholder_filename,
@@ -1609,6 +1610,19 @@ def _canonical_definition_helpers(
             str(member.get("type") or "").upper(), "Any"
         )
 
+    def capture_placeholder(member: Mapping[str, Any]) -> str:
+        """Return a type-safe temporary value for recursive capture only."""
+        member_type = str(member.get("type") or "").upper()
+        if member_type in {"STRING", "COMBO"}:
+            return repr("capture")
+        if member_type == "INT":
+            return "0"
+        if member_type == "FLOAT":
+            return "0.0"
+        if member_type == "BOOLEAN":
+            return "False"
+        return "None"
+
     def node_records(definition: Mapping[str, Any]) -> list[dict[str, Any]]:
         raw_nodes = canonical_definition_nodes(definition)
         raw_entries = raw_nodes.values() if isinstance(raw_nodes, Mapping) else raw_nodes
@@ -1637,6 +1651,33 @@ def _canonical_definition_helpers(
             if isinstance(raw.get("widgets"), Mapping):
                 for key, value in raw["widgets"].items():
                     values.setdefault(str(key), value)
+            raw_widget_values = canonical_node_widgets_values(raw)
+            primitive_classes = {
+                "PrimitiveBoolean", "PrimitiveFloat", "PrimitiveInt",
+                "PrimitiveString", "PrimitiveStringMultiline",
+            }
+            if class_type in primitive_classes:
+                if isinstance(raw_widget_values, Mapping):
+                    for key, value in raw_widget_values.items():
+                        values.setdefault(str(key), copy.deepcopy(value))
+                elif isinstance(raw_widget_values, (list, tuple)):
+                    widget_names = WIDGET_SCHEMA.get(class_type, ())
+                    for widget_name, value in zip(widget_names, raw_widget_values):
+                        if isinstance(widget_name, str):
+                            values.setdefault(widget_name, copy.deepcopy(value))
+            input_shape = copy.deepcopy(raw_inputs) if isinstance(raw_inputs, (list, tuple)) else None
+            if isinstance(input_shape, list):
+                for item in input_shape:
+                    if not isinstance(item, Mapping):
+                        continue
+                    field = item.get("name")
+                    if (
+                        isinstance(field, str)
+                        and item.get("link") is None
+                        and "value" not in item
+                        and field in values
+                    ):
+                        item["value"] = copy.deepcopy(values[field])
             widget_channels = (
                 {str(key): copy.deepcopy(value) for key, value in raw["widgets"].items()}
                 if isinstance(raw.get("widgets"), Mapping) else {}
@@ -1652,7 +1693,7 @@ def _canonical_definition_helpers(
             # witness for the emitted definition source.
             node_field = "type" if "type" in raw and "class_type" not in raw else "class_type"
             record = {"id": node_id, "class_type": class_type, "node_field": node_field, "uid": raw.get("uid"), "values": values, "widget_channels": widget_channels, "outputs": outputs,
-                      "input_shape": copy.deepcopy(raw_inputs) if isinstance(raw_inputs, (list, tuple)) else None,
+                      "input_shape": input_shape,
                       "output_shape": copy.deepcopy(raw_outputs) if isinstance(raw_outputs, (list, tuple)) else None}
             for field in (
                 "native_input_names", "native_output_names", "native_input_types",
@@ -1790,12 +1831,20 @@ def _canonical_definition_helpers(
                     args.append("pass_raw=True")
                     if record.get("outputs"):
                         args.append(f"_outputs={render(record['outputs'])}")
-                authored_fields = (
-                    [(str(item.get("name")), item.get("value")) for item in record["input_shape"]
-                     if isinstance(item, Mapping) and isinstance(item.get("name"), str)]
-                    if isinstance(record.get("input_shape"), (list, tuple))
-                    else list(record["values"].items())
-                )
+                if isinstance(record.get("input_shape"), (list, tuple)):
+                    shaped_fields = [
+                        (str(item.get("name")), item.get("value"))
+                        for item in record["input_shape"]
+                        if isinstance(item, Mapping) and isinstance(item.get("name"), str)
+                    ]
+                    shaped_names = {field for field, _value in shaped_fields}
+                    authored_fields = shaped_fields + [
+                        (field, value)
+                        for field, value in record["values"].items()
+                        if field not in shaped_names
+                    ]
+                else:
+                    authored_fields = list(record["values"].items())
                 for field, value in authored_fields:
                     parameter = boundary_inputs.get((node_id, field))
                     if parameter:
@@ -1880,7 +1929,7 @@ def _canonical_definition_helpers(
     for function_name, definition in zip(top_function_names, top_entries):
         key = sg_key(definition)
         input_members, _ = interface_members(key, key)
-        args = ", ".join("None" for _ in input_members)
+        args = ", ".join(capture_placeholder(member) for member in input_members)
         lines.append(f"    {function_name}(_definition_wf{', ' if args else ''}{args})")
     lines.extend([
         "    _definition_result = _definition_wf._materialize_recursive_definitions(",

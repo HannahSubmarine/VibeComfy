@@ -71,7 +71,7 @@ def materialize_recursive_definitions(
         values = deepcopy(getattr(source_node, "inputs", {})) if source_node is not None else {}
         widgets = deepcopy(getattr(source_node, "widgets", {})) if source_node is not None else {}
         input_shape = identity.get("input_shape")
-        if isinstance(input_shape, (list, tuple)):
+        if isinstance(input_shape, (list, tuple)) and input_shape:
             rows = []
             for item in input_shape:
                 if not isinstance(item, Mapping):
@@ -81,7 +81,16 @@ def materialize_recursive_definitions(
                 link_id = link_by_target.get((str(identity.get("id")), field))
                 if link_id is not None or row.get("_has_link"):
                     row["link"] = link_id
-                if row.get("_has_value"):
+                if row.get("_has_value") or (
+                    row.get("_has_link")
+                    and link_id is None
+                    and str(identity.get("class_type")) in {
+                        "PrimitiveBoolean", "PrimitiveFloat", "PrimitiveInt",
+                        "PrimitiveString", "PrimitiveStringMultiline",
+                    }
+                    and isinstance(values, Mapping)
+                    and field in values
+                ):
                     row["value"] = deepcopy(values.get(field)) if isinstance(values, Mapping) else None
                 row.pop("_has_link", None)
                 row.pop("_has_value", None)
@@ -154,6 +163,10 @@ def materialize_recursive_definitions(
                     (item for item in identities if isinstance(item, Mapping) and str(item.get("id")) == remap[target]),
                     {},
                 )
+                source_identity = next(
+                    (item for item in identities if isinstance(item, Mapping) and str(item.get("id")) == remap[source]),
+                    {},
+                )
                 target_slot: Any = edge.to_input
                 link_type: Any = None
                 target_shape = target_identity.get("input_shape")
@@ -161,8 +174,14 @@ def materialize_recursive_definitions(
                     for slot, item in enumerate(target_shape):
                         if isinstance(item, Mapping) and str(item.get("name")) == str(edge.to_input):
                             target_slot = slot
-                            link_type = item.get("type")
                             break
+                source_shape = source_identity.get("output_shape")
+                if isinstance(source_shape, (list, tuple)):
+                    source_slot = int(edge.from_output) if str(edge.from_output).isdigit() else None
+                    if source_slot is not None and 0 <= source_slot < len(source_shape):
+                        source_item = source_shape[source_slot]
+                        if isinstance(source_item, Mapping):
+                            link_type = source_item.get("type")
                 links.append([
                     link_id,
                     remap[source],
