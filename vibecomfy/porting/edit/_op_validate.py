@@ -90,6 +90,44 @@ def _input_spec(node: Any, field: str, provider: Any) -> Any | None:
     return inputs.get(field) if isinstance(inputs, Mapping) else None
 
 
+def _snapshot_input_spec(provider: Any, class_type: str, field: str) -> Any | None:
+    """Read an exact recursive field witness from the frozen payload.
+
+    ``node_schema_from_payload`` intentionally removes positional ``widget_N``
+    aliases from the general schema lookup surface.  Recursive IR, however,
+    can carry an explicitly authored positional field, so preserve that
+    narrow witness for scoped validation without making positional aliases
+    generally editable.
+    """
+    snapshot = getattr(provider, "snapshot", None)
+    schemas = getattr(snapshot, "schemas", None)
+    if not isinstance(schemas, Mapping):
+        return None
+    payload = schemas.get(class_type)
+    inputs = payload.get("inputs") if isinstance(payload, Mapping) else None
+    raw = inputs.get(field) if isinstance(inputs, Mapping) else None
+    if not isinstance(raw, Mapping):
+        return None
+    from vibecomfy.schema import InputSpec
+
+    choices = raw.get("choices")
+    return InputSpec(
+        type=raw.get("type") if isinstance(raw.get("type"), str) else None,
+        required=raw.get("required") is True,
+        default=raw.get("default"),
+        choices=(
+            list(choices)
+            if isinstance(choices, Sequence)
+            and not isinstance(choices, (str, bytes, bytearray))
+            else None
+        ),
+        min=raw.get("min") if isinstance(raw.get("min"), (int, float)) else None,
+        max=raw.get("max") if isinstance(raw.get("max"), (int, float)) else None,
+        unresolved_choices=raw.get("unresolved_choices") is True,
+        asset_kind=raw.get("asset_kind") if isinstance(raw.get("asset_kind"), str) else None,
+    )
+
+
 def _require_node(workflow: Any, uid: str) -> Any:
     node = _node_by_uid(workflow, uid)
     if node is None:
@@ -137,6 +175,8 @@ def _validate_recursive_field(workflow: Any, op: SetNodeFieldOp, provider: Any) 
         schema = schema_for(provider, class_type)
     specs = getattr(schema, "inputs", None) or {}
     spec = specs.get(field) if isinstance(specs, Mapping) else None
+    if spec is None:
+        spec = _snapshot_input_spec(provider, class_type, field)
     if spec is None:
         if schema is not None:
             raise ApplyOpsError(
