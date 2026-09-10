@@ -262,11 +262,10 @@ def test_canonical_depth_two_recursive_helpers_reload_twice_with_parity(
     assert "wf.interfaces =" in source
     assert "wf.boundary_ports =" in source
     assert f" = {inner_name}(wf, input)" in source
-    assert "raw_call(wf, 'EchoImage'" in source
-    assert "wf.connect(" not in source[source.index("def build") :]
+    assert "raw_call('EchoImage', pass_raw=True" in source
+    assert "wf.connect(" not in source
     build_source = source[source.index("def build") :]
-    assert inner_name not in build_source
-    assert outer_name not in build_source
+    assert "wf.definitions = _build_recursive_definitions()" in build_source
 
     path = tmp_path / "depth_two.py"
     path.write_text(source, encoding="utf-8")
@@ -307,10 +306,9 @@ def test_canonical_recursive_callable_source_has_known_unknown_local_nodes() -> 
     source = emit_canonical_python(workflow)
     definition_name = "_definition_" + key.replace(":", "_")
     assert f"def {definition_name}(wf: VibeWorkflow, input: int) -> int:" in source
-    assert "INTConstant(wf, _id='known'" in source
+    assert "INTConstant(value=2)" in source
     assert "from vibecomfy.nodes.kjnodes import INTConstant" in source
-    assert "raw_call(wf, 'MysteryLocal', _id='unknown', pass_raw=True" in source
-    assert "wf.connect('known.0', 'unknown.value')" in source
+    assert "raw_call('MysteryLocal', pass_raw=True" in source
 
 
 def test_canonical_recursive_callable_rejects_malformed_boundary_scope() -> None:

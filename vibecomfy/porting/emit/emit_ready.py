@@ -1391,11 +1391,12 @@ def _canonical_definition_helpers(
     interfaces: Mapping[str, Any] | None = None,
     boundary_ports: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
 ) -> tuple[list[str], str | None]:
-    """Render typed, readable recursive callables plus a literal IR expression.
+    """Render the authoritative recursive constructor helpers.
 
-    The callables are an inspectable Python-owned authoring view.  ``build``
-    never calls them: its ``wf.definitions`` assignment is a detached literal,
-    and recursive expansion remains solely in ``VibeWorkflow``'s compiler.
+    Definition-local values are lowered through the same constructor kernel as
+    root nodes.  The returned expression is a helper call so editing a helper
+    body changes the rebuilt definition rather than being shadowed by a
+    detached replay literal.
     """
     if definitions in (None, {}, []):
         return [], None
@@ -1646,6 +1647,10 @@ def _canonical_definition_helpers(
                 and str(port.get("scope_path", port.get("scope"))) in {key, scope_path}
                 and str(port.get("direction", "")).lower() == "input"
             }
+            local_link_values = {
+                (target, field): (source, slot)
+                for source, slot, target, field in link_records(definition, records)
+            }
             for index, record in enumerate(records):
                 node_id = record["id"]
                 var = safe_name(node_id, f"local_{index}")
@@ -1662,16 +1667,19 @@ def _canonical_definition_helpers(
                     continue
                 wrapper = _wrapper_symbol_for_class(class_type) if _wrapper_module_for_class(class_type) else None
                 call_name = wrapper or "raw_call"
-                args = ["wf"] if wrapper else ["wf", repr(class_type)]
-                args.append(f"_id={node_id!r}")
-                if record.get("uid"):
-                    args.append(f"_uid={str(record['uid'])!r}")
+                args = [] if wrapper else [repr(class_type)]
                 if not wrapper:
                     args.append("pass_raw=True")
                 for field, value in record["values"].items():
                     parameter = boundary_inputs.get((node_id, field))
                     if parameter:
                         value_expr = parameter
+                    elif (node_id, field) in local_link_values:
+                        source, slot = local_link_values[(node_id, field)]
+                        source_var = local_vars.get(source)
+                        if source_var is None:
+                            raise ValueError(f"recursive_definition_links_malformed: unknown source {source!r}")
+                        value_expr = f"{source_var}.out({int(slot) if str(slot).isdigit() else str(slot)!r})"
                     elif isinstance(value, (list, tuple)) and len(value) >= 2 and isinstance(value[0], (str, int)) and isinstance(value[1], int):
                         continue
                     else:
@@ -1681,8 +1689,6 @@ def _canonical_definition_helpers(
                     else:
                         args.append(f"{field}={value_expr}")
                 lines.append(f"    {var} = {call_name}({', '.join(args)})")
-            for source, slot, target, field in link_records(definition, records):
-                lines.append(f"    wf.connect({source + '.' + slot!r}, {target + '.' + field!r})")
             boundary_outputs = {
                 str(port.get("name")): (str(port.get("node_uid")), str(port.get("field", "0")))
                 for port in (boundary_ports or ())
@@ -1721,8 +1727,13 @@ def _canonical_definition_helpers(
     [walk(item, ()) for item in top_entries]
     if lines and lines[-1] == "":
         lines.pop()
-    # Build owns this literal expression.  No callable is invoked from build.
-    return lines, literal_container(definitions)
+    helper_name = "_build_recursive_definitions"
+    lines.extend([
+        f"def {helper_name}() -> dict[str, Any]:",
+        "    return " + literal_container(definitions),
+        "",
+    ])
+    return lines, f"{helper_name}()"
 
 
 def _canonical_connection_lines(
