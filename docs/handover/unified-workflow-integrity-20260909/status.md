@@ -28,6 +28,8 @@ authored overview geometry unchanged and places complete ordered node/port text 
 native-resolution detail band.
 
 - Independent focused renderer/H3/position checks: `9 passed`.
+- Exact Q5 core matrix plus visualization regression: `627 passed, 2 skipped,
+  0 failed/errors` in `200.54s`.
 - Independent full affected delivery matrix before the additional non-mutating test:
   `1045 passed, 11 skipped, 0 failed/errors` in `659.17s`; the added renderer
   non-mutation test separately passes as part of the `5 passed` renderer suite.
