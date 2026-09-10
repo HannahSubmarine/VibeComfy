@@ -22,8 +22,7 @@ Astra found the architecture and whole-file clean-Python contract sound, with tw
 ## Final implementation closure — candidate `949416c3`
 
 The isolated implementation checkout now contains the unified delivery candidate at
-`3c11d81313be5b6c33bddcdb1a6d5a855006564a` plus the bounded visualization correction
-being validated for commit. The current H3 PNG is regenerated from the exact exported
+`477053e00f52bb422745a7d8be96eee475f8776c`. The current H3 PNG is regenerated from the exact exported
 graph and preserves the exported JSON and layout-sidecar hashes. The renderer keeps
 authored overview geometry unchanged and places complete ordered node/port text in a
 native-resolution detail band.
