@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import ctypes
 import json
+import os
 import signal
 import struct
 import subprocess
@@ -968,6 +969,7 @@ def test_daemon_config_carry_through_typed_and_raw_hiddenswitch(
         def __init__(self, config: SessionConfig) -> None:
             self.config = config
             self.url = "http://127.0.0.1:8200"
+            self.process = SimpleNamespace(pid=os.getpid())
             captured.append(config)
 
         async def start(self) -> None:
