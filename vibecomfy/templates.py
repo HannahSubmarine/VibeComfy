@@ -60,7 +60,7 @@ def materialize_recursive_definitions(
             return list(value.values())
         return list(value) if isinstance(value, (list, tuple)) else []
 
-    def node_payload(node: Any, identity: Mapping[str, Any]) -> dict[str, Any]:
+    def node_payload(node: Any, identity: Mapping[str, Any], link_by_target: Mapping[tuple[str, str], int], links_by_source: Mapping[tuple[str, str], list[int]]) -> dict[str, Any]:
         is_handle = hasattr(node, "node_id") and hasattr(node, "output_slot")
         source_node = None if is_handle else getattr(node, "node", node)
         values = deepcopy(getattr(source_node, "inputs", {})) if source_node is not None else {}
@@ -69,7 +69,7 @@ def materialize_recursive_definitions(
             values = [
                 {
                     **{key: deepcopy(item[key]) for key in ("name", "type") if key in item},
-                    "link": None,
+                    "link": link_by_target.get((str(identity.get("id")), str(item.get("name")))),
                     "value": deepcopy(values.get(str(item.get("name")))) if isinstance(values, Mapping) else None,
                 }
                 for item in input_shape
@@ -84,7 +84,13 @@ def materialize_recursive_definitions(
         if identity.get("uid") is not None:
             payload["uid"] = identity["uid"]
         if isinstance(identity.get("output_shape"), (list, tuple)):
-            payload["outputs"] = deepcopy(identity["output_shape"])
+            payload["outputs"] = []
+            for slot, item in enumerate(identity["output_shape"]):
+                row = deepcopy(item) if isinstance(item, Mapping) else {"name": item}
+                source_links = links_by_source.get((str(identity.get("id")), str(slot)))
+                if source_links:
+                    row["links"] = list(source_links)
+                payload["outputs"].append(row)
         for field in (
             "native_input_names", "native_output_names", "native_input_types",
             "native_output_types", "native_input_optional", "native_input_asset_kinds",
@@ -107,11 +113,6 @@ def materialize_recursive_definitions(
         runtime_nodes = list(by_scope.get(scope, ()))
         if not isinstance(identities, (list, tuple)):
             identities = ()
-        result["nodes"] = [
-            node_payload(node, identity)
-            for node, identity in zip(runtime_nodes, identities)
-            if isinstance(identity, Mapping)
-        ]
         runtime_ids = {
             str(getattr(node, "id", getattr(node, "node_id", "")))
             for node in runtime_nodes
@@ -123,18 +124,41 @@ def materialize_recursive_definitions(
             if isinstance(identity, Mapping)
         }
         links: list[list[Any]] = []
+        link_by_target: dict[tuple[str, str], int] = {}
+        links_by_source: dict[tuple[str, str], list[int]] = {}
         for index, edge in enumerate(workflow.edges):
             source = str(edge.from_node)
             target = str(edge.to_node)
             if source in runtime_ids and target in runtime_ids:
+                link_id = len(links) + 1
+                link_by_target[(remap[target], str(edge.to_input))] = link_id
+                links_by_source.setdefault((remap[source], str(edge.from_output)), []).append(link_id)
+                target_identity = next(
+                    (item for item in identities if isinstance(item, Mapping) and str(item.get("id")) == remap[target]),
+                    {},
+                )
+                target_slot: Any = edge.to_input
+                link_type: Any = None
+                target_shape = target_identity.get("input_shape")
+                if isinstance(target_shape, (list, tuple)):
+                    for slot, item in enumerate(target_shape):
+                        if isinstance(item, Mapping) and str(item.get("name")) == str(edge.to_input):
+                            target_slot = slot
+                            link_type = item.get("type")
+                            break
                 links.append([
-                    index + 1,
+                    link_id,
                     remap[source],
                     int(edge.from_output) if str(edge.from_output).isdigit() else edge.from_output,
                     remap[target],
-                    edge.to_input,
-                    None,
+                    target_slot,
+                    link_type,
                 ])
+        result["nodes"] = [
+            node_payload(node, identity, link_by_target, links_by_source)
+            for node, identity in zip(runtime_nodes, identities)
+            if isinstance(identity, Mapping)
+        ]
         result["links"] = links
         nested = definition.get("definitions")
         if nested not in (None, {}, []):

@@ -1528,6 +1528,15 @@ def _canonical_definition_helpers(
 
     def constructor_custody(source: Any) -> Any:
         """Retain shape/identity custody, leaving values to constructors."""
+        def structural_roster(value: Any) -> Any:
+            if not isinstance(value, (list, tuple)):
+                return None
+            return [
+                {key: copy.deepcopy(item[key]) for key in ("name", "type", "slot") if key in item}
+                if isinstance(item, Mapping) else item
+                for item in value
+            ]
+
         if isinstance(source, Mapping):
             if "subgraphs" in source:
                 return {"subgraphs": [constructor_custody(item) for item in entries(source["subgraphs"])]}
@@ -1538,6 +1547,20 @@ def _canonical_definition_helpers(
             }
             result["_scope_key"] = sg_key(source)
             records = node_records(source)
+            local_links = link_records(source, records)
+            deps = {item["id"]: set() for item in records}
+            for origin, _slot, target, _field in local_links:
+                if origin in deps and target in deps:
+                    deps[target].add(origin)
+            ordered_records: list[dict[str, Any]] = []
+            remaining = list(records)
+            while remaining:
+                ready = [item for item in remaining if not (deps[item["id"]] & {other["id"] for other in remaining})]
+                if not ready:
+                    raise ValueError("recursive_definition_links_malformed: cyclic local topology")
+                ordered_records.extend(ready)
+                remaining = [item for item in remaining if item not in ready]
+            records = ordered_records
             result["_constructor_nodes"] = [
                 {
                     **{
@@ -1545,8 +1568,8 @@ def _canonical_definition_helpers(
                         "uid": item.get("uid"),
                         "class_type": item["class_type"],
                         "node_field": item.get("node_field", "class_type"),
-                        "input_shape": copy.deepcopy(item.get("input_shape")),
-                        "output_shape": copy.deepcopy(item.get("output_shape")),
+                        "input_shape": structural_roster(item.get("input_shape")),
+                        "output_shape": structural_roster(item.get("output_shape")),
                     },
                     **{
                         field: copy.deepcopy(item[field])
@@ -1646,6 +1669,12 @@ def _canonical_definition_helpers(
                 raise ValueError(f"recursive_definition_links_malformed: invalid link {link!r}")
             if source is None or target is None or field is None:
                 raise ValueError(f"recursive_definition_links_malformed: incomplete link {link!r}")
+            target_record = next((item for item in records if item["id"] == str(target)), None)
+            if target_record is not None and isinstance(target_record.get("input_shape"), (list, tuple)) and str(field).isdigit():
+                target_inputs = target_record["input_shape"]
+                target_index = int(field)
+                if 0 <= target_index < len(target_inputs) and isinstance(target_inputs[target_index], Mapping):
+                    field = target_inputs[target_index].get("name", field)
             links.append((str(source), str(slot), str(target), str(field)))
         return links
 
@@ -1710,6 +1739,23 @@ def _canonical_definition_helpers(
                 (target, field): (source, slot)
                 for source, slot, target, field in link_records(definition, records)
             }
+            # Normalization orders authored definition nodes by identity, not
+            # execution dependency.  Constructor handles must nevertheless be
+            # bound only after their source variable exists.
+            local_edges = link_records(definition, records)
+            dependencies = {record["id"]: set() for record in records}
+            for source, _slot, target, _field in local_edges:
+                if source in dependencies and target in dependencies:
+                    dependencies[target].add(source)
+            ordered: list[dict[str, Any]] = []
+            remaining = list(records)
+            while remaining:
+                ready = [record for record in remaining if not (dependencies[record["id"]] & {item["id"] for item in remaining})]
+                if not ready:
+                    raise ValueError("recursive_definition_links_malformed: cyclic local topology")
+                ordered.extend(ready)
+                remaining = [record for record in remaining if record not in ready]
+            records = ordered
             for index, record in enumerate(records):
                 node_id = record["id"]
                 var = safe_name(node_id, f"local_{index}")
@@ -1732,7 +1778,13 @@ def _canonical_definition_helpers(
                     args.append("pass_raw=True")
                     if record.get("outputs"):
                         args.append(f"_outputs={render(record['outputs'])}")
-                for field, value in record["values"].items():
+                authored_fields = (
+                    [(str(item.get("name")), item.get("value")) for item in record["input_shape"]
+                     if isinstance(item, Mapping) and isinstance(item.get("name"), str)]
+                    if isinstance(record.get("input_shape"), (list, tuple))
+                    else list(record["values"].items())
+                )
+                for field, value in authored_fields:
                     parameter = boundary_inputs.get((node_id, field))
                     if parameter:
                         value_expr = parameter

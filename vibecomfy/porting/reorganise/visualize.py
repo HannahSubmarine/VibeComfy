@@ -78,6 +78,35 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
             font=font,
         )
 
+    # Links are deliberately drawn first so node cards and port labels remain
+    # legible while the complete authored topology is still visible.
+    by_id = {str(node.get("id")): node for node in nodes}
+    link_rows = [row for row in ui_json.get("links", []) if isinstance(row, (list, tuple)) and len(row) >= 5]
+    input_slots = {
+        str(node.get("id")): {str(item.get("name")): index for index, item in enumerate(node.get("inputs", [])) if isinstance(item, Mapping)}
+        for node in nodes
+    }
+    for link in link_rows:
+        _link_id, source_id, source_slot, target_id, target_slot = link[:5]
+        source = by_id.get(str(source_id))
+        target = by_id.get(str(target_id))
+        source_rect = _node_rect(source) if source else None
+        target_rect = _node_rect(target) if target else None
+        if source_rect is None or target_rect is None:
+            continue
+        sx, sy, sw, sh = source_rect
+        tx_, ty_, _tw, th = target_rect
+        try:
+            source_y = sy + 30 + (int(source_slot) * 18)
+        except (TypeError, ValueError):
+            source_y = sy + sh / 2
+        try:
+            target_index = int(target_slot)
+        except (TypeError, ValueError):
+            target_index = input_slots.get(str(target_id), {}).get(str(target_slot), 0)
+        target_y = ty_ + 30 + (target_index * 18)
+        draw.line([(tx(sx + sw), ty(source_y)), (tx(tx_), ty(target_y))], fill=(55, 75, 95, 210), width=max(2, round(scale * 2)))
+
     for node in nodes:
         rect = _node_rect(node)
         if rect is None:
@@ -92,6 +121,25 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
             outline=(45, 45, 45, 32 if is_support else 170),
             width=1,
         )
+        draw.text((tx(x) + 7, ty(y) + 6), f"{class_type}  [{node.get('id')}]", fill=(20, 25, 30, 255), font=font)
+        inputs = node.get("inputs", [])
+        if isinstance(inputs, list):
+            for index, item in enumerate(inputs):
+                if not isinstance(item, Mapping):
+                    continue
+                py = ty(y + 30 + index * 18)
+                draw.ellipse([tx(x) - 4, py - 3, tx(x) + 3, py + 4], fill=(45, 75, 105, 255))
+                draw.text((tx(x) + 8, py - 6), str(item.get("name") or f"in{index}"), fill=(30, 45, 60, 255), font=font)
+        outputs = node.get("outputs", [])
+        if isinstance(outputs, list):
+            for index, item in enumerate(outputs):
+                if not isinstance(item, Mapping):
+                    continue
+                py = ty(y + 30 + index * 18)
+                draw.ellipse([tx(x + w) - 3, py - 3, tx(x + w) + 4, py + 4], fill=(105, 65, 45, 255))
+                label = str(item.get("name") or f"out{index}")
+                bbox = draw.textbbox((0, 0), label, font=font)
+                draw.text((tx(x + w) - (bbox[2] - bbox[0]) - 8, py - 6), label, fill=(70, 45, 30, 255), font=font)
 
     image.save(path)
 

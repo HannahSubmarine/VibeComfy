@@ -300,6 +300,39 @@ def test_nested_constructor_edit_is_authoritative_for_rebuilt_definition() -> No
     assert node["inputs"]["value"] == 7
 
 
+def test_from_ui_nested_definition_round_trips_authored_roster_and_link_metadata(tmp_path: Path) -> None:
+    raw = {
+        "nodes": [{"id": 1, "type": "RootNode", "class_type": "RootNode", "inputs": [], "outputs": []}],
+        "links": [],
+        "definitions": {"subgraphs": [{
+            "id": "nested",
+            "nodes": [
+                {"id": "source", "type": "SourceNode", "inputs": [], "outputs": [{"name": "value", "type": "INT", "links": [1]}]},
+                {"id": "sink", "type": "SinkNode", "inputs": [{"name": "value", "type": "INT", "link": 1, "value": None}], "outputs": []},
+            ],
+            "links": [[1, "source", 0, "sink", 0, "INT"]],
+        }]},
+    }
+    workflow = from_ui(raw, use_comfy_converter=False)
+    source = emit_canonical_python(workflow)
+    assert "source = raw_call('SourceNode'" in source
+    assert "value=source.out(0)" in source
+    path = tmp_path / "nested.py"
+    path.write_text(source, encoding="utf-8")
+    reloaded = load_agent_generated_scratchpad(path)
+    definition = reloaded.definitions["subgraphs"][0]
+    assert len(definition["nodes"]) == 2
+    assert len(definition["links"]) == 1
+    assert definition["nodes"][1]["inputs"][0]["link"] == definition["links"][0][0]
+    assert definition["nodes"][0]["outputs"][0]["links"] == [definition["links"][0][0]]
+    assert reloaded.semantic_digest() == load_agent_generated_scratchpad(path).semantic_digest()
+    edited = source.replace("raw_call('SourceNode'", "raw_call('EditedSourceNode'", 1)
+    edited_path = tmp_path / "nested-edited.py"
+    edited_path.write_text(edited, encoding="utf-8")
+    changed = load_agent_generated_scratchpad(edited_path)
+    assert changed.definitions["subgraphs"][0]["nodes"][0]["class_type"] == "EditedSourceNode"
+
+
 def test_canonical_recursive_callable_source_has_known_unknown_local_nodes() -> None:
     from vibecomfy.identity.scope import sg_key
 
@@ -457,6 +490,26 @@ def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
     passthrough_reloaded = load_agent_generated_scratchpad(passthrough_path)
     assert set(passthrough_reloaded.nodes) == {"source", "preview", "sink"}
     assert passthrough_reloaded.semantic_digest() == passthrough.semantic_digest()
+
+
+@pytest.mark.parametrize("mode", ["canonical", "ready", "scratchpad"])
+def test_previewany_terminal_has_shared_node_edge_semantic_parity(mode: str, tmp_path: Path) -> None:
+    terminal = VibeWorkflow(f"preview-parity/{mode}", WorkflowSource(f"preview-parity/{mode}"))
+    terminal.nodes["source"] = VibeNode("source", "SchemaLessSource", uid="source", native_output_names=["value"])
+    terminal.nodes["preview"] = VibeNode("preview", "PreviewAny", uid="preview", native_input_names=["source"])
+    terminal.connect("source.value", "preview.source")
+    if mode == "canonical":
+        text = emit_canonical_python(terminal)
+    elif mode == "ready":
+        text = emit_ready_template_python(terminal, ready_metadata={}, ready_requirements={}, template_id=terminal.id)
+    else:
+        text = emit_scratchpad_python(terminal, workflow_id=terminal.id)
+    path = tmp_path / f"{mode}.py"
+    path.write_text(text, encoding="utf-8")
+    reloaded = load_agent_generated_scratchpad(path)
+    assert set(reloaded.nodes) == {"source", "preview"}
+    assert len(reloaded.edges) == 1
+    assert reloaded.semantic_digest() == terminal.semantic_digest()
 
 
 def test_scratchpad_rejects_noncanonical_projection_options() -> None:

@@ -2,8 +2,24 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from PIL import Image
 
 from vibecomfy.porting.reorganise.visualize import render_layout_png
+
+
+def test_render_layout_png_draws_link_titles_and_ports() -> None:
+    ui_json = {"nodes": [
+        {"id": 1, "type": "SourceNode", "pos": [0, 0], "size": [180, 100],
+         "outputs": [{"name": "IMAGE", "links": [7]}]},
+        {"id": 2, "type": "SinkNode", "pos": [320, 0], "size": [180, 100],
+         "inputs": [{"name": "image", "link": 7}]},
+    ], "links": [[7, 1, 0, 2, 0, "IMAGE"]], "groups": []}
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = Path(tmpdir) / "linked.png"
+        render_layout_png(ui_json, path)
+        colors = set(Image.open(path).convert("RGB").getdata())
+        assert len(colors) > 20
+        assert any(sum(pixel) < 260 for pixel in colors)
 
 
 def test_render_layout_png_produces_non_empty_png_from_minimal_ui_json() -> None:

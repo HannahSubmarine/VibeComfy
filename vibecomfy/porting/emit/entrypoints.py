@@ -141,7 +141,7 @@ def emit_ready_template_python(
         apply_overrides=apply_overrides,
         diagnostics=diagnostics,
         object_info_identities=object_info_identities,
-        omit_terminal_ui_only=True,
+        omit_terminal_ui_only=False,
     )
 
 

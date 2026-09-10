@@ -7,9 +7,9 @@ This is one offline source-to-presentation chain using the exact input
 The configured Python 3.11 venv ran `port convert` with
 `PYTHONHASHSEED=0`, `PYTHONPATH=.`, and `VIBECOMFY_ON_DEMAND_SCHEMAS=0`.
 Conversion/build/compile/parity were reported successful. The edited Python
-sets `DEFAULT_SEED = 123` and is SHA-256
-`c3d3d18ab5980a7a0bc021cede9061e98caf4c84a4c781ed479ec76ba722043b`.
-Restricted load/build inspection retained seed 123 on runtime UID `105::15`.
+sets the authoritative prompt to `Edited H3 prompt: blue-hour dance with synchronized stereo audio.`, model to `edited-minimax-h3.safetensors`, seed to 123, steps to 31, duration to 7, LanPaint steps to 9, video to `edited-source.mp4`, keyframes to `{"0":"edited-start.png","42":"edited-mid.png"}`, and audio mask to `[{"start":1.25,"end":2.75}]`. Its SHA-256 is
+`c803f26d928a61eb6bb21513d2f989ddff8b295abd90f8d4ec622c8d0170b7fb`.
+Restricted load/build inspection retained those values on the corresponding runtime nodes.
 The ordinary generated source has no `wf.connect` calls.
 
 The same edited Python was then exported through `port export --to ui
@@ -17,9 +17,9 @@ The same edited Python was then exported through `port export --to ui
 
 | artifact | SHA-256 | exact check |
 |---|---|---|
-| exported UI JSON | `aabcc78801d6df3650a7e51c18a89175580a625c97d604274c03f032cce46ca2` | 20 nodes, 25 links |
+| exported UI JSON | `b398eee26a52518a638b0fd276fb3d7aeadb1a9b2b8f1e4d31260655df759653` | 20 nodes, 25 links; exact exported graph used for rendering |
 | presentation sidecar | `719310b97aff19e578ceed88f84611969678ae271dadcdb53e55e3f78d86820e` | 20 non-empty `entries` |
-| rendered inspection PNG | `64003f670f91d36ae331e15fc76c41192381c637446a73462a459ddfa2ccf0d4` | non-empty, 4,793 bytes |
+| rendered inspection PNG | `7fcaa08663223cbb323421552f03e27e9c460312a653725c9c3bec5db084c3e4` | non-empty and inspectable; rendered from the exact exported graph |
 
 All 20 exported node `properties.vibecomfy_uid` values are present and unique,
 and the sidecar entry keys equal that UID set. The exported `RandomNoise`

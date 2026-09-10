@@ -216,26 +216,9 @@ def _prepare_workflow_for_emit(
     # preserve broadcast resolution in regenerated Python.
     workflow_nodes.update(mode_nodes)
 
-    if omit_terminal_ui_only:
-        # PreviewAny is editor furniture when it is only a terminal display.
-        # Keep it when another authored node consumes its value: in that case
-        # it remains part of the executable graph rather than a UI-only tail.
-        outgoing = {str(edge.from_node) for edge in emission_edges}
-        terminal_ui_only = {
-            str(nid)
-            for nid, node in workflow_nodes.items()
-            if str(node.class_type) == "PreviewAny" and str(nid) not in outgoing
-        }
-        if terminal_ui_only:
-            workflow_nodes = {
-                nid: node for nid, node in workflow_nodes.items()
-                if str(nid) not in terminal_ui_only
-            }
-            emission_edges = [
-                edge for edge in emission_edges
-                if str(edge.from_node) not in terminal_ui_only
-                and str(edge.to_node) not in terminal_ui_only
-            ]
+    # PreviewAny is an authored auxiliary-output node, including when it is a
+    # terminal.  Ready, canonical, and scratchpad emission all use this same
+    # preparation path, so terminal-preview retention must not vary by mode.
     _sync_declared_exec_output_metadata(workflow_nodes)
     if not keep_virtual_wires and not project_execution_edges:
         for nid, node in workflow_nodes.items():

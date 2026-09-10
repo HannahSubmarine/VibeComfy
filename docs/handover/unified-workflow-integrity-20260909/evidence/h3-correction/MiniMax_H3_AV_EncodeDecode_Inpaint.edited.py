@@ -11,8 +11,8 @@ from vibecomfy.nodes.core import BasicGuider, BasicScheduler, CLIPLoader, ComfyM
 
 AUDIO_VAE_NAME = 'minimax_h3_audio_vae_fp32.safetensors'
 CLIP_NAME = 'qwen3vl_32b_minimax_h3_int8_convrot.safetensors'
-DEFAULT_PROMPT = 'PRIESTESS OF THE BLUE HOUR — Dance Music Video\n\nHigh-end 2D anime cinematic look, dance music-video style — delicate, refined hand-drawn animation: fine precise linework with elegant variation in line weight, soft watercolor and airbrush shading instead of hard cel shadows, subtle gradient tints across skin and fabric, gentle film grain, volumetric haze, anamorphic framing, shallow depth of field. The palette is restrained and premium: deep blue-hour dusk, muted neon accents, and the dancer\'s warm white-and-gold as the only saturated warmth. Evoking the delicate hand-drawn elegance of Makoto Shinkai\'s character work and KyoAni\'s refined, graceful linework — never crude, never exaggerated. This is the centerpiece dance sequence of an anime music video: each motion is emotional, fluid, alive.\n\nScene overview: at blue-hour dusk on an empty rain-wet plaza between glowing towers, the dancer moves alone, choreography building from stillness to explosive, every move landing on the musical beats. Her long blonde hair catches the wind; her white-and-gold priestess vestments — layered robes with gold trim, church embroidery, a small pendant at her neck — flare and settle with each motion. Beside her, a cute toy bear — soft plush, glass-button eyes, stitched paws — floats gently, emitting a faint golden glow and a trail of tiny twinkling stars and light particles that drift and spin in the air, catching the neon light like miniature fireflies, reweaving into a halo orbit as she moves. No transformation, no destruction — just her, her dance, the bear, and the city\'s glow.\n\nCharacter design: slender, graceful proportions; a refined, gentle face with soft features and a serene, slightly devout expression — eyes half-lidded, calm; long blonde hair rendered strand by strand, flowing and luminous; her signature white-and-gold priestess outfit drawn with fine elegant lines, layers of cloth that lift and settle beautifully in motion.\n\n0s–1.5s Shot 1 — The Stillness — wide shot: the dancer stands motionless at the center of the plaza, eyes closed, wind catching her hair and the hem of her robes, city lights and mist behind her. The toy bear floats at her side, its button eyes glowing softly, a warm radiance pulsing from its little chest, and a ring of golden sparkles circles it slowly. Behind her, the towers shimmer with neon; the wet pavement mirrors the sky. She breathes — the bear\'s glow flickers gently.\n\n1s–2.5s Shot 2 — The Unfolding — she begins to move: a slow arm extension turning into a spin, long hair sweeping through the air. Her robes flare with the rotation, white cloth catching the blue light, gold trim tracing glowing arcs; the floating sparkles and starlight spiral with her like a comet of tiny lights, one cluster passing close to the camera, its warm glints reflecting in the bear\'s glassy eyes. She opens her eyes — serene, focused — as she completes the turn. Neon light trails and passing cars streak softly behind her, a slight slow-motion feel.\n\n2.5s–4s Shot 3 — The Leap — fast footwork into a leaping turn, body stretching mid-air, robes and hair streaming upward like wings, the halo of golden particles exploding outward and reforming as she twists, the toy bear tumbling playfully through the air alongside her. Wet pavement reflections flash below, softly blurred; the city\'s glow blooms around her silhouette as she soars through the frame. The motion is fluid, weightless, precise — every beat landing.\n\n4s–5s Shot 4 — The Landing — freeze: she lands softly, the momentum settling through her body, robes settling around her, the sparkling lights returning to the bear, which floats down and nestles gently at her side. She strikes the final pose — one arm extended, palm open, head tilted, eyes lowered, a quiet smile. Her lips part and she whispers, "I am the hour." — silhouette against the glowing city, the last tiny star drifting down past her face, holding. Only the shimmer of heat and city light in the air, and the bear\'s soft glow fading.\n\nCamera: each shot its own angle, cuts clean and hard, no dissolves — precise cuts on the beat with a slight, elegant frame jitter on each accent hit; soft lens bloom where the sparkles catch the light; the golden glow of the bear as a secondary light source alongside the blue-hour dusk, warm highlights tracing her profile and the edges of her robes.\n\nAudio: a restrained, atmospheric score — wind, distant city ambience, footsteps on wet pavement, a soft tinkling chime accompanying the bear\'s sparkles on each accent beat, low strings and piano underneath, an accent hit on each beat, the score bursting at 4s as she lands, closing the final 1s in near-silence with only the wind, her breathing, her soft whisper fading, and the faint rustle of plush fur settling.\n\nNo text, subtitles, logos or watermarks of any kind, no 3D-CG or cel-shaded video-game look, no photorealism, no rough or crude linework — keep the delicate hand-drawn 2D anime texture with fine, elegant lines throughout.'
-UNET_NAME = 'minimax_h3_fl2va_pruned_fp8_scaled.safetensors'
+DEFAULT_PROMPT = 'Edited H3 prompt: blue-hour dance with synchronized stereo audio.'
+UNET_NAME = 'edited-minimax-h3.safetensors'
 VIDEO_VAE_NAME = 'minimax_h3_video_vae_fp16.safetensors'
 DEFAULT_SEED = 123
 
@@ -650,16 +650,16 @@ def build() -> VibeWorkflow:
     markdownnote_3 = raw_call('MarkdownNote')
 
     lanpaint_videomaskeditor = raw_call('LanPaint_VideoMaskEditor',
-        video='Masked_LoadMe.mp4',
-        keyframes='{"0":"lanpaint_kf_1786525157475_0.png","41":"lanpaint_kf_1786525157475_41.png","42":"lanpaint_kf_1786525157475_42.png","56":"lanpaint_kf_1786525157475_56.png","64":"lanpaint_kf_1786525157475_64.png","65":"lanpaint_kf_1786525157475_65.png","66":"lanpaint_kf_1786525157475_66.png","70":"lanpaint_kf_1786525157475_70.png","78":"lanpaint_kf_1786525157475_78.png","82":"lanpaint_kf_1786525157475_82.png","83":"lanpaint_kf_1786525157475_83.png","86":"lanpaint_kf_1786525157475_86.png","87":"lanpaint_kf_1786525157475_87.png","88":"lanpaint_kf_1786525157475_88.png","89":"lanpaint_kf_1786525157475_89.png","92":"lanpaint_kf_1786525157475_92.png","98":"lanpaint_kf_1786525157475_98.png","106":"lanpaint_kf_1786525157475_106.png","112":"lanpaint_kf_1786525157475_112.png","115":"lanpaint_kf_1786525157475_115.png","116":"lanpaint_kf_1786525157475_116.png","117":"lanpaint_kf_1786525157475_117.png","121":"lanpaint_kf_1786525157475_121.png","122":"lanpaint_kf_1786525157475_122.png","123":"lanpaint_kf_1786525157475_123.png"}',
-        audio_mask='[{"start":3.7479933970546644,"end":5.161482918309433}]',
+        video='edited-source.mp4',
+        keyframes='{"0":"edited-start.png","42":"edited-mid.png"}',
+        audio_mask='[{"start":1.25,"end":2.75}]',
     )
 
     markdownnote_4 = raw_call('MarkdownNote')
 
     comfymathexpression = ComfyMathExpression(
         expression='max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17',
-        **{'values.a': 5},
+        **{'values.a': 7},
     )
 
     # Loaders
@@ -695,7 +695,7 @@ def build() -> VibeWorkflow:
 
     basicscheduler = BasicScheduler(
         scheduler='simple',
-        steps=20,
+        steps=31,
         denoise=1,
         model=unetloader.out('MODEL'),
     )
@@ -706,7 +706,7 @@ def build() -> VibeWorkflow:
     )
 
     lanpaint_samplercustomadvanced = raw_call('LanPaint_SamplerCustomAdvanced',
-        LanPaint_NumSteps=5,
+        LanPaint_NumSteps=9,
         LanPaint_Lambda=5,
         LanPaint_StepSize=0.2,
         LanPaint_PromptMode='Image First',
