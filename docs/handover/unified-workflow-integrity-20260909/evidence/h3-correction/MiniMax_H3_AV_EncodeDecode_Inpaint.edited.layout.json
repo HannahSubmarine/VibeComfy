@@ -1,0 +1,418 @@
+{
+  "store_version": 2,
+  "vibecomfy_version": "2.8.0",
+  "schema_hash": "4e171992d8e27611",
+  "entries": {
+    "92": {
+      "pos": [
+        2600,
+        0
+      ],
+      "size": [
+        320,
+        96
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "SaveVideo_0",
+        "Node name for S&R": "SaveVideo",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "92"
+      }
+    },
+    "115": {
+      "pos": [
+        0,
+        680
+      ],
+      "size": [
+        320,
+        96
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "ResolutionSelector_1",
+        "Node name for S&R": "ResolutionSelector",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "115"
+      }
+    },
+    "116": {
+      "pos": [
+        3520,
+        0
+      ],
+      "size": [
+        320,
+        30
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "MarkdownNote_2",
+        "Node name for S&R": "MarkdownNote",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "116"
+      }
+    },
+    "117": {
+      "pos": [
+        4440,
+        0
+      ],
+      "size": [
+        320,
+        30
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "MarkdownNote_3",
+        "Node name for S&R": "MarkdownNote",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "117"
+      }
+    },
+    "118": {
+      "pos": [
+        5360,
+        0
+      ],
+      "size": [
+        320,
+        30
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "MarkdownNote_4",
+        "Node name for S&R": "MarkdownNote",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "118"
+      }
+    },
+    "164": {
+      "pos": [
+        0,
+        408
+      ],
+      "size": [
+        320,
+        96
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "LanPaint_VideoMaskEditor_5",
+        "Node name for S&R": "LanPaint_VideoMaskEditor",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "164"
+      }
+    },
+    "170": {
+      "pos": [
+        6280,
+        0
+      ],
+      "size": [
+        320,
+        30
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "MarkdownNote_6",
+        "Node name for S&R": "MarkdownNote",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "170"
+      }
+    },
+    "105::104": {
+      "pos": [
+        520,
+        0
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "MiniMaxH3ImageToVideo_7",
+        "Node name for S&R": "MiniMaxH3ImageToVideo",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "105::104"
+      }
+    },
+    "105::107": {
+      "pos": [
+        0,
+        136
+      ],
+      "size": [
+        320,
+        74
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "ComfyMathExpression_8",
+        "Node name for S&R": "ComfyMathExpression",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::107"
+      }
+    },
+    "105::11": {
+      "pos": [
+        0,
+        952
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "VAELoader_9",
+        "Node name for S&R": "VAELoader",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::11"
+      }
+    },
+    "105::13": {
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        320,
+        96
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "CLIPLoader_10",
+        "Node name for S&R": "CLIPLoader",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::13"
+      }
+    },
+    "105::15": {
+      "pos": [
+        0,
+        544
+      ],
+      "size": [
+        320,
+        74
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "RandomNoise_11",
+        "Node name for S&R": "RandomNoise",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::15"
+      }
+    },
+    "105::159": {
+      "pos": [
+        1560,
+        0
+      ],
+      "size": [
+        320,
+        140
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "LanPaint_SamplerCustomAdvanced_12",
+        "Node name for S&R": "LanPaint_SamplerCustomAdvanced",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "105::159"
+      }
+    },
+    "105::16": {
+      "pos": [
+        1040,
+        0
+      ],
+      "size": [
+        320,
+        30
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "BasicGuider_13",
+        "Node name for S&R": "BasicGuider",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::16"
+      }
+    },
+    "105::166": {
+      "pos": [
+        520,
+        136
+      ],
+      "size": [
+        320,
+        30
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "LanPaint_AVEncode_14",
+        "Node name for S&R": "LanPaint_AVEncode",
+        "vibecomfy_uid": "105::166"
+      }
+    },
+    "105::168": {
+      "pos": [
+        2080,
+        0
+      ],
+      "size": [
+        320,
+        74
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "LanPaint_AVDecode_15",
+        "Node name for S&R": "LanPaint_AVDecode",
+        "_vibecomfy_schema_provider": "widget_schema",
+        "vibecomfy_uid": "105::168"
+      }
+    },
+    "105::17": {
+      "pos": [
+        0,
+        272
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "KSamplerSelect_16",
+        "Node name for S&R": "KSamplerSelect",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::17"
+      }
+    },
+    "105::24": {
+      "pos": [
+        0,
+        1088
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "VAELoader_17",
+        "Node name for S&R": "VAELoader",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::24"
+      }
+    },
+    "105::6": {
+      "pos": [
+        0,
+        816
+      ],
+      "size": [
+        320,
+        74
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "UNETLoader_18",
+        "Node name for S&R": "UNETLoader",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::6"
+      }
+    },
+    "105::9": {
+      "pos": [
+        520,
+        272
+      ],
+      "size": [
+        320,
+        96
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "vibecomfy_id": "BasicScheduler_19",
+        "Node name for S&R": "BasicScheduler",
+        "_vibecomfy_schema_provider": "object_info_index",
+        "vibecomfy_uid": "105::9"
+      }
+    }
+  },
+  "groups": [],
+  "extra": {
+    "vibecomfy": {
+      "layout_version": "m4",
+      "source_template": "MiniMax_H3_AV_EncodeDecode_Inpaint",
+      "prior_path": "/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/docs/handover/unified-workflow-integrity-20260909/evidence/h3-correction/MiniMax_H3_AV_EncodeDecode_Inpaint.edited.py"
+    }
+  },
+  "lastRerouteId": null,
+  "definitions": {},
+  "virtual_wires": {},
+  "unkeyed": []
+}

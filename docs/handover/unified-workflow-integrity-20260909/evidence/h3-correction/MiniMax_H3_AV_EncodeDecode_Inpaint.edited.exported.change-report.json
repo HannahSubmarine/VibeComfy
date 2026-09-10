@@ -1,0 +1,48 @@
+{
+  "change_report": {
+    "content_edits": {
+      "edited": [],
+      "new_auto_placed": [
+        "105::104",
+        "105::107",
+        "105::11",
+        "105::13",
+        "105::15",
+        "105::159",
+        "105::16",
+        "105::166",
+        "105::168",
+        "105::17",
+        "105::24",
+        "105::6",
+        "105::9",
+        "115",
+        "116",
+        "117",
+        "118",
+        "164",
+        "170",
+        "92"
+      ],
+      "preserved": [],
+      "removed": [],
+      "removed_named": [],
+      "stripped_helpers": [],
+      "virtual_wires_degraded": []
+    },
+    "identity_stabilization": {
+      "bridge_minted": [],
+      "definition_relayout": [],
+      "unmatched_legacy": []
+    }
+  },
+  "felt": {
+    "latency": null,
+    "ok": true,
+    "skipped_snapshot_absent": false,
+    "summary": "felt gate skipped: no prior layout store available",
+    "violations": []
+  },
+  "latency": null,
+  "version": 1
+}
