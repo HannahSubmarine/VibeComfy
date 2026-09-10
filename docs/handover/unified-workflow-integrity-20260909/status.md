@@ -2,19 +2,37 @@
 
 # Status
 
-Planning-only handover. Product delivery has not started. I1–I10 are `NOT RUN / MISSING`.
+Delivery is complete in the isolated candidate checkout pending the final Astra
+review. I1–I10 have exact-candidate evidence recorded in the run evidence
+directory; the ledger uses `EVIDENCE RECORDED — final review pending` until the
+final review disposition is written.
 
 The committed H3/native milestone is reused as historical prerequisite. The later D1 natural-Python contract is adopted but not implemented or certified. The standalone Pythonic plan is retired into the source run's absorbed revision; its old patch is provenance only.
 
 Counters: reviews 6/11 total, with 5 future calls available across the two stages (2 intermediate, 3 final). Oracle calls 6/7 combined, with 1 prospective call available after inherited D1. Do not reset or add stages.
 
-The current-main H3 onboarding baseline refused conversion because `MiniMaxH3ImageToVideo` and related schema inputs are unresolved and the CLIP `minimax` enum is unavailable. No fresh Python was produced. See `evidence/h3-main-baseline.md`; this is baseline evidence, not completion proof.
+The current-main H3 onboarding baseline refused conversion because `MiniMaxH3ImageToVideo` and related schema inputs are unresolved and the CLIP `minimax` enum is unavailable. The delivery candidate now produces a draft Python artifact and preserves the same limitation as a strict-ready/runtime blocker; see `evidence/h3-main-baseline.md` and the current H3 evidence.
 
 Source closure is resolved: the pinned main contains all selected behavior, no dirty patch required. Skills SHA and direct-read access are verified; provenance.md and dependencies.md record them. The recipient verifies its own clean checkout, manifest, environment and native capabilities before any authorized delivery. The copy-paste message is assets/handover-message.md. No preparer placeholder remains.
 
 The latest user authorized one additional Astra high planning sense check (one call added and spent). Existing execution-stage allowances remain 2 + 3; oracle remains 6/7. This is planning assessment, not implementation evidence.
 
-Astra found the architecture and whole-file clean-Python contract sound, with two required evidence clarifications now adopted: shared ingress-owner parity including refusal, and inspection of the exact exported graph plus whole Python file. Implementation evidence remains NOT RUN / MISSING.
+Astra found the architecture and whole-file clean-Python contract sound, with two required evidence clarifications now adopted: shared ingress-owner parity including refusal, and inspection of the exact exported graph plus whole Python file. The implementation evidence is now recorded in `evidence/entrypoint-parity/` and `evidence/h3/`.
+
+## Delivery evidence — candidate `0ebbf076` (final review pending)
+
+- Q5 configured matrix: `617 passed, 2 skipped, 0 failed/errors`.
+- Expanded affected matrix including CLI/native/UI-emitter, foundation, edge-case
+  and codemod coverage: `941 passed, 11 skipped, 0 failed/errors`.
+- Luna save/export completion review: `PASS` for I1/I2/I3/I7/I8/I9.
+- Exact H3 source SHA-256: `2dd64fe26c42281962e434841c458cc935b1d1858e83093b882bbaeb02dc3121`.
+- Exact edited Python: `evidence/h3/MiniMax_H3_AV_EncodeDecode_Inpaint.edited.py`,
+  SHA-256 `a5f0e776f625b5b940eb7053af76eeb404b8df155f384b03bdaf132bb7b827cb`.
+- Exact edited export: `evidence/h3/MiniMax_H3_AV_EncodeDecode_Inpaint.edited.exported.json`,
+  SHA-256 `7c2cbdd0e0f5f4b8a1624cdb3188feb3b9c0670c97c9d61fad2cc2dfa8b720e7`;
+  20 nodes / 25 links. Layout sidecar and PNG are present beside it.
+- CLI/SDK/direct-UI/canvas valid parity and malformed-boundary refusal are recorded
+  in `evidence/entrypoint-parity/parity-report.json`.
 
 ## Latest user authorization — execute
 

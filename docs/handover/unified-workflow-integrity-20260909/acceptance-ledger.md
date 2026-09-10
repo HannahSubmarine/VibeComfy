@@ -13,7 +13,7 @@ This existing file is retained as the single criterion source, not a new approva
 | P5 | Adequate planning challenge and review-policy consistency; P2,P3,P4 | Historical independent discovery/contract/Astra evidence preserved; new skill does not require rerunning certification merely to edit a plan. v3 coordinator checks configuration/packet consistency, not a new oracle verdict |
 | P6 | Practical example, sequence, estimate and explicit unknowns; P2,P3,P5 | Same 20→30 example, two-segment path and estimate in plan.md |
 
-Previous frozen P PASS entries, review counts and rulings are archived under the original run history (counts and surviving dispositions summarized in status.md). No historical rejection, critique or correction is removed. Delivery evidence below is MISSING; no product acceptance has been passed by this update.
+Previous frozen P PASS entries, review counts and rulings are archived under the original run history (counts and surviving dispositions summarized in status.md). No historical rejection, critique or correction is removed. Delivery evidence for the current candidate is recorded in the run evidence directory and summarized below; final integrated review remains pending.
 
 ## Prospective implementation criteria
 
@@ -46,7 +46,13 @@ Meaningful prompt, model, source, mask and interval controls are permitted as na
 
 ## Astra sense-check acceptance clarification — 2026-09-09
 
-These two in-scope evidence requirements close the explicitly requested clean-Python/elegant-ingestion end state. They add no architecture, task family, product authorization or review stage. All remain NOT RUN / MISSING.
+These two in-scope evidence requirements close the explicitly requested clean-Python/elegant-ingestion end state. They add no architecture, task family, product authorization or review stage. Exact-candidate evidence is recorded in the run evidence directory; final Astra review remains the last disposition.
+
+## Current candidate evidence status — final review pending
+
+I1, I2, I3, I4, I5, I6, I7, I8, I9 and I10: `EVIDENCE RECORDED — final review pending`.
+The configured and expanded affected test gates are green, and the final review
+packet supplies the criterion-by-criterion commands, inputs, results and hashes.
 
 ### I10 / E2 — inspect the exact visible result
 
