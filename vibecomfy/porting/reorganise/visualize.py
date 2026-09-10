@@ -53,7 +53,12 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
     def ty(y: float) -> int:
         return round((y - min_y) * scale + margin)
 
-    image = Image.new("RGB", (canvas_w, canvas_h), "#f7f7f4")
+    detail_lines = [_detail_lines(node) for node in nodes]
+    detail_row_h = 58
+    detail_margin = 24
+    detail_w = max(canvas_w, 2200)
+    detail_h = detail_margin * 2 + detail_row_h * ((len(detail_lines) + 1) // 2)
+    image = Image.new("RGB", (detail_w, canvas_h + detail_h), "#f7f7f4")
     draw = ImageDraw.Draw(image, "RGBA")
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
@@ -144,6 +149,20 @@ def write_layout_png(ui_json: Mapping[str, Any], path: Path) -> None:
                 bbox = draw.textbbox((0, 0), label, font=font)
                 draw.text((tx(x + w) - (bbox[2] - bbox[0]) - 10, py - 9), label, fill=(70, 45, 30, 255), font=font)
 
+    detail_top = canvas_h
+    draw.line([(0, detail_top), (detail_w, detail_top)], fill=(110, 120, 130, 180), width=2)
+    draw.text((detail_margin, detail_top + 8), "Node detail (native resolution)", fill=(25, 35, 45, 255), font=font)
+    detail_top += 24
+    column_w = (detail_w - detail_margin * 3) // 2
+    for index, lines in enumerate(detail_lines):
+        column = index % 2
+        row = index // 2
+        x = detail_margin + column * (column_w + detail_margin)
+        y = detail_top + row * detail_row_h
+        draw.rectangle([x, y, x + column_w, y + detail_row_h - 8], fill=(255, 255, 255, 180), outline=(170, 180, 190, 220))
+        for line_index, line in enumerate(lines):
+            draw.text((x + 8, y + 5 + line_index * 15), line, fill=(25, 35, 45, 255), font=font)
+
     image.save(path)
 
 
@@ -191,6 +210,17 @@ def _node_rect(node: Mapping[str, Any]) -> tuple[float, float, float, float] | N
     # than the readable 14px label font.
     height = max(height, 52.0 + 28.0 * max(len(inputs), len(outputs)))
     return (_number(pos[0], 0.0), _number(pos[1], 0.0), width, height)
+
+
+def _detail_lines(node: Mapping[str, Any]) -> tuple[str, str, str]:
+    """Build readable renderer-only detail text in authored port order."""
+    node_id = node.get("id", "?")
+    title = str(node.get("type") or node.get("class_type") or "Node")
+    inputs = node.get("inputs") if isinstance(node.get("inputs"), list) else []
+    outputs = node.get("outputs") if isinstance(node.get("outputs"), list) else []
+    input_names = ", ".join(str(item.get("name") or "in") for item in inputs if isinstance(item, Mapping)) or "—"
+    output_names = ", ".join(str(item.get("name") or "out") for item in outputs if isinstance(item, Mapping)) or "—"
+    return (f"[{node_id}] {title}", f"in: {input_names}", f"out: {output_names}")
 
 
 def _group_rect(group: Mapping[str, Any]) -> tuple[float, float, float, float] | None:

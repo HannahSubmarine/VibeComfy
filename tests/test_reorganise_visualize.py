@@ -4,7 +4,48 @@ import tempfile
 from pathlib import Path
 from PIL import Image
 
-from vibecomfy.porting.reorganise.visualize import render_layout_png
+from vibecomfy.porting.reorganise.visualize import _detail_lines, _node_rect, render_layout_png
+
+
+def test_render_detail_preserves_authored_geometry_and_input() -> None:
+    node = {
+        "id": 171,
+        "type": "MiniMaxH3ImageToVideo",
+        "pos": [520, 0],
+        "size": [320, 52],
+        "inputs": [{"name": "clip"}, {"name": "vae"}],
+        "outputs": [{"name": "IMAGE"}],
+    }
+    authored = {key: value.copy() if isinstance(value, list) else value for key, value in node.items()}
+
+    assert _node_rect(node) == (520.0, 0.0, 320.0, 52.0)
+    assert _detail_lines(node) == (
+        "[171] MiniMaxH3ImageToVideo",
+        "in: clip, vae",
+        "out: IMAGE",
+    )
+    assert node == authored
+
+
+def test_render_layout_png_draws_link_titles_and_ports() -> None:
+    ui_json = {
+        "nodes": [
+            {"id": 1, "type": "SourceNode", "pos": [0, 0], "size": [180, 100],
+             "outputs": [{"name": "IMAGE", "links": [7]}]},
+            {"id": 2, "type": "SinkNode", "pos": [320, 0], "size": [180, 100],
+             "inputs": [{"name": "image", "link": 7}]},
+        ],
+        "links": [[7, 1, 0, 2, 0, "IMAGE"]],
+        "groups": [],
+    }
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = Path(tmpdir) / "linked.png"
+        render_layout_png(ui_json, path)
+        image = Image.open(path).convert("RGB")
+        colors = set(image.getdata())
+        assert len(colors) > 20
+        # The dark edge is behind the cards and therefore survives between them.
+        assert any(sum(pixel) < 260 for pixel in colors)
 
 
 def test_render_layout_png_draws_link_titles_and_ports() -> None:
@@ -60,6 +101,7 @@ def test_render_layout_png_produces_non_empty_png_from_minimal_ui_json() -> None
 
         assert png_path.exists(), "PNG file must be created"
         assert png_path.stat().st_size > 0, "PNG file must be non-empty"
+        assert Image.open(png_path).height > 220, "detail band must be appended below the overview"
 
 
 def test_render_layout_png_produces_non_empty_png_from_fixture_json() -> None:
