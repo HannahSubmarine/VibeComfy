@@ -718,20 +718,33 @@ def _repo_relative_provenance_path(path: str) -> str:
 
 def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     model_assets = workflow.metadata.get("model_assets")
-    current_model_names = {
-        str(item.get("value"))
-        for item in _referenced_model_values_for_workflow(workflow)
-        if isinstance(item, Mapping) and item.get("value")
-    }
+    current_model_names: list[str] = []
+    seen_names: set[str] = set()
+    for item in _referenced_model_values_for_workflow(workflow):
+        if not isinstance(item, Mapping) or not item.get("value"):
+            continue
+        name = str(item["value"])
+        if name not in seen_names:
+            seen_names.add(name)
+            current_model_names.append(name)
     if isinstance(model_assets, list):
-        models = [
+        rich = [
             item for item in model_assets
             if isinstance(item, Mapping)
-            and (not current_model_names or str(item.get("name", item.get("filename", ""))) in current_model_names)
+            and str(item.get("name", item.get("filename", ""))) in seen_names
         ]
-        if not models and current_model_names:
-            models = list(workflow.requirements.models)
+        by_name = {
+            str(item.get("name", item.get("filename", ""))): item
+            for item in rich
+        }
+        models = [by_name.get(name, name) for name in current_model_names]
+        if not current_model_names:
+            models = []
     else:
+        models = list(current_model_names)
+    # Empty model references retain the historical requirements witness. This
+    # matters for drafts whose graph has not yet acquired a model picker.
+    if not current_model_names and not isinstance(model_assets, list):
         models = list(workflow.requirements.models)
     requirements = {
         "models": models,

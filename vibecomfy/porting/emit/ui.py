@@ -217,7 +217,7 @@ def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str,
         group = group_for_node.get(native_id)
         if group is not None:
             entry["group"] = str(group)
-        if owner is None or not owner.uid:
+        if owner is None or not owner.uid or raw_class_type in UI_ONLY_CLASS_TYPES:
             entry["class_type"] = str(raw_class_type)
         nodes[uid] = entry
         if raw_class_type in UI_ONLY_CLASS_TYPES:
@@ -4872,6 +4872,45 @@ def _overlay_validated_presentation(
         if isinstance(node, Mapping) and type(node.get("id")) is int
     }
 
+    def _remint_conflicting_emitted_node(native_id: int) -> None:
+        """Move an auto-assigned semantic node out of a retained canvas ID.
+
+        Nested native expansion can allocate an executable node ID that was
+        used by an authored UI-only note in the source canvas.  The note's
+        captured ID is part of presentation custody, so preserve it and
+        remint only the generated semantic node.  Top-level links are the
+        only graph records that carry node IDs in this envelope.
+        """
+        replacement = max(native_ids, default=0) + 1
+        while replacement in native_ids:
+            replacement += 1
+        conflict = next(
+            (
+                node
+                for node in emitted_nodes
+                if isinstance(node, Mapping) and node.get("id") == native_id
+            ),
+            None,
+        )
+        if conflict is None:
+            raise ValueError(f"sidecar native node id collision for {native_id}")
+        conflict["id"] = replacement
+        links = envelope.get("links", [])
+        if isinstance(links, list):
+            for link in links:
+                if isinstance(link, list) and len(link) >= 4:
+                    if link[1] == native_id:
+                        link[1] = replacement
+                    if link[3] == native_id:
+                        link[3] = replacement
+                elif isinstance(link, Mapping):
+                    if link.get("origin_id") == native_id:
+                        link["origin_id"] = replacement
+                    if link.get("target_id") == native_id:
+                        link["target_id"] = replacement
+        native_ids.discard(native_id)
+        native_ids.add(replacement)
+
     # UI-only furniture has no executable VibeNode, but it is still part of
     # the captured presentation custody.  Recreate the allowlisted note
     # classes from their sidecar record so materialization does not silently
@@ -4891,7 +4930,7 @@ def _overlay_validated_presentation(
             native_id = next_ui_only_id
             next_ui_only_id += 1
         if native_id in native_ids:
-            raise ValueError(f"sidecar native node id collision for {native_id}")
+            _remint_conflicting_emitted_node(native_id)
         node: dict[str, Any] = {
             "id": native_id,
             "type": class_type,

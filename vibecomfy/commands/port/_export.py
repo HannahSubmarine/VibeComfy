@@ -415,6 +415,19 @@ def _read_canonical_presentation_store(
     ``None`` means that this Python source is not a v2 pair; an empty store is
     still meaningful for a valid semantic-only capture.
     """
+    presentation = _read_canonical_presentation(py_path, workflow)
+    if presentation is None:
+        return None
+
+    from vibecomfy.porting.emit.ui import canonical_presentation_to_layout_store
+    return canonical_presentation_to_layout_store(presentation.get("presentation", presentation))
+
+
+def _read_canonical_presentation(
+    py_path: Path,
+    workflow: Any,
+) -> dict[str, Any] | None:
+    """Return validated v2 presentation without projecting it through legacy storage."""
     companion_path = py_path.with_suffix(".vibe.json")
     if not companion_path.is_file():
         return None
@@ -425,11 +438,20 @@ def _read_canonical_presentation_store(
     if not isinstance(payload, dict) or payload.get("format_version") != 2:
         return None
 
-    from vibecomfy.porting.emit.ui import canonical_presentation_to_layout_store
     from vibecomfy.workflow_bundle import validate_sidecar
 
     validated = validate_sidecar(payload, workflow)
-    return canonical_presentation_to_layout_store(validated["presentation"])
+    # emit_ui_json's established presentation mode consumes the validated
+    # v1-shaped presentation envelope; retain every canonical field while
+    # avoiding the lossy legacy layout-store projection.
+    return {
+        "format_version": 1,
+        "bind": {
+            "workflow_identity": workflow.id,
+            "semantic_digest": workflow.semantic_digest(),
+        },
+        **deepcopy(validated["presentation"]),
+    }
 
 
 def _should_persist_sidecar(args: argparse.Namespace) -> bool:
@@ -490,6 +512,13 @@ def _cmd_port_export(args: argparse.Namespace) -> int:
             else:
                 py_path = Path(args.workflow)
             store, prior_path_str, from_overrides, prior_ui_payload = _resolve_preserve_source(args, py_path, workflow)
+            # A canonical v2 pair owns its presentation records directly. Keep
+            # the legacy store only for reports/persistence and explicit
+            # --from overlays; passing it to emit_ui_json would drop note
+            # widgets/content and presentation-only geometry.
+            canonical_presentation = None
+            if not getattr(args, "fresh", False) and not getattr(args, "from_path", None):
+                canonical_presentation = _read_canonical_presentation(py_path, workflow)
             if store is not None and "groups" in store:
                 workflow.groups = deepcopy(store["groups"])
 
@@ -512,18 +541,23 @@ def _cmd_port_export(args: argparse.Namespace) -> int:
             _force_drop = bool(getattr(args, "force_drop", False))
             # Wrap emit_ui_json so we can retry with --force-drop on EditorAheadError.
             _emit_kwargs: dict[str, Any] = dict(
-                prior_store=store,
-                prior_path=prior_path_str,
                 strict=getattr(args, "strict", False),
                 include_main_positions=getattr(args, "main_positions", False),
                 include_virtual_wires=not getattr(args, "no_virtual_wires", False),
                 recovery_report=recovery_report,
-                extra=sidecar_extra,
-                definitions=sidecar_definitions,
                 change_report_out=change_report_out,
-                guard_original_ui=guard_original_ui,
-                prior_ui_payload=prior_ui_payload,
             )
+            if canonical_presentation is not None:
+                _emit_kwargs["presentation"] = canonical_presentation
+            else:
+                _emit_kwargs.update(
+                    prior_store=store,
+                    prior_path=prior_path_str,
+                    extra=sidecar_extra,
+                    definitions=sidecar_definitions,
+                    guard_original_ui=guard_original_ui,
+                    prior_ui_payload=prior_ui_payload,
+                )
             try:
                 ui_payload = _port.emit_ui_json(
                     workflow,

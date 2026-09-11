@@ -82,27 +82,26 @@ def _prepare_workflow_for_emit(
     if prune_dead_branches and not getattr(workflow, "edges", ()):
         prune_dead_branches = False
 
-    # Pure UI furniture (notes/labels) is normally stripped. Keep it when it is
-    # wired as a live passthrough so fidelity emission never severs an authored
-    # edge. Auxiliary output nodes are semantic graph members and therefore are
-    # not classified as UI-only here, even when their main purpose is preview.
-    ui_only_passthroughs: set[str] = set()
-    if not prune_dead_branches:
-        for edge in workflow.edges:
-            src = workflow.nodes.get(str(edge.from_node))
-            dst = workflow.nodes.get(str(edge.to_node))
-            if (
-                src is not None
-                and dst is not None
-                and src.class_type in UI_ONLY_CLASS_TYPES
-                and dst.class_type not in UI_ONLY_CLASS_TYPES
-            ):
-                ui_only_passthroughs.add(str(edge.from_node))
+    # UI-only classes belong to the presentation/annotation projection, never
+    # executable Python.  A semantic edge involving one is unrepresentable;
+    # fail closed instead of emitting a source file that calls Note nodes.
+    for edge in workflow.edges:
+        src = workflow.nodes.get(str(edge.from_node))
+        dst = workflow.nodes.get(str(edge.to_node))
+        if (
+            (src is not None and src.class_type in UI_ONLY_CLASS_TYPES)
+            or (dst is not None and dst.class_type in UI_ONLY_CLASS_TYPES)
+        ) and not (
+            src is not None and dst is not None
+            and src.class_type in UI_ONLY_CLASS_TYPES
+            and dst.class_type in UI_ONLY_CLASS_TYPES
+        ):
+            raise ConversionParityError("UI-only node cannot participate in semantic execution edges")
     authored_nodes = {
         str(nid): copy.deepcopy(node)
         for nid, node in workflow.nodes.items()
         if (
-            (node.class_type not in UI_ONLY_CLASS_TYPES or str(nid) in ui_only_passthroughs)
+            node.class_type not in UI_ONLY_CLASS_TYPES
         )
     }
     from vibecomfy.workflow import mode_to_litegraph  # noqa: PLC0415
@@ -128,6 +127,17 @@ def _prepare_workflow_for_emit(
         projection_source.definitions = {}
         projection_source.interfaces = {}
         projection_source.boundary_ports = []
+        # Build the projection from the same filtered authored graph used by
+        # the emitter.  Filtering only the later ``workflow_nodes`` roster is
+        # insufficient: _execution_projection() would otherwise reintroduce
+        # disconnected UI-only notes/labels into the generated Python.
+        projection_source.nodes = copy.deepcopy(authored_nodes)
+        projection_source.edges = [
+            copy.deepcopy(edge)
+            for edge in workflow.edges
+            if str(edge.from_node) in authored_nodes
+            and str(edge.to_node) in authored_nodes
+        ]
         # Public descriptors are restored from the authored workflow after
         # construction.  They must not turn source generation for a valid
         # unfinished draft into an execution-readiness gate.

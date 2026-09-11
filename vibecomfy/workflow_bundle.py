@@ -869,6 +869,18 @@ def _validate_v2_sidecar(
         valid_node_refs=valid_node_refs,
         valid_groups=valid_groups,
     )
+    # v2 materialization has one supported annotation form: a UI-only node
+    # owned by itself in the presentation map.  Keep this stricter than the
+    # legacy annotation adapter so an annotation cannot name a different
+    # owner or disappear during canonical export.
+    for index, annotation in enumerate(annotations):
+        where = f"workflow presentation annotation {index}"
+        owner = annotation["owner"]
+        if owner["kind"] != "node" or annotation["annotation_id"] != owner["uid"]:
+            raise WorkflowBundleError(f"{where} must be a self-owned node annotation")
+        entry = presentation_nodes.get(owner["uid"]) if isinstance(presentation_nodes, Mapping) else None
+        if not isinstance(entry, Mapping) or entry.get("class_type") != annotation["class_type"]:
+            raise WorkflowBundleError(f"{where} does not match a presentation node")
     # API-only captures have no canvas furniture to validate.  Their empty
     # presentation is intentional; requiring UI foreign keys here would turn
     # a semantic-only graph (which may still contain executable edges) into a

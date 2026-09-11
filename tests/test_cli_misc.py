@@ -171,6 +171,28 @@ def test_copy_to_recipe_unknown_id_returns_nonzero(capsys: pytest.CaptureFixture
     assert captured.err or captured.out
 
 
+def test_copy_to_recipe_publishes_marked_v2_pair_and_refuses_conflicts(tmp_path: Path) -> None:
+    from tests.test_workflow_bundle import _nonempty_workflow
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle, load_bundle
+
+    source = tmp_path / "source.py"
+    destination = tmp_path / "recipe.py"
+    emit_bundle(_nonempty_workflow("copy-v2"), source, {"operation": "authored"})
+
+    assert _cmd_copy_to_recipe(argparse.Namespace(
+        id=str(source), out=str(destination), strip_markers=True, with_runner=True,
+    )) == 0
+    assert destination.with_suffix(".vibe.json").is_file()
+    assert load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow.id == "copy-v2"
+
+    before = destination.read_bytes()
+    assert _cmd_copy_to_recipe(argparse.Namespace(
+        id=str(source), out=str(destination), strip_markers=False, with_runner=False,
+    )) == 1
+    assert destination.read_bytes() == before
+
+
 # ── inspect --field ─────────────────────────────────────────────────────
 
 

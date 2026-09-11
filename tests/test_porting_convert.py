@@ -115,6 +115,24 @@ def test_ready_requirements_do_not_keep_edited_model_value_stale() -> None:
     assert requirements["models"] == ["new-model.safetensors"]
 
 
+def test_ready_requirements_refreshes_mixed_models_without_stale_assets() -> None:
+    wf = _wf("mixed-models")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "new.safetensors"
+    wf.nodes["2"] = _regular_node("2", "LoraLoader")
+    wf.nodes["2"].inputs["lora_name"] = "kept.safetensors"
+    wf.metadata["model_assets"] = [
+        {"name": "kept.safetensors", "url": "https://example.test/kept", "subdir": "loras"},
+        {"name": "stale.safetensors", "url": "https://example.test/stale"},
+    ]
+
+    requirements = convert_module._ready_requirements(wf)
+
+    assert requirements["models"] == ["new.safetensors", {
+        "name": "kept.safetensors", "url": "https://example.test/kept", "subdir": "loras",
+    }]
+
+
 def test_port_convert_does_not_mutate_caller_owned_workflow_or_raw_evidence():
     wf = _wf("caller-owned")
     wf.nodes["1"] = VibeNode("1", "PrimitiveInt", inputs={"value": 7})

@@ -128,6 +128,75 @@ def test_from_and_breadcrumb_preserve_layout(tmp_path: Path, monkeypatch: pytest
     assert seen[-1]["prior_store"]["entries"]["uid-1"]["pos"] == [700, 800]
 
 
+def test_v2_export_passes_canonical_presentation_directly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vibecomfy.commands.port import _export as port_export_cmd
+
+    source = tmp_path / "canonical.py"
+    source.write_text("# canonical\n", encoding="utf-8")
+    workflow = _fake_workflow(source)
+    presentation = {
+        "nodes": {
+            "ui_only_2": {
+                "id": 2, "class_type": "MarkdownNote", "pos": [91, 92],
+                "size": [301, 88], "color": "#123456", "bgcolor": "#654321",
+            },
+        },
+        "links": [], "groups": [], "canvas": {},
+        "annotations": [{
+            "annotation_id": "ui_only_2", "scope_path": "",
+            "owner": {"kind": "node", "uid": "ui_only_2"},
+            "class_type": "MarkdownNote", "title": "H3", "content": "exact note",
+        }],
+    }
+    seen: list[dict[str, object]] = []
+    monkeypatch.setattr(port_commands, "_build_conversion_provider", lambda args: object())
+    monkeypatch.setattr(port_commands, "load_workflow_reference", lambda *args, **kwargs: workflow)
+    monkeypatch.setattr(port_export_cmd, "_read_canonical_presentation", lambda *args: presentation)
+    monkeypatch.setattr(port_export_cmd, "_resolve_preserve_source", lambda *args: ({"entries": {}}, str(source), None, None))
+    monkeypatch.setattr(port_commands, "emit_ui_json", lambda *args, **kwargs: (seen.append(kwargs) or _fake_ui()))
+
+    assert port_commands._cmd_port_export(_args(source, tmp_path / "out.json")) == 0
+    assert seen[-1]["presentation"] == presentation
+    assert "prior_store" not in seen[-1]
+
+
+def test_presentation_overlay_preserves_canvas_id_when_semantic_id_collides() -> None:
+    from vibecomfy.porting.emit.ui import _overlay_validated_presentation
+
+    envelope = {
+        "nodes": [{
+            "id": 170,
+            "type": "NestedSemantic",
+            "properties": {"vibecomfy_uid": "semantic"},
+        }],
+        "links": [[1, 170, 0, 170, 0, "*"],],
+    }
+    presentation = {
+        "nodes": {
+            "ui_only_170": {
+                "id": 170, "class_type": "MarkdownNote",
+                "pos": [-1, -2], "size": [301, 88],
+                "color": "#123456", "bgcolor": "#654321", "z_order": 7,
+            },
+        },
+        "annotations": [{
+            "annotation_id": "ui_only_170", "scope_path": "",
+            "owner": {"kind": "node", "uid": "ui_only_170"},
+            "class_type": "MarkdownNote", "title": "H3", "content": "exact note",
+        }],
+    }
+
+    _overlay_validated_presentation(envelope, presentation, object())
+
+    semantic = next(node for node in envelope["nodes"] if node["type"] == "NestedSemantic")
+    note = next(node for node in envelope["nodes"] if node["type"] == "MarkdownNote")
+    assert semantic["id"] != 170
+    assert note["id"] == 170
+    assert note["widgets_values"] == ["exact note"]
+    assert envelope["links"] == [[1, semantic["id"], 0, semantic["id"], 0, "*"]]
+
 def test_strict_refusal_is_explicit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     source = tmp_path / "draft.py"
     source.write_text("# draft\n", encoding="utf-8")

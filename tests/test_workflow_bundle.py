@@ -1188,19 +1188,29 @@ def _assert_clean_v2_source(source: str) -> None:
         isinstance(node, ast.Name) and "custody" in node.id.lower()
         for node in ast.walk(tree)
     )
+    build = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "build")
+    graph_names = {
+        target.id
+        for node in ast.walk(build)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "new_workflow"
+        for target in node.targets
+        if isinstance(target, ast.Name)
+    }
+    assert graph_names
     assert not any(
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "connect"
-        for node in ast.walk(tree)
+        for node in ast.walk(build)
     )
     assert not any(
         isinstance(node, ast.Subscript)
         and isinstance(node.value, ast.Attribute)
-        and isinstance(node.value.value, ast.Name)
-        and node.value.value.id == "wf"
         and node.value.attr == "nodes"
-        for node in ast.walk(tree)
+        for node in ast.walk(build)
     )
 
     finalizers = [
@@ -1256,6 +1266,11 @@ def test_v2_source_contract_rejects_whole_file_integrity_mutations(tmp_path: Pat
         "replay topology": source.replace(
             anchor,
             "    wf.connect('integer-node.0', 'integer-node.value')\n" + anchor,
+            1,
+        ),
+        "renamed graph topology": source.replace(
+            anchor,
+            "    graph.connect('integer-node.0', 'integer-node.value')\n" + anchor,
             1,
         ),
         "duplicate runtime value": source.replace(
@@ -1325,6 +1340,17 @@ def test_v2_annotations_bind_scope_and_owner_and_materialize_content(tmp_path: P
     bad_owner["presentation"]["annotations"][0]["owner"]["uid"] = "ghost"
     with pytest.raises(WorkflowBundleError, match="does not identify a node"):
         validate_sidecar(bad_owner, workflow)
+
+    bad_annotation_id = copy.deepcopy(companion)
+    bad_annotation_id["presentation"]["annotations"][0]["annotation_id"] = "other"
+    with pytest.raises(WorkflowBundleError, match="self-owned"):
+        validate_sidecar(bad_annotation_id, workflow)
+
+    missing_presentation_node = copy.deepcopy(companion)
+    missing_presentation_node["presentation"]["annotations"][0]["owner"]["uid"] = "missing"
+    missing_presentation_node["presentation"]["annotations"][0]["annotation_id"] = "missing"
+    with pytest.raises(WorkflowBundleError, match="presentation node"):
+        validate_sidecar(missing_presentation_node, workflow)
 
 
 def test_v2_companion_is_required_and_swapping_it_is_refused(tmp_path: Path) -> None:

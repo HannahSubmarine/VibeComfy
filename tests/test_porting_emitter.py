@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from vibecomfy.errors import ArityDisagreementError, ObjectInfoIdentityAmbiguityError
+from vibecomfy.errors import ArityDisagreementError, ConversionParityError, ObjectInfoIdentityAmbiguityError
 from vibecomfy.ingest.normalize import from_api, from_ui, normalize_to_api
 from vibecomfy.porting.convert import ManualTemplateRefusal, _check_manual_refusal, port_convert_workflow
 from vibecomfy.porting.object_info.serialize import build_cache
@@ -3100,3 +3100,13 @@ def test_e0_h3_source_lowers_resolver_owned_reroutes() -> None:
     rebuilt = namespace["build"]()
     assert rebuilt.compile("api") == workflow.compile("api")
     assert rebuilt.metadata["resolver_helper_custody"][0]["uid"] == "reroute"
+
+
+def test_canonical_source_rejects_semantic_edges_to_ui_only_nodes() -> None:
+    workflow = VibeWorkflow("ui-edge", WorkflowSource("ui-edge"))
+    workflow.nodes["note"] = VibeNode("note", "MarkdownNote", uid="note")
+    workflow.nodes["sink"] = VibeNode("sink", "SchemaLessSink", uid="sink")
+    workflow.connect("note.0", "sink.value")
+
+    with pytest.raises(ConversionParityError, match="UI-only node"):
+        emit_canonical_python(workflow)
