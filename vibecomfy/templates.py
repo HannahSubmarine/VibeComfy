@@ -1353,12 +1353,13 @@ def _finalize_impl(
         # silently leave a stale model declaration behind.
         from vibecomfy.model_assets import _referenced_model_values
 
+        existing_models = requirements.get("models")
         current_models = [
             str(item["value"])
             for item in _referenced_model_values(wf)
             if isinstance(item, Mapping) and item.get("value")
         ]
-        if current_models:
+        if current_models and isinstance(existing_models, (list, tuple)) and existing_models:
             requirements = dict(requirements)
             requirements["models"] = current_models
     requirements = _requirements_with_models(requirements, metadata.get("model_assets", []))
