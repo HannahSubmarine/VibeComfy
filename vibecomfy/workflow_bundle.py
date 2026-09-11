@@ -690,6 +690,17 @@ def _validate_native_ports(value: Any, where: str) -> dict[str, Any]:
     for key, items in result.items():
         if items is not None and not isinstance(items, list):
             raise WorkflowBundleError(f"{where}.{key} must be a list or null")
+    for key in ("native_input_names", "native_output_names"):
+        names = result.get(key)
+        if names is not None and any(type(item) is not str or not item.strip() for item in names):
+            raise WorkflowBundleError(f"{where}.{key} must contain nonblank strings")
+    for key in ("native_input_types", "native_output_types", "native_input_asset_kinds"):
+        items = result.get(key)
+        if items is not None and any(item is not None and type(item) is not str for item in items):
+            raise WorkflowBundleError(f"{where}.{key} must contain strings or null")
+    optional = result.get("native_input_optional")
+    if optional is not None and any(type(item) is not bool for item in optional):
+        raise WorkflowBundleError(f"{where}.native_input_optional must contain booleans")
     input_names = result.get("native_input_names")
     if isinstance(input_names, list):
         for key in ("native_input_types", "native_input_optional", "native_input_asset_kinds"):
@@ -709,6 +720,37 @@ def _validate_native_ports(value: Any, where: str) -> dict[str, Any]:
         if len(set(slots)) != len(slots):
             raise WorkflowBundleError(f"{where}.native_output_slots must be unique")
     return result
+
+
+_GENERATED_PROVENANCE_KEYS = frozenset({
+    "source_path", "source_id", "source_type", "source_workflow_path", "source_ref",
+    "source_kind", "indexed_id", "workflow_source_id", "workflow_source_type",
+    "raw_workflow_shape", "source_hash", "workflow_shape", "output_mode",
+})
+_GENERATED_SHAPE_KEYS = frozenset({
+    "nodes", "runtime_nodes", "helper_nodes", "edges", "inputs", "outputs",
+})
+
+
+def _validate_generated_provenance(value: Any, where: str) -> Any:
+    """Accept only the scalar/closed provenance witness, never graph payloads."""
+    if isinstance(value, str):
+        if not value.strip():
+            raise WorkflowBundleError(f"{where} must be nonblank")
+        return value
+    if not isinstance(value, Mapping):
+        raise WorkflowBundleError(f"{where} must be a scalar tag or closed object")
+    _closed_keys(value, _GENERATED_PROVENANCE_KEYS, where)
+    for key, item in value.items():
+        if key == "workflow_shape":
+            if not isinstance(item, Mapping):
+                raise WorkflowBundleError(f"{where}.workflow_shape must be an object")
+            _closed_keys(item, _GENERATED_SHAPE_KEYS, f"{where}.workflow_shape")
+            if any(type(nested) is not int or nested < 0 for nested in item.values()):
+                raise WorkflowBundleError(f"{where}.workflow_shape must contain non-negative integers")
+        elif isinstance(item, (Mapping, list, tuple)):
+            raise WorkflowBundleError(f"{where}.{key} must be scalar-valued")
+    return copy.deepcopy(dict(value))
 
 
 def _validate_v2_custody(value: Any) -> dict[str, Any]:
@@ -763,6 +805,46 @@ def _validate_v2_custody(value: Any) -> dict[str, Any]:
             for field in ("metadata", "widget_channels", "output_slot_names"):
                 if field in node and not isinstance(node[field], Mapping):
                     raise WorkflowBundleError(f"{node_where}.{field} must be an object")
+            if "widget_channels" in node and any(
+                type(key) is not str or type(item) is not str
+                for key, item in node["widget_channels"].items()
+            ):
+                raise WorkflowBundleError(f"{node_where}.widget_channels must map strings to strings")
+            if "output_slot_names" in node and any(
+                type(key) is not str or not key.isdecimal() or type(item) is not str
+                for key, item in node["output_slot_names"].items()
+            ):
+                raise WorkflowBundleError(f"{node_where}.output_slot_names has malformed entries")
+            if "metadata" in node:
+                metadata = node["metadata"]
+                metadata_allowed = frozenset({
+                    "semantic", "semantic_metadata", "schema_source", "unresolved",
+                    "reconciliation", "diagnostics", "provenance", "input_names",
+                    "output_names", "input_types", "output_types", "keep_defaults",
+                })
+                _closed_keys(metadata, metadata_allowed, f"{node_where}.metadata")
+                for key, item in metadata.items():
+                    if key == "schema_source":
+                        if not isinstance(item, Mapping):
+                            raise WorkflowBundleError(f"{node_where}.metadata.schema_source must be an object")
+                        _closed_keys(item, frozenset({
+                            "provider", "path", "cache_path", "server_url", "package",
+                            "version", "hash", "confidence",
+                        }), f"{node_where}.metadata.schema_source")
+                        if any(isinstance(nested, (Mapping, list, tuple)) for nested in item.values()):
+                            raise WorkflowBundleError(f"{node_where}.metadata.schema_source must be scalar-valued")
+                    elif key == "provenance":
+                        _validate_generated_provenance(
+                            item, f"{node_where}.metadata.provenance"
+                        )
+                    elif isinstance(item, Mapping):
+                        raise WorkflowBundleError(
+                            f"{node_where}.metadata.{key} cannot contain nested objects"
+                        )
+                    elif isinstance(item, list) and any(isinstance(nested, (Mapping, list, tuple)) for nested in item):
+                        raise WorkflowBundleError(
+                            f"{node_where}.metadata.{key} must be a scalar list"
+                        )
             for field in ("none_input_fields", "none_widget_fields", "construction_output_names"):
                 if field in node and (
                     not isinstance(node[field], list)
@@ -790,6 +872,10 @@ def _validate_v2_custody(value: Any) -> dict[str, Any]:
             if "native_ports" in helper:
                 helper["native_ports"] = _validate_native_ports(
                     helper["native_ports"], f"{helper_where}.native_ports"
+                )
+            if "provenance" in helper:
+                helper["provenance"] = _validate_generated_provenance(
+                    helper["provenance"], f"{helper_where}.provenance"
                 )
             canonical_digest(helper)
             helpers.append(helper)

@@ -2106,6 +2106,33 @@ def _widget_names_for_emission(
     return list(widget_names_from_schema(class_type, schema))
 
 
+def _primitive_union_dynamic_input_names(
+    node: Any,
+    incoming_names: set[str],
+) -> tuple[list[str], list[str]]:
+    """Return present primitive-union dynamic inputs and unlinked literals."""
+    names: list[str] = []
+    unlinked: list[str] = []
+    native_names = getattr(node, "native_input_names", None)
+    native_types = getattr(node, "native_input_types", None)
+    inputs = getattr(node, "inputs", {})
+    if not isinstance(native_names, list) or not isinstance(native_types, list):
+        return names, unlinked
+    primitive_union = {"FLOAT", "INT", "BOOLEAN"}
+    for index, name in enumerate(native_names):
+        if not isinstance(name, str) or not name.startswith("values.") or index >= len(native_types):
+            continue
+        type_spec = native_types[index]
+        if not isinstance(type_spec, str) or {part.strip().upper() for part in type_spec.split(",")} != primitive_union:
+            continue
+        if name not in inputs and name not in incoming_names:
+            continue
+        names.append(name)
+        if name not in incoming_names and inputs.get(name) is not None:
+            unlinked.append(name)
+    return names, unlinked
+
+
 def _widget_value_domain_for_emission(
     node: Any | None,
     committed: list[str | None] | None,
@@ -2373,7 +2400,7 @@ def _build_widget_values(
     *,
     default_values: Mapping[str, Any] | None = None,
     value_domain: str = "compact",
-) -> list[Any]:
+) -> Any:
     """Reverse the normalizer's positional widget read-back.
 
     The value pool is the node's widget-sourced data: ``node.widgets`` (``widget_<N>``
@@ -2402,6 +2429,19 @@ def _build_widget_values(
 
     raw_ui = getattr(node, "metadata", {}).get("_ui", {})
     raw_widgets = raw_ui.get("widgets_values") if isinstance(raw_ui, dict) else None
+    if isinstance(raw_widgets, Mapping):
+        # Comfy/LiteGraph uses a mapping for dynamic ``values`` inputs.  Keep
+        # that canonical editor representation and overlay the effective IR
+        # values onto its leaves; flattening it into positional widget_N rows
+        # loses edits such as ComfyMathExpression.values.a = 6.
+        result = deepcopy(dict(raw_widgets))
+        for key, value in pool.items():
+            if key.startswith("widget_"):
+                continue
+            dynamic_key = key.rsplit(".", 1)[-1]
+            if dynamic_key in result or key in result:
+                result[dynamic_key if dynamic_key in result else key] = deepcopy(value)
+        return result
     if not isinstance(raw_widgets, list):
         raw_widget_payload = getattr(node, "raw_widgets", None)
         raw_widget_values = getattr(raw_widget_payload, "values", None)
@@ -2631,6 +2671,30 @@ def _emit_litegraph_node_dict(
         schema_provider=schema_provider,
         name_authority=name_authority,
     )
+    incoming_names = {
+        str(item["name"])
+        for item in inputs
+        if isinstance(item, Mapping) and item.get("link") is not None
+    }
+    _dynamic_names, unlinked_dynamic_names = _primitive_union_dynamic_input_names(
+        node, incoming_names
+    )
+    if unlinked_dynamic_names:
+        expanded_widget_names: list[str | None] = []
+        for name in widget_names:
+            if name == "values":
+                expanded_widget_names.extend(
+                    item for item in unlinked_dynamic_names
+                    if item not in expanded_widget_names
+                )
+            else:
+                expanded_widget_names.append(name)
+        if "values" not in widget_names:
+            expanded_widget_names.extend(
+                item for item in unlinked_dynamic_names
+                if item not in expanded_widget_names
+            )
+        widget_names = expanded_widget_names
 
     # Step 6 (T8): re-stamp the verbatim captured properties blob as the base,
     # then overlay the IR identity keys.  When no captured blob exists (e.g.
@@ -4301,7 +4365,32 @@ def emit_ui_json(
             schema_provider=schema_provider,
             name_authority=name_authority,
         )
-        widget_name_set = {name for name in widget_names if name is not None}
+        incoming_dynamic_names = {
+            str(edge.to_input) for edge in edges_to[node_id]
+        }
+        dynamic_names, unlinked_dynamic_names = _primitive_union_dynamic_input_names(
+            node, incoming_dynamic_names
+        )
+        if unlinked_dynamic_names:
+            expanded_widget_names: list[str | None] = []
+            for name in widget_names:
+                if name == "values":
+                    expanded_widget_names.extend(
+                        item for item in unlinked_dynamic_names
+                        if item not in expanded_widget_names
+                    )
+                else:
+                    expanded_widget_names.append(name)
+            if "values" not in widget_names:
+                expanded_widget_names.extend(
+                    item for item in unlinked_dynamic_names
+                    if item not in expanded_widget_names
+                )
+            widget_names = expanded_widget_names
+        widget_name_set = {
+            name for name in widget_names if name is not None
+        } | set(dynamic_names)
+        preserve_widget_roster = bool(dynamic_names)
         full_committed = widget_names_for_class(node.class_type)
         if full_committed is not None:
             widget_name_set.update(n for n in full_committed if n is not None)
@@ -4325,6 +4414,7 @@ def emit_ui_json(
                     edge is None
                     and isinstance(name, str)
                     and name in widget_name_set
+                    and not preserve_widget_roster
                 ):
                     # Unlinked widgets live in widgets_values, not the physical
                     # input array.  A prior widget→link conversion that was
@@ -4898,6 +4988,7 @@ def _overlay_validated_presentation(
             by_uid[uid] = node
             if type(node.get("id")) is int:
                 old_id_by_uid[uid] = int(node["id"])
+    uid_by_old_id = {native_id: uid for uid, native_id in old_id_by_uid.items()}
     native_ids: set[int] = {
         int(node["id"]) for node in emitted_nodes
         if isinstance(node, Mapping) and type(node.get("id")) is int
@@ -4925,7 +5016,16 @@ def _overlay_validated_presentation(
         )
         if conflict is None:
             raise ValueError(f"sidecar native node id collision for {native_id}")
+        conflict_uid = (
+            conflict.get("properties", {}).get("vibecomfy_uid")
+            if isinstance(conflict.get("properties"), Mapping)
+            else None
+        )
         conflict["id"] = replacement
+        if isinstance(conflict_uid, str):
+            old_id_by_uid[conflict_uid] = replacement
+            uid_by_old_id.pop(native_id, None)
+            uid_by_old_id[replacement] = conflict_uid
         links = envelope.get("links", [])
         if isinstance(links, list):
             for link in links:
@@ -5041,7 +5141,6 @@ def _overlay_validated_presentation(
     side_links = sidecar.get("links", [])
     if not isinstance(side_links, list):
         raise ValueError("validated sidecar links must be a list")
-    uid_by_old_id = {native_id: uid for uid, native_id in old_id_by_uid.items()}
     wf_by_uid = {
         str(node.uid): node
         for node in getattr(wf, "nodes", {}).values()

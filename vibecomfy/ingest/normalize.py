@@ -1617,11 +1617,25 @@ def _normalize_ui_to_api(raw: dict[str, Any], *, schema_provider: SchemaProvider
             # first value when it collides with the linked socket.  Partial UI
             # rosters still fall back to schema evidence for compatibility
             # with UI-only controls such as ``control_after_generate``.
-            widget_names = (
-                ui_widget_names
-                if len(ui_widget_names) == len(widgets)
-                else _schema_input_names(schema_provider, class_type)
-            )
+            schema_widget_names = _schema_input_names(schema_provider, class_type)
+            dynamic_ui_names = [
+                name for name in ui_widget_names if name.startswith("values.")
+            ]
+            if (
+                dynamic_ui_names
+                and len(widgets) == len(schema_widget_names) + len(dynamic_ui_names)
+                and len(ui_widget_names) == len(dynamic_ui_names)
+            ):
+                # ComfyMathExpression serializes its expression widget before
+                # the named dynamic input descriptors, even though the latter
+                # are the only physical input rows carrying widget metadata.
+                widget_names = schema_widget_names + dynamic_ui_names
+            else:
+                widget_names = (
+                    ui_widget_names
+                    if len(ui_widget_names) == len(widgets)
+                    else schema_widget_names
+                )
             for idx, value in enumerate(widgets):
                 if idx < len(widget_names):
                     name = _normalize_widget_input_name(widget_names, idx, value)

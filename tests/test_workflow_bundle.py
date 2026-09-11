@@ -1184,10 +1184,47 @@ def test_v2_companion_keeps_generated_python_small_and_round_trippable(tmp_path:
 def _assert_clean_v2_source(source: str) -> None:
     """Apply the whole-file readability contract used by the v2 evidence gate."""
     tree = ast.parse(source)
+    def literal_keys(node: ast.AST) -> set[str]:
+        if not isinstance(node, ast.Dict):
+            return set()
+        return {
+            key.value for key in node.keys
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        }
+
+    # Custody is an external companion concern.  Detect its shape rather than
+    # banning ordinary constants/helpers merely because of their names.
+    graph_payload_keys = {"nodes", "links", "edges", "helpers", "scopes"}
+    for statement in tree.body:
+        if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = statement.value
+        keys = literal_keys(value)
+        assert not (
+            {"scopes"} <= keys
+            or {"generation_id", "custody_digest"} <= keys
+            or len(keys & graph_payload_keys) >= 2
+        )
     assert not any(
-        isinstance(node, ast.Name) and "custody" in node.id.lower()
+        isinstance(node, ast.Name) and "custody" in node.id.casefold()
         for node in ast.walk(tree)
     )
+    replay_ops = {"connect", "finalize"}
+    for statement in ast.walk(tree):
+        if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)) or statement.name == "build":
+            continue
+        assert not any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in replay_ops
+            for node in ast.walk(statement)
+        )
+        assert not any(
+            isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Attribute)
+            and node.value.attr == "nodes"
+            for node in ast.walk(statement)
+        )
     build = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "build")
     graph_names = {
         target.id
@@ -1283,10 +1320,61 @@ def test_v2_source_contract_rejects_whole_file_integrity_mutations(tmp_path: Pat
             anchor[:-1] + ", canonical_custody={})",
             1,
         ),
+        "module custody payload": source.replace(
+            "from vibecomfy.workflow import VibeWorkflow\n",
+            "from vibecomfy.workflow import VibeWorkflow\n"
+            "MODULE_PAYLOAD = {'scopes': [], 'unexpected': {'nodes': []}}\n",
+            1,
+        ),
+        "neutral module graph payload": source.replace(
+            "from vibecomfy.workflow import VibeWorkflow\n",
+            "from vibecomfy.workflow import VibeWorkflow\n"
+            "MODULE_DATA = {'nodes': [], 'links': []}\n",
+            1,
+        ),
+        "module replay helper": source.replace(
+            "def build() -> VibeWorkflow:\n",
+            "def replay_graph(wf):\n    return wf.finalize({}, outputs=[])\n\n"
+            "def build() -> VibeWorkflow:\n",
+            1,
+        ),
+        "nested module replay helper": source.replace(
+            "def build() -> VibeWorkflow:\n",
+            "def wrapper(wf):\n"
+            "    def replay(wf):\n"
+            "        return wf.nodes['replay']\n"
+            "    return replay(wf)\n\n"
+            "def build() -> VibeWorkflow:\n",
+            1,
+        ),
     }
     for label, mutated in mutations.items():
         with pytest.raises(AssertionError):
             _assert_clean_v2_source(mutated)
+
+
+def test_v2_custody_rejects_open_or_graph_shaped_generated_provenance() -> None:
+    from vibecomfy.workflow_bundle import _validate_v2_custody
+
+    def custody(*, metadata=None, helper_provenance=None) -> dict:
+        node = {
+            "label": "node", "id": "1", "uid": "node", "class_type": "Integer",
+            "metadata": metadata or {"provenance": "untrusted_source"},
+        }
+        helpers = []
+        if helper_provenance is not None:
+            helpers.append({
+                "id": "helper", "uid": "helper", "class_type": "MarkdownNote",
+                "provenance": helper_provenance,
+            })
+        return {"scopes": [{"scope_path": "", "nodes": [node], "helpers": helpers}]}
+
+    with pytest.raises(WorkflowBundleError, match="provenance"):
+        _validate_v2_custody(custody(metadata={"provenance": {"nodes": [], "links": []}}))
+    with pytest.raises(WorkflowBundleError, match="provenance"):
+        _validate_v2_custody(custody(helper_provenance={"workflow_shape": {"nodes": 1}, "payload": {}}))
+    valid = _validate_v2_custody(custody(helper_provenance={"workflow_shape": {"nodes": 1}}))
+    assert valid["scopes"][0]["helpers"][0]["provenance"]["workflow_shape"]["nodes"] == 1
 
 
 def test_v2_rebuild_refreshes_edited_model_requirement(tmp_path: Path) -> None:
@@ -1351,6 +1439,32 @@ def test_v2_annotations_bind_scope_and_owner_and_materialize_content(tmp_path: P
     missing_presentation_node["presentation"]["annotations"][0]["annotation_id"] = "missing"
     with pytest.raises(WorkflowBundleError, match="presentation node"):
         validate_sidecar(missing_presentation_node, workflow)
+
+
+def test_presentation_collision_remint_keeps_semantic_link_endpoints() -> None:
+    workflow = _connected_workflow()
+    from vibecomfy.porting.emit.ui import _overlay_validated_presentation
+
+    envelope = {
+        "nodes": [
+            {"id": 159, "type": "Source", "properties": {"vibecomfy_uid": "source"}, "outputs": [{"links": [9]}]},
+            {"id": 168, "type": "Target", "properties": {"vibecomfy_uid": "target"}, "inputs": [{"link": 9}]},
+        ],
+        "links": [[9, 159, 0, 168, 0, "A"]],
+    }
+    presentation = {
+        "nodes": {"note": {"id": 159, "class_type": "MarkdownNote"}},
+        "links": [], "groups": [], "canvas": {}, "annotations": [],
+    }
+    _overlay_validated_presentation(envelope, presentation, workflow)
+    materialized = envelope
+    nodes = {node["id"]: node for node in materialized["nodes"]}
+    assert len(nodes) == 3
+    assert any(node.get("type") == "MarkdownNote" for node in nodes.values())
+    link = materialized["links"][0]
+    assert link[1] != 159
+    assert link[3] == 168
+    assert link[1] in nodes and link[3] in nodes
 
 
 def test_v2_companion_is_required_and_swapping_it_is_refused(tmp_path: Path) -> None:
