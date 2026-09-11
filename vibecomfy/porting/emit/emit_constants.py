@@ -773,11 +773,11 @@ def _hoist_constants(
                 base, canonical_model_value = canonical_model
                 emit_value = canonical_model_value
                 value_key_value = _model_basename(value).lower()
-            # Comfy serializes model selections with either separator.  Keep
-            # the emitted model reference canonical as well as the
-            # requirements metadata; otherwise the same model can produce
-            # platform-dependent ready-template source.
-            emit_value = _normalize_model_path(emit_value)
+            # Preserve the authored runtime spelling.  Backslashes are valid
+            # model-library paths (and are meaningful on Windows); changing
+            # them during emission makes an otherwise untouched workflow
+            # semantically different.  Path normalization is used only for
+            # classification/constant naming, never for runtime values.
         value_key = (base, category, value_key_value)
         if value_key in value_to_name:
             name = value_to_name[value_key]
@@ -1034,7 +1034,11 @@ def _apply_ready_template_metadata_defaults(metadata: dict[str, Any], template_i
         metadata.setdefault("comfy_configuration", {"memory_profile": 3, "fp8_e4m3fn_text_enc": True})
 
 
-def _metadata_extras_for_emit(metadata: Mapping[str, Any]) -> dict[str, Any]:
+def _metadata_extras_for_emit(
+    metadata: Mapping[str, Any],
+    *,
+    external_custody: bool = False,
+) -> dict[str, Any]:
     derived_keys = {
         "ready_template",
         "workflow_template",
@@ -1059,6 +1063,10 @@ def _metadata_extras_for_emit(metadata: Mapping[str, Any]) -> dict[str, Any]:
         "_native_subgraph_source",
         "_ui_door",
     }
+    # v2 custody is deliberately the only owner of lowered-helper provenance.
+    # Legacy sources still emit this field for compatibility.
+    if external_custody:
+        derived_keys.add("resolver_helper_custody")
     extras = {
         str(key): value
         for key, value in metadata.items()
@@ -1091,8 +1099,6 @@ def _requirements_expr_for_emit(requirements: Mapping[str, Any], *, has_models: 
         if key == "models" and has_models:
             continue
         if value:
-            if key == "models" and isinstance(value, (list, tuple)):
-                value = [_normalize_model_path(v) for v in value]
             retained[str(key)] = value
     if not retained:
         return None

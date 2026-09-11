@@ -82,8 +82,11 @@ def emit_canonical_python(
     requirements = dict(ready_requirements or {})
     if not requirements:
         requirements = {
-            "models": list(getattr(workflow.requirements, "models", ()) or ()),
-            "custom_nodes": list(getattr(workflow.requirements, "custom_nodes", ()) or ()),
+            key: list(getattr(workflow.requirements, key, ()) or ())
+            for key in (
+                "models", "custom_nodes", "missing_models", "missing_nodes",
+                "unsupported",
+            )
         }
     if registered_inputs is None:
         authored_inputs = getattr(workflow, "inputs", {})

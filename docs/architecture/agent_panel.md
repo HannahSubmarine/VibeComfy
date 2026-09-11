@@ -111,11 +111,12 @@ shown as `unsupported_boundary_encoding` rather than partially rendered as a
 different graph.
 
 Canonical workflow identity, node UIDs, source provenance, semantic/revision
-evidence, and any native-expansion source hash belong to the backend workflow
-bundle. UI layout, groups, and editor-only furniture may be carried by the
-optional `.layout.json` sidecar. The sidecar can support UI export/preservation
-but is not semantic or runtime authority; normal panel payloads receive the
-allowlisted projection, not raw sidecar/session internals.
+evidence, native-expansion source hash, and canonical presentation annotations
+belong to the backend workflow bundle and its required `.vibe.json` companion.
+The legacy `.layout.json` sidecar remains an optional explicit compatibility
+store for UI preservation and editor furniture; it is not semantic or runtime
+authority. Normal panel payloads receive the allowlisted projection, not raw
+sidecar/session internals.
 
 ## Boundaries enforced by tests
 

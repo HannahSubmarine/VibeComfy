@@ -97,6 +97,11 @@ I1, I2, I3, I4, I5, I6, I7, I8, I9 and I10: `EVIDENCE RECORDED — final review 
 The configured and expanded affected test gates are green, and the final review
 packet supplies the criterion-by-criterion commands, inputs, results and hashes.
 
+The `NOT RUN / MISSING` cells in the prospective table preserve the pre-delivery
+planning snapshot. For the exact 2026-09-11 candidate, the override is now
+effective: I1–I10 have evidence recorded, with no criterion marked PASS until
+the configured independent reviews complete.
+
 ### I10 / E2 — inspect the exact visible result
 
 After editing and rebuilding the actual generated H3 file, save/reload it and materialize/export its UI graph through the normal public boundary. Record the exact Python, exported graph and presentation-sidecar identities. Assert the expected nodes, effective links, public ports, supported subgraph/instance representation and preserved presentation fields by stable identity; account explicitly for supported native expansion and normalization. Inspect the whole generated Python and the graph rendered from that exact exported artifact, including its subgraph/boundary detail, and retain a screenshot or rendered view plus a short criterion-linked inspection finding. Reject unreadable replay/custody clutter, missing or misbound ports, unintended flattening of a supported authored structure, or lost presentation. Use an already available viewer/rendering path; no UI redesign, runtime provisioning or GPU output-quality claim. Missing visual evidence remains MISSING, not PASS.

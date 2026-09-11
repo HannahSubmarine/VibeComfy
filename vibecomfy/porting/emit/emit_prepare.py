@@ -179,6 +179,10 @@ def _prepare_workflow_for_emit(
             # helper chain. Remove that projected edge before restoring the
             # authored helper edges, avoiding duplicate custody for one link.
             authored_adjacency: dict[str, list[str]] = {}
+            authored_direct_pairs = {
+                (str(edge.from_node), str(edge.to_node))
+                for edge in workflow.edges
+            }
             for edge in workflow.edges:
                 authored_adjacency.setdefault(str(edge.from_node), []).append(str(edge.to_node))
             lowered_helper_spans: set[tuple[str, str]] = set()
@@ -193,7 +197,12 @@ def _prepare_workflow_for_emit(
                     seen.add(state)
                     for target in authored_adjacency.get(current, ()):
                         target_crossed = crossed_helper or target in broadcast_ids or current in broadcast_ids
-                        if target not in broadcast_ids and target_crossed and target != str(source_id):
+                        if (
+                            target not in broadcast_ids
+                            and target_crossed
+                            and target != str(source_id)
+                            and (str(source_id), target) not in authored_direct_pairs
+                        ):
                             lowered_helper_spans.add((str(source_id), target))
                         if target in authored_nodes:
                             pending.append((target, target_crossed))
@@ -215,6 +224,34 @@ def _prepare_workflow_for_emit(
     # edge index is built: authored helper edges depend on those nodes to
     # preserve broadcast resolution in regenerated Python.
     workflow_nodes.update(mode_nodes)
+
+    # Keep authored edges touching muted/bypassed nodes in the canonical
+    # source.  The execution projection still removes or rewrites those edges
+    # at compile time, but dropping them here makes a faithful canvas capture
+    # impossible and leaves the presentation sidecar referring to edges the
+    # Python source no longer owns.  Only endpoints that survived preparation
+    # are considered; resolver/UI-only nodes remain governed by their existing
+    # helper rules above.
+    existing_edge_keys = {
+        (str(edge.from_node), str(edge.from_output), str(edge.to_node), str(edge.to_input))
+        for edge in emission_edges
+    }
+    for edge in workflow.edges:
+        source = workflow.nodes.get(str(edge.from_node))
+        target = workflow.nodes.get(str(edge.to_node))
+        if source is None or target is None:
+            continue
+        if str(edge.from_node) not in workflow_nodes or str(edge.to_node) not in workflow_nodes:
+            continue
+        if (
+            mode_to_litegraph(getattr(source, "mode", 0)) == 0
+            and mode_to_litegraph(getattr(target, "mode", 0)) == 0
+        ):
+            continue
+        key = (str(edge.from_node), str(edge.from_output), str(edge.to_node), str(edge.to_input))
+        if key not in existing_edge_keys:
+            emission_edges.append(copy.deepcopy(edge))
+            existing_edge_keys.add(key)
 
     # PreviewAny is an authored auxiliary-output node, including when it is a
     # terminal.  Ready, canonical, and scratchpad emission all use this same

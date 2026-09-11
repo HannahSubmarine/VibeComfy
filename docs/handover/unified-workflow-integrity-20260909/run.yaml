@@ -1,10 +1,10 @@
-# Prepared source mirror only. Sole local configuration: /Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/runs/unified-workflow-integrity-20260909/run.yaml
-mode: planning_only
+# Active source mirror. Sole local configuration: /Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/runs/unified-workflow-integrity-20260909/run.yaml
+mode: delivery
 launch_authority:
-  implementation: Await later explicit delivery instruction; preparation only now.
+  implementation: User explicitly authorized end-to-end delivery in the current turn; begin C0 and the prescribed implementation/validation loop.
   test_dependency_setup: User approved bounded missing development/browser-test dependencies at future launch only.
-  exclusions: No model downloads, GPU/provider/runtime provisioning, push, PR, merge or deployment.
-  additional_final_reviews: User approved up to two additional Astra medium final-review calls; no dispatch until delivery and required evidence.
+  exclusions: No model downloads, GPU/provider/runtime provisioning, PR, merge or deployment.
+  additional_final_reviews: User approved up to two additional Astra medium final-review calls; dispatch only after delivery evidence is complete.
 review_budget_amendments:
   FINAL-PLUS-TWO-20260911:
     authority: User answered yes to two additional Astra medium final-review calls and required actual final validation.
@@ -146,7 +146,7 @@ review_contract:
   packet_template: "/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/docs/handover/unified-workflow-integrity-20260909/review-packet-template.md"
   assembly_source: "/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/docs/handover/unified-workflow-integrity-20260909/plan.md#review-packet-assembly"
   counts_source: status.md
-  planning_dispatch: Preparation only. S90 is adopted; no implementation or execution reviews are dispatched.
+  planning_dispatch: Delivery active. S90 and all prior decisions are adopted; dispatch only under the declared task and review contract.
   restart_policy: Write attempt ID and debit count before dispatch. Recover lost results or conservatively
     keep charge. Counters survive crashes, stage renames, candidate changes and coordinator/model replacements.
   stage_failure: Only contract_violation, implementation_defect, required_evidence_gap may block. Fix
@@ -159,7 +159,7 @@ role_responsibilities:
     apply uncontested gates and prescribed corrections; escalate consequential judgment; no scope/budget/authority
     waivers.
   worker_normal: Implement assigned bounded outcome and focused tests; report evidence and propose alternatives
-    without silently changing scope. No implementation in planning_only.
+    without silently changing scope. Implementation is active only within the declared delivery scope.
   worker_xhard: Same worker responsibility, only an irreducible XHARD assignment; not an authority promotion.
   reviewer_normal: Independent leaf completion review of the declared stage scope and evidence; report
     classified findings; never review own implementation or change scope.

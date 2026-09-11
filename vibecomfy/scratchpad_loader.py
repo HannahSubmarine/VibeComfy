@@ -148,6 +148,9 @@ def load_scratchpad(
     )
     if finder is not None:
         sys.meta_path.insert(0, finder)
+    from vibecomfy.workflow_context import active_workflow
+
+    prior_workflow = active_workflow()
     try:
         require_confirmation(
             operation="scratchpad_exec",
@@ -169,6 +172,16 @@ def load_scratchpad(
             )
         return workflow
     finally:
+        current_workflow = active_workflow()
+        if current_workflow is not None and current_workflow is not prior_workflow:
+            token = getattr(current_workflow, "_workflow_context_token", None)
+            if token is not None:
+                from vibecomfy.workflow_context import reset_workflow
+
+                try:
+                    reset_workflow(token)
+                finally:
+                    current_workflow._workflow_context_token = None
         if finder is not None:
             sys.meta_path.remove(finder)
         if inserted_path:

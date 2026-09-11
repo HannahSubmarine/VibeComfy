@@ -627,7 +627,15 @@ def _is_endpoint_backed_api_link_candidate(
     provenance = input_provenance.get(input_name) if input_provenance is not None else None
     if provenance == "widget":
         return False
-    return provenance == "edge" or "::" in value[0]
+    # Some older Comfy exports use a single-colon numeric scope separator
+    # (for example ``238:224``) instead of the newer ``scope::node`` form.
+    # These are still graph endpoints when the source is present in this
+    # prompt.  Requiring every scope component to be numeric keeps ordinary
+    # two-item literals on the widget channel and avoids re-admitting loose
+    # IDs as edges.
+    parts = value[0].split(":")
+    numeric_scoped_id = len(parts) >= 2 and all(part.isdigit() for part in parts)
+    return provenance == "edge" or "::" in value[0] or numeric_scoped_id
 
 
 def _is_api_input_link(

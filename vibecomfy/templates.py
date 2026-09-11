@@ -25,6 +25,9 @@ from vibecomfy.ingest.normalize import (
 )
 
 
+_COMPANION_SCOPE_NODES_KEY = "nodes"
+
+
 def _record_recursive_definition_capture(
     workflow: VibeWorkflow,
     scope_path: str,
@@ -280,9 +283,13 @@ def new_workflow(
     context manager (``with new_workflow(...) as wf:``) for callers that prefer
     explicit scoping.
     """
+    from vibecomfy.workflow_bundle import _v2_companion_for_build
+
+    companion = _v2_companion_for_build(metadata, source_path)
     raw_workflow_id = str(metadata.get("ready_template") or metadata.get("workflow_template") or "ready_template")
     workflow_id = _category_qualified_template_id(raw_workflow_id, source_path)
     metadata = dict(metadata)
+    metadata.pop("source_bundle", None)
     metadata["ready_template"] = workflow_id
     metadata["workflow_template"] = workflow_id.rsplit("/", 1)[-1]
     provenance = metadata.get("provenance")
@@ -292,6 +299,26 @@ def new_workflow(
         provenance=provenance if isinstance(provenance, Mapping) else None,
     )
     wf.metadata.update(metadata)
+    if companion is not None:
+        if canonical_custody is not None:
+            raise ValueError("v2 companion custody cannot be combined with embedded custody")
+        root_scope = next(
+            scope
+            for scope in companion["custody"]["scopes"]
+            if scope["scope_path"] == ""
+        )
+        canonical_custody = {
+            record["label"]: {
+                key: deepcopy(value)
+                for key, value in record.items()
+                if key != "label"
+            }
+            for record in root_scope[_COMPANION_SCOPE_NODES_KEY]
+        }
+        wf._canonical_v2_custody = canonical_custody
+        wf._canonical_v2_helpers = deepcopy(root_scope["helpers"])
+        wf._canonical_v2_companion = companion
+        wf._canonical_construction_objects = []
     if canonical_custody is not None:
         if not isinstance(canonical_custody, Mapping):
             raise TypeError("canonical custody must be a mapping")
@@ -419,6 +446,9 @@ def node(
     if explicit_native_ports is not None:
         kwargs["_native_ports"] = explicit_native_ports
     builder = ready_node(wf, class_type, source_id=str(_id) if _id is not None else None, outputs=outputs or None, extras=_extras, **kwargs)
+    construction_objects = getattr(wf, "_canonical_construction_objects", None)
+    if construction_objects is not None:
+        construction_objects.append(builder)
     for field_name, channel in authored_channels.items():
         has_edge = any(
             str(edge.to_node) == str(builder.node.id) and str(edge.to_input) == field_name
@@ -776,6 +806,19 @@ class AuthoredChannel:
     retain_input_default: bool = False
 
 
+@dataclass(frozen=True)
+class OutputSpec:
+    """Small typed declaration for an exact public workflow output."""
+
+    node: Any
+    output_type: str | None = None
+    name: str | None = None
+    artifact_kind: str | None = None
+    mime_type: str | None = None
+    filename_prefix: str | None = None
+    expected_cardinality: str | None = None
+
+
 def authored_channel(
     value: Any,
     *,
@@ -1053,6 +1096,7 @@ _CANONICAL_CUSTODY_NODE_KEYS = frozenset({
     "id", "uid", "class_type", "native_ports", "metadata", "widget_channels",
     "none_input_fields", "none_widget_fields", "output_slot_names", "construction_output_names",
 })
+_UNSPECIFIED_OUTPUTS = object()
 
 
 def _apply_canonical_custody(
@@ -1222,9 +1266,42 @@ def _finalize_impl(
     canonical_outputs = bind_kwargs.pop("canonical_outputs", None)
     canonical_requirements = bind_kwargs.pop("canonical_requirements", None)
     canonical_helpers = bind_kwargs.pop("canonical_helpers", None)
+    declared_outputs = bind_kwargs.pop("outputs", _UNSPECIFIED_OUTPUTS)
+    if canonical_outputs is not None and declared_outputs is not _UNSPECIFIED_OUTPUTS:
+        raise ValueError("legacy canonical_outputs cannot be combined with typed outputs")
+    if output_node is not None and declared_outputs is not _UNSPECIFIED_OUTPUTS:
+        raise ValueError("output_node cannot be combined with typed outputs")
+    external_custody = getattr(wf, "_canonical_v2_custody", None)
+    if external_custody is not None:
+        if canonical_custody is not None or canonical_bindings is not None:
+            raise ValueError("v2 companion custody cannot be combined with embedded custody")
+        canonical_custody = external_custody
+        external_locals = _caller_build_locals()
+        canonical_bindings = {
+            label: external_locals.get(label)
+            for label in canonical_custody
+        }
+        construction_objects = getattr(wf, "_canonical_construction_objects", ())
+        if len(construction_objects) != len(canonical_custody):
+            raise ValueError("v2 construction binding count does not match custody")
+        for (label, _record), constructed in zip(
+            canonical_custody.items(), construction_objects
+        ):
+            if _node_id_from_binding(canonical_bindings[label]) != _node_id_from_binding(constructed):
+                raise ValueError(
+                    f"v2 construction label {label!r} does not bind its constructed object; regenerate the pair"
+                )
+        canonical_helpers = getattr(wf, "_canonical_v2_helpers", ())
     if (canonical_custody is None) != (canonical_bindings is None):
         raise ValueError("canonical custody and bindings must be supplied together")
     requirements = bind_kwargs.pop("requirements", None)
+    if external_custody is not None and requirements is None:
+        # v2 keeps the compact requirements declaration in READY_METADATA;
+        # use it as the source-side requirement witness without reintroducing
+        # a large finalize argument or an embedded custody manifest.
+        metadata_requirements = metadata.get("requirements")
+        if isinstance(metadata_requirements, Mapping):
+            requirements = metadata_requirements
     if source_path is None:
         source_path = wf.source.path or str(Path.cwd())
 
@@ -1248,7 +1325,10 @@ def _finalize_impl(
             bind_kwargs["filename_prefix"] = output_prefix_fallback
 
     caller_locals = _caller_build_locals()
-    if canonical_outputs is not None and output_node is None:
+    if (
+        canonical_outputs is not None
+        or declared_outputs is not _UNSPECIFIED_OUTPUTS
+    ) and output_node is None:
         output_node_id = None
     else:
         try:
@@ -1324,6 +1404,28 @@ def _finalize_impl(
                 )
             )
         wf.outputs = rebound_outputs
+    if declared_outputs is not _UNSPECIFIED_OUTPUTS:
+        if not isinstance(declared_outputs, (list, tuple)):
+            raise TypeError("typed outputs must be a sequence")
+        rebound_outputs = []
+        for index, record in enumerate(declared_outputs):
+            if not isinstance(record, OutputSpec):
+                raise TypeError(f"typed output {index} must be an OutputSpec")
+            node_id = _node_id_from_binding(record.node)
+            if node_id is None or node_id not in wf.nodes:
+                raise ValueError(f"typed output {index} does not bind a constructed node")
+            rebound_outputs.append(
+                VibeOutput(
+                    node_id=node_id,
+                    output_type=record.output_type or wf.nodes[node_id].class_type,
+                    name=record.name,
+                    artifact_kind=record.artifact_kind,
+                    mime_type=record.mime_type,
+                    filename_prefix=record.filename_prefix,
+                    expected_cardinality=record.expected_cardinality,
+                )
+            )
+        wf.outputs = rebound_outputs
     if canonical_requirements is not None:
         if not isinstance(canonical_requirements, Mapping):
             raise TypeError("canonical requirements must be a mapping")
@@ -1339,6 +1441,18 @@ def _finalize_impl(
             value = canonical_requirements.get(key, [])
             if not isinstance(value, (list, tuple)):
                 raise TypeError(f"canonical requirements {key!r} must be a sequence")
+            setattr(wf.requirements, key, deepcopy(list(value)))
+    elif external_custody is not None and isinstance(requirements, Mapping):
+        # The legacy ready-template policy infers requirements while it
+        # rebuilds nodes.  A v2 pair has already captured the complete
+        # requirement witness in READY_METADATA, including an intentional
+        # empty list, so restore all five fields exactly.  This keeps an
+        # authored pair's semantic digest stable without reintroducing the
+        # large custody manifest into generated Python.
+        for key in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported"):
+            value = requirements.get(key, [])
+            if not isinstance(value, (list, tuple)):
+                raise TypeError(f"v2 requirements {key!r} must be a sequence")
             setattr(wf.requirements, key, deepcopy(list(value)))
     if canonical_custody is not None:
         _apply_canonical_custody(wf, canonical_custody, canonical_bindings)
@@ -1363,7 +1477,14 @@ def _finalize_impl(
                     )
             retained_helpers.append(deepcopy(dict(record)))
         wf.metadata["resolver_helper_custody"] = retained_helpers
-    for transient in ("_canonical_construction_custody", "_canonical_construction_index"):
+    for transient in (
+        "_canonical_construction_custody",
+        "_canonical_construction_index",
+        "_canonical_construction_objects",
+        "_canonical_v2_custody",
+        "_canonical_v2_helpers",
+        "_canonical_v2_companion",
+    ):
         if hasattr(wf, transient):
             delattr(wf, transient)
     return wf
@@ -1723,6 +1844,7 @@ def _drop_shadowed_auto_inputs(
 __all__ = [
     "InputSpec",
     "ModelAsset",
+    "OutputSpec",
     "ReadyMetadata",
     "_at",
     "_current_workflow_or_raise",

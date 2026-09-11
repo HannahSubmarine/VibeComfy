@@ -110,6 +110,258 @@ def capture_presentation_graph_records(candidate: Mapping[str, Any]) -> Presenta
         groups_present="groups" in candidate,
     )
 
+
+def is_litegraph_candidate(candidate: Mapping[str, Any]) -> bool:
+    """Return whether *candidate* has a LiteGraph node-list boundary shape."""
+    return isinstance(capture_presentation_graph_records(candidate).nodes, list)
+
+
+def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str, Any]) -> dict[str, Any]:
+    """Convert one LiteGraph capture into presentation-only sidecar data.
+
+    This is the only raw canvas-to-presentation adapter.  The bundle module
+    owns custody and pair publication, while this door owns all inspection of
+    LiteGraph node, link, widget, and group records.
+    """
+    from vibecomfy.workflow_bundle import (
+        WorkflowBundleError,
+        _SIDECAR_KEYS,
+    )
+
+    if set(candidate) >= _SIDECAR_KEYS:
+        return dict(candidate)
+
+    presentation = capture_presentation_graph_records(candidate)
+    raw_nodes = presentation.nodes
+    if not isinstance(raw_nodes, list):
+        raise WorkflowBundleError("captured candidate is not a strict sidecar or LiteGraph UI envelope")
+    ids: dict[str, str] = {}
+    nodes: dict[str, Any] = {}
+    workflow_by_id = {str(key): node for key, node in workflow.nodes.items()}
+    workflow_by_uid = {str(node.uid): node for node in workflow.nodes.values() if node.uid}
+    from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
+    from vibecomfy._compile._helpers import RESOLVABLE_HELPER_CLASS_TYPES
+    annotations: list[dict[str, Any]] = []
+    expanded_native_containers = {
+        str(node_id).split("::", 1)[0]
+        for node_id in workflow.nodes
+        if "::" in str(node_id)
+    }
+    ignored_captured_nodes = set(expanded_native_containers)
+
+    raw_groups = presentation.groups if presentation.groups_present else []
+    if not isinstance(raw_groups, list):
+        raise WorkflowBundleError("captured groups must be a list")
+    group_for_node: dict[str, str] = {}
+    for group in raw_groups:
+        if not isinstance(group, Mapping):
+            raise WorkflowBundleError("captured group is malformed")
+        group_id = group.get("vibecomfy_group_id", group.get("id"))
+        if group_id is None:
+            raise WorkflowBundleError("captured group has no stable presentation id")
+        members = group.get("nodes", [])
+        if not isinstance(members, list):
+            raise WorkflowBundleError("captured group nodes must be a list")
+        for member in members:
+            member_key = str(member)
+            prior = group_for_node.get(member_key)
+            if prior is not None and prior != str(group_id):
+                raise WorkflowBundleError(f"captured node {member_key!r} has ambiguous group membership")
+            group_for_node[member_key] = str(group_id)
+    for node in raw_nodes:
+        if not isinstance(node, Mapping) or type(node.get("id")) is not int:
+            raise WorkflowBundleError("captured node must contain an integer native id")
+        properties = node.get("properties")
+        if "properties" in node and not isinstance(properties, Mapping):
+            raise WorkflowBundleError("captured node properties must be a mapping")
+        native_id = str(node["id"])
+        if native_id in ids:
+            raise WorkflowBundleError(f"duplicate captured native node id {native_id}")
+        explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
+        owner = workflow_by_uid.get(explicit_uid) if isinstance(explicit_uid, str) else None
+        if explicit_uid is None:
+            owner = workflow_by_id.get(native_id)
+        raw_class_type = node.get("type", node.get("class_type"))
+        if owner is None or not owner.uid:
+            if native_id in expanded_native_containers or raw_class_type in RESOLVABLE_HELPER_CLASS_TYPES:
+                ignored_captured_nodes.add(native_id)
+                continue
+            if raw_class_type not in UI_ONLY_CLASS_TYPES:
+                raise WorkflowBundleError(f"captured node {native_id!r} cannot be mapped to one Python node")
+            explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
+            uid = str(explicit_uid) if isinstance(explicit_uid, str) and explicit_uid else f"ui_only_{native_id}"
+        else:
+            uid = str(owner.uid)
+        if uid in nodes:
+            raise WorkflowBundleError(f"duplicate captured node UID {uid!r}")
+        ids[native_id] = uid
+        if isinstance(properties, Mapping) and properties.get("rejected"):
+            raise WorkflowBundleError(f"known node {uid!r} contains rejected metadata; reconcile the node metadata")
+        entry: dict[str, Any] = {}
+        for key in ("id", "pos", "size", "color", "bgcolor", "title"):
+            if key not in node:
+                continue
+            value = node[key]
+            if key in {"color", "bgcolor", "title"} and not isinstance(value, str):
+                continue
+            entry[key] = deepcopy(value)
+        if "order" in node:
+            entry["z_order"] = deepcopy(node["order"])
+        elif "z_order" in node:
+            entry["z_order"] = deepcopy(node["z_order"])
+        flags = node.get("flags")
+        if isinstance(flags, Mapping) and "collapsed" in flags:
+            entry["collapsed"] = flags["collapsed"]
+        elif "collapsed" in node:
+            entry["collapsed"] = node["collapsed"]
+        group = group_for_node.get(native_id)
+        if group is not None:
+            entry["group"] = str(group)
+        if owner is None or not owner.uid:
+            entry["class_type"] = str(raw_class_type)
+        nodes[uid] = entry
+        if raw_class_type in UI_ONLY_CLASS_TYPES:
+            raw_widgets = node.get("widgets_values")
+            if raw_widgets is None:
+                content = ""
+            elif isinstance(raw_widgets, list) and (not raw_widgets or isinstance(raw_widgets[0], str)):
+                content = raw_widgets[0] if raw_widgets else ""
+            else:
+                raise WorkflowBundleError(f"captured presentation note {uid!r} has unsupported content")
+            annotations.append({
+                "annotation_id": uid,
+                "scope_path": "",
+                "owner": {"kind": "node", "uid": uid},
+                "class_type": str(raw_class_type),
+                "title": entry.get("title", "") if isinstance(entry.get("title", ""), str) else "",
+                "content": content,
+            })
+    links: list[dict[str, Any]] = []
+    for link in presentation.links if isinstance(presentation.links, list) else ():
+        if isinstance(link, Mapping):
+            allowed_link = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type", "reroute"}
+            unknown_link = set(link) - allowed_link
+            if unknown_link:
+                raise WorkflowBundleError(f"captured link contains unsupported field(s): {', '.join(sorted(str(key) for key in unknown_link))}")
+            if type(link.get("id")) is not int:
+                raise WorkflowBundleError("captured link must contain an integer native id")
+            if "reroute" in link:
+                raise WorkflowBundleError("captured link reroute geometry is unsupported; use a Reroute node")
+            link = [link["id"], link.get("origin_id"), link.get("origin_slot"), link.get("target_id"), link.get("target_slot"), link.get("type", "")]
+        if not isinstance(link, (list, tuple)) or len(link) not in (5, 6):
+            raise WorkflowBundleError("captured link is malformed")
+        if type(link[0]) is not int:
+            raise WorkflowBundleError("captured link must contain an integer native id")
+        if len(link) > 5 and not isinstance(link[5], str):
+            raise WorkflowBundleError("captured link sixth member is not a supported presentation field")
+        source, target = ids.get(str(link[1])), ids.get(str(link[3]))
+        if source is None or target is None:
+            if str(link[1]) in ignored_captured_nodes or str(link[3]) in ignored_captured_nodes:
+                continue
+            raise WorkflowBundleError("captured link endpoint does not match a captured node")
+        source_entry = nodes.get(source, {})
+        target_entry = nodes.get(target, {})
+        if source_entry.get("class_type") in UI_ONLY_CLASS_TYPES or target_entry.get("class_type") in UI_ONLY_CLASS_TYPES:
+            continue
+        ref = {"scope_path": "", "from_uid": source, "from_port": link[2], "to_uid": target, "to_port": link[4]}
+        item: dict[str, Any] = {
+            "edge_ref": ref,
+            "occurrence_index": sum(1 for prior in links if prior["edge_ref"] == ref),
+            "id": link[0],
+        }
+        links.append(item)
+    groups: list[dict[str, Any]] = []
+    for group_index, group in enumerate(raw_groups):
+        if not isinstance(group, Mapping):
+            raise WorkflowBundleError("captured group is malformed")
+        presentation_id = group.get("presentation_id", group.get("vibecomfy_group_id", group.get("id")))
+        if presentation_id is None:
+            raise WorkflowBundleError("captured group has no stable presentation id")
+        item = {"scope_path": str(group.get("scope_path", "")), "presentation_id": str(presentation_id)}
+        bounds = group.get("bounds", group.get("bounding"))
+        if bounds is not None:
+            item["bounds"] = deepcopy(bounds)
+        for key in ("title", "color"):
+            if key not in group:
+                continue
+            value = group[key]
+            if isinstance(value, str):
+                item[key] = deepcopy(value)
+        item["z_order"] = deepcopy(group.get("order", group.get("z_order", group_index)))
+        groups.append(item)
+    canvas: dict[str, Any] = {}
+    raw_canvas = candidate.get("canvas")
+    if isinstance(raw_canvas, Mapping):
+        for key in ("zoom", "pan"):
+            if key in raw_canvas:
+                canvas[key] = deepcopy(raw_canvas[key])
+    extra = candidate.get("extra")
+    ds = extra.get("ds") if isinstance(extra, Mapping) else None
+    if isinstance(ds, Mapping):
+        canvas.setdefault("zoom", ds.get("scale"))
+        canvas.setdefault("pan", ds.get("offset"))
+    return {
+        "format_version": 1,
+        "bind": {"workflow_identity": workflow.id, "semantic_digest": workflow.semantic_digest()},
+        "nodes": nodes,
+        "links": links,
+        "groups": groups,
+        "canvas": canvas,
+        "annotations": annotations,
+    }
+
+
+def canonical_presentation_to_layout_store(
+    presentation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Adapt validated v2 presentation records to the legacy UI preserve seam.
+
+    The canonical companion remains the source of truth.  This adapter exists
+    only because the established UI emitter consumes the older furniture-store
+    shape; custody and semantic graph records never cross this boundary.
+    """
+    entries: dict[str, dict[str, Any]] = {}
+    raw_nodes = presentation.get("nodes", {})
+    if isinstance(raw_nodes, Mapping):
+        for uid, raw_entry in raw_nodes.items():
+            if not isinstance(raw_entry, Mapping):
+                continue
+            entries[str(uid)] = {
+                key: deepcopy(raw_entry[key])
+                for key in (
+                    "pos",
+                    "size",
+                    "flags",
+                    "color",
+                    "bgcolor",
+                    "mode",
+                    "properties",
+                )
+                if key in raw_entry
+            }
+
+    extra: dict[str, Any] = {}
+    canvas = presentation.get("canvas")
+    if isinstance(canvas, Mapping):
+        ds: dict[str, Any] = {}
+        if "zoom" in canvas:
+            ds["scale"] = deepcopy(canvas["zoom"])
+        if "pan" in canvas:
+            ds["offset"] = deepcopy(canvas["pan"])
+        if ds:
+            extra["ds"] = ds
+
+    return {
+        "store_version": 2,
+        "entries": entries,
+        "groups": deepcopy(presentation.get("groups", [])),
+        "extra": extra,
+        "lastRerouteId": None,
+        "definitions": {},
+        "virtual_wires": {},
+    }
+
+
 # Documented default control_after_generate mode when none is retained in metadata.
 _CONTROL_AFTER_GENERATE_DEFAULT = "fixed"
 
@@ -4660,6 +4912,23 @@ def _overlay_validated_presentation(
         emitted_nodes.append(node)
         by_uid[str(uid)] = node
         native_ids.add(native_id)
+
+    # Annotation content is carried in the v2 presentation section rather
+    # than in the semantic Python graph. Reattach it only to the matching
+    # allowlisted canvas node, preserving Markdown/Unicode/empty content
+    # exactly once for the editor projection.
+    raw_annotations = sidecar.get("annotations", [])
+    if isinstance(raw_annotations, list):
+        for annotation in raw_annotations:
+            if not isinstance(annotation, Mapping):
+                continue
+            owner = annotation.get("owner")
+            if not isinstance(owner, Mapping) or owner.get("kind") != "node":
+                continue
+            target = by_uid.get(str(owner.get("uid")))
+            if target is None or annotation.get("class_type") not in UI_ONLY_CLASS_TYPES:
+                continue
+            target["widgets_values"] = [deepcopy(annotation.get("content", ""))]
 
     # Preserve the emitted ids for link remapping, then apply native sidecar ids.
     old_to_new: dict[int, int] = {}

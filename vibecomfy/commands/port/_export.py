@@ -331,10 +331,12 @@ def _resolve_preserve_source(
 
     # 2. Check for both --from and sidecar (conflict case)
     from_path = getattr(args, "from_path", None)
-    # Compatibility export may inspect legacy .layout.json as transient
-    # preservation evidence.  It is never consumed by WorkflowBundle loading,
-    # approval, semantic digesting, or execution authority.
-    sidecar_store = read_store(py_path)
+    # A v2 companion is the canonical presentation witness. Fall back to the
+    # legacy layout store only for legacy Python sources; keeping both in the
+    # precedence chain would let a stale .layout.json override the pair that
+    # the canonical loader treats as authoritative.
+    canonical_store = _read_canonical_presentation_store(py_path, workflow)
+    sidecar_store = canonical_store if canonical_store is not None else read_store(py_path)
 
     if from_path and sidecar_store:
         # Conflict policy: sidecar wins as base; --from provides per-uid overrides
@@ -398,6 +400,36 @@ def _read_ui_payload(path: str | Path) -> dict[str, Any] | None:
     if isinstance(candidate, dict):
         return candidate
     return None
+
+
+def _read_canonical_presentation_store(
+    py_path: Path,
+    workflow: Any,
+) -> dict[str, Any] | None:
+    """Adapt the v2 companion presentation into the existing UI preserve seam.
+
+    The editor emitter still consumes its established furniture store. A
+    canonical pair should not need a second ``.layout.json`` authority just to
+    preserve positions, so this small adapter projects the validated v2
+    presentation into that seam without copying custody or semantic data.
+    ``None`` means that this Python source is not a v2 pair; an empty store is
+    still meaningful for a valid semantic-only capture.
+    """
+    companion_path = py_path.with_suffix(".vibe.json")
+    if not companion_path.is_file():
+        return None
+    try:
+        payload = json.loads(companion_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(f"canonical companion could not be read: {companion_path}") from exc
+    if not isinstance(payload, dict) or payload.get("format_version") != 2:
+        return None
+
+    from vibecomfy.porting.emit.ui import canonical_presentation_to_layout_store
+    from vibecomfy.workflow_bundle import validate_sidecar
+
+    validated = validate_sidecar(payload, workflow)
+    return canonical_presentation_to_layout_store(validated["presentation"])
 
 
 def _should_persist_sidecar(args: argparse.Namespace) -> bool:

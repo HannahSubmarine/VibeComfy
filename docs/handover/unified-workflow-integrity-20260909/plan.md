@@ -7,7 +7,7 @@ audit slices and one Astra high adjudication, integrated into existing owners.
 No broad test cleanup prerequisite, deletion quota, weakened validation or
 new review stage. Keep old coverage until replacements prove distinct defects.
 
-Preparation only; no implementation is authorized by this update. The current
+The plan is now active for delivery; the current
 [source-cleanliness direction](canonical-source-cleanliness-direction.md) folds
 in the Luna owner/path investigations and S90 Astra simplification ruling. It
 supersedes older embedded-custody and representation details below. Use its
@@ -22,9 +22,15 @@ conversion, convergence of v2 publication through the bundle owner, and targeted
 tests for output-slot fallback and differing ingress/export contexts. Proposed
 drift is tested before refactoring; UI JSON and execution API JSON remain
 legitimate separate projections. Adjacent risks are bounded checks within those
-tasks, not another repository-wide audit. All amendment acceptance is NOT RUN.
+tasks, not another repository-wide audit. The current delivery candidate has
+implemented the v2 pair and records acceptance evidence below and in the run
+evidence directory; final reviewer disposition remains the completion gate.
 
-Planning only. [run.yaml](./run.yaml) owns role/model bindings, stage scopes and every review/oracle ceiling. [goal.md](./goal.md) owns authority; [northstar.md](./northstar.md) remains unchanged. The current user amendment absorbs Pythonic emission into this plan and supersedes the prior exclusion. See consolidation.md for criterion/history mapping.
+Delivery execution is active. [run.yaml](./run.yaml) owns role/model bindings,
+stage scopes and every review/oracle ceiling. [goal.md](./goal.md) owns
+authority; [northstar.md](./northstar.md) remains unchanged. The current user
+amendment absorbs Pythonic emission into this plan and supersedes the prior
+exclusion. See consolidation.md for criterion/history mapping.
 
 ## First useful outcome
 
@@ -42,7 +48,7 @@ T0 reuses current H3 auxiliary-output/PreviewAny retention and wired-passthrough
 
 E0 first establishes AST/source-edit/helper/custody baselines on current main. E1 implements the one coupled emitter/finalization/identity kernel under adopted emission D1 (Sol XHARD); normal workers prepare tests and integrate evidence. T1 can prepare existing integrity fixtures in parallel, then proves/fixes I1/I2 against the E1 candidate rather than building a second emitter. It uses the existing emitter-preparation owner before constructing canonical bundle/sidecar/revision. Preserve unconditional staged equality against that exact intended result. Verify returned/reloaded content and sidecar/revision binding, including a sidecar-present case; injected unexpected node/edge/widget loss must leave the previous destination pair intact. Accepted normalization identifies affected content using existing diagnostics. It is not permission for arbitrary digest drift.
 
-T2 first tests the existing public export split, then shares any missing needed authority, source and sidecar/materialization checks at public export without imposing persistence of canonical Python/bundle artifacts on plain export. Preserve --out, explicit --persist-sidecar, --from/breadcrumb layout, strict refusal, visible --force-drop, recovery/trust and preview no-write behavior. Draft UI export needs no queue readiness; API JSON remains a projection. CLI --persist-sidecar concerns the .layout.json layout store, not automatic publication of a canonical Python/.vibe.json pair. Test those artifacts separately; pair identity belongs to I1.
+T2 first tests the existing public export split, then shares any missing needed authority, source and sidecar/materialization checks at public export without imposing persistence of canonical Python/bundle artifacts on plain export. Preserve --out, explicit --persist-sidecar, --from/breadcrumb layout, strict refusal, visible --force-drop, recovery/trust and preview no-write behavior. Draft UI export needs no queue readiness; API JSON remains a projection. CLI --persist-sidecar concerns the .layout.json layout store, not automatic publication of a canonical Python/.vibe.json pair. Test those artifacts separately; pair identity belongs to I1. The v2 companion is the canonical partner for converted Python; a legacy layout store remains an explicit compatibility path.
 
 T1 and T2 shared-file mutations serialize. Test preparation can overlap; labels do not create global barriers. S1_READY means C0/T0/E0/E1 resolved, T1/T2 integrated and their required affected checks passed with exact candidate evidence. The save_export_completion stage catches a producer/export mismatch or wrong revision binding before substantial dependents build on it. It includes I8/I9 emitter shape/edit/helper/custody proof alongside I1/I2/I3/I7; it does not require later H3 practical demonstration or docs/parity completion.
 

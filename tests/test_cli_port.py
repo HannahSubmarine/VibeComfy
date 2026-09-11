@@ -1621,7 +1621,8 @@ def test_port_export_to_ui_roundtrip_pos_and_uid(
     )
     assert code == 0, f"port convert failed with code {code}"
     assert (tmp_path / "flat.py").exists(), "flat.py was not written"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar flat.layout.json was not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion flat.vibe.json was not written"
+    assert not (tmp_path / "flat.layout.json").exists(), "legacy layout sidecar should not be emitted by canonical conversion"
 
     # Step 2: export flat.py --to ui → flat_emit.json
     out_emit = tmp_path / "flat_emit.json"
@@ -2123,7 +2124,7 @@ def test_export_fresh_overrides_sidecar(
         )
     )
     assert code == 0, f"port convert failed with code {code}"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar was not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion was not written"
 
     out_emit = tmp_path / "flat_emit_fresh.json"
     code = _cmd_port_export(
@@ -2409,7 +2410,7 @@ def test_export_from_flag_takes_priority_over_sidecar(
         )
     )
     assert code == 0, f"port convert failed with code {code}"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion was not written"
 
     # Export with --from pointing at the SHIFTED prior emission.
     out_emit = tmp_path / "flat_emit_from_over_sidecar.json"

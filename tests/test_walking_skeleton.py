@@ -192,7 +192,8 @@ def test_proof_a_full_roundtrip_pos_preservation(
     code = _run_convert(flat_json, "flat.py")
     assert code == 0, f"port convert failed with code {code}"
     assert (tmp_path / "flat.py").exists(), "flat.py not written"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion not written"
+    assert not (tmp_path / "flat.layout.json").exists(), "legacy layout sidecar must not be canonical output"
 
     # Step 2 — export to UI
     out_emit = tmp_path / "flat_emit.json"

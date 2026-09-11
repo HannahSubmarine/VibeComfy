@@ -16,6 +16,8 @@ import os
 import shlex
 import shutil
 import tempfile
+from contextlib import contextmanager, nullcontext
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
@@ -135,6 +137,41 @@ _EDGE_REF_KEYS = frozenset({"scope_path", "from_uid", "from_port", "to_uid", "to
 _VIRTUAL_REF_KEYS = frozenset({"scope_path", "name", "leg_index"})
 _GROUP_KEYS = frozenset({"scope_path", "presentation_id", "bounds", "title", "color", "z_order"})
 _CANVAS_KEYS = frozenset({"zoom", "pan"})
+_ANNOTATION_KEYS = frozenset({
+    "annotation_id", "scope_path", "owner", "class_type", "title", "content",
+})
+_ANNOTATION_OWNER_KEYS = frozenset({"kind", "uid"})
+_ANNOTATION_OWNER_KINDS = frozenset({"workflow", "definition", "instance", "node", "group"})
+
+_V2_KEYS = frozenset({"format_version", "bind", "custody", "presentation"})
+_V2_BIND_KEYS = frozenset({"workflow_identity", "generation_id", "custody_digest"})
+_V2_CUSTODY_KEYS = frozenset({"scopes"})
+_V2_SCOPE_KEYS = frozenset({"scope_path", "nodes", "helpers"})
+_V2_NODE_KEYS = frozenset({
+    "label", "id", "uid", "class_type", "native_ports", "metadata",
+    "widget_channels", "none_input_fields", "none_widget_fields",
+    "output_slot_names", "construction_output_names",
+})
+_V2_HELPER_KEYS = frozenset({"id", "uid", "class_type", "provenance", "native_ports"})
+_V2_MARKER_KEYS = frozenset({"format_version", "generation_id", "custody_digest"})
+_V2_PRESENTATION_KEYS = frozenset({"nodes", "links", "groups", "canvas", "annotations"})
+_V2_SCOPE_NODES_KEY = "nodes"
+_V2_SCOPE_HELPERS_KEY = "helpers"
+_V2_PRESENTATION_NODES_KEY = "nodes"
+_V2_PRESENTATION_LINKS_KEY = "links"
+_V2_PRESENTATION_GROUPS_KEY = "groups"
+_V2_PRESENTATION_CANVAS_KEY = "canvas"
+
+
+@dataclass(frozen=True, slots=True)
+class _CompanionLoadContext:
+    logical_python_path: Path
+    companion: Mapping[str, Any]
+
+
+_COMPANION_LOAD_CONTEXT: ContextVar[_CompanionLoadContext | None] = ContextVar(
+    "vibecomfy_companion_load_context", default=None
+)
 
 
 def _closed_keys(value: Mapping[str, Any], allowed: frozenset[str], where: str) -> None:
@@ -287,16 +324,69 @@ def _virtual_legs(workflow: VibeWorkflow) -> dict[tuple[str, str], tuple[tuple[s
     }
 
 
-def validate_sidecar(sidecar: Any, workflow: VibeWorkflow) -> dict[str, Any]:
-    """Validate and canonically normalize one strict ``.vibe.json`` object."""
+def _validate_annotations(value: Any, workflow: VibeWorkflow) -> list[dict[str, Any]]:
+    from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
+
+    if not isinstance(value, list):
+        raise WorkflowBundleError("workflow presentation annotations must be a list")
+    result: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for index, raw in enumerate(value):
+        where = f"workflow presentation annotation {index}"
+        if not isinstance(raw, Mapping):
+            raise WorkflowBundleError(f"{where} must be an object")
+        _closed_keys(raw, _ANNOTATION_KEYS, where)
+        if set(raw) != _ANNOTATION_KEYS:
+            raise WorkflowBundleError(f"{where} must contain exactly {_ANNOTATION_KEYS}")
+        scope_path = raw.get("scope_path")
+        annotation_id = raw.get("annotation_id")
+        if not isinstance(scope_path, str) or any(
+            part in {"sg0", "sg1"} for part in scope_path.split("/")
+        ):
+            raise WorkflowBundleError(f"{where}.scope_path is invalid")
+        if not isinstance(annotation_id, str) or not annotation_id.strip():
+            raise WorkflowBundleError(f"{where}.annotation_id must be nonblank")
+        identity = (scope_path, annotation_id)
+        if identity in seen:
+            raise WorkflowBundleError(f"duplicate workflow presentation annotation {identity!r}")
+        seen.add(identity)
+        owner = raw.get("owner")
+        if not isinstance(owner, Mapping):
+            raise WorkflowBundleError(f"{where}.owner must be an object")
+        _closed_keys(owner, _ANNOTATION_OWNER_KEYS, f"{where}.owner")
+        if set(owner) != _ANNOTATION_OWNER_KEYS:
+            raise WorkflowBundleError(f"{where}.owner must contain exactly kind and uid")
+        if owner.get("kind") not in _ANNOTATION_OWNER_KINDS:
+            raise WorkflowBundleError(f"{where}.owner.kind is unsupported")
+        if not isinstance(owner.get("uid"), str) or not owner["uid"].strip():
+            raise WorkflowBundleError(f"{where}.owner.uid must be nonblank")
+        if raw.get("class_type") not in UI_ONLY_CLASS_TYPES:
+            raise WorkflowBundleError(f"{where}.class_type must be an allowlisted note class")
+        for field in ("title", "content"):
+            if not isinstance(raw.get(field), str):
+                raise WorkflowBundleError(f"{where}.{field} must be a string")
+        result.append(copy.deepcopy(dict(raw)))
+    return result
+
+
+def _validate_v1_sidecar(
+    sidecar: Any,
+    workflow: VibeWorkflow,
+    *,
+    allow_annotations: bool = False,
+) -> dict[str, Any]:
+    """Validate and canonically normalize one legacy presentation sidecar."""
     if not isinstance(sidecar, Mapping):
         raise WorkflowBundleError("workflow sidecar must contain a JSON object")
     try:
         projection = canonical_ir_projection(workflow)
     except (TypeError, ValueError, KeyError) as exc:
         raise WorkflowBundleError(f"Python semantic projection is invalid: {exc}") from exc
-    _closed_keys(sidecar, _SIDECAR_KEYS, "workflow sidecar")
-    if set(sidecar) != _SIDECAR_KEYS:
+    allowed_keys = _SIDECAR_KEYS | ({"annotations"} if allow_annotations else set())
+    _closed_keys(sidecar, frozenset(allowed_keys), "workflow sidecar")
+    if set(sidecar) != _SIDECAR_KEYS and not (
+        allow_annotations and set(sidecar) == _SIDECAR_KEYS | {"annotations"}
+    ):
         raise WorkflowBundleError("workflow sidecar must contain exactly format_version, bind, nodes, links, groups, canvas")
     if type(sidecar["format_version"]) is not int or sidecar["format_version"] != 1:
         raise WorkflowBundleError("workflow sidecar format_version must be integer 1")
@@ -492,7 +582,343 @@ def validate_sidecar(sidecar: Any, workflow: VibeWorkflow) -> dict[str, Any]:
     _closed_keys(canvas, _CANVAS_KEYS, "workflow sidecar canvas")
     if "zoom" in canvas and (isinstance(canvas["zoom"], bool) or not isinstance(canvas["zoom"], (int, float)) or not math.isfinite(float(canvas["zoom"]))): raise WorkflowBundleError("sidecar canvas zoom must be finite numeric")
     if "pan" in canvas: _pair(canvas["pan"], "sidecar canvas pan")
-    return {"format_version": 1, "bind": dict(bind), "nodes": canonical_nodes, "links": canonical_links, "groups": canonical_groups, "canvas": dict(canvas)}
+    result = {
+        "format_version": 1,
+        "bind": dict(bind),
+        "nodes": canonical_nodes,
+        "links": canonical_links,
+        "groups": canonical_groups,
+        "canvas": dict(canvas),
+    }
+    if allow_annotations:
+        annotations = _validate_annotations(sidecar.get("annotations", []), workflow)
+        for index, annotation in enumerate(annotations):
+            owner = annotation["owner"]
+            if owner["kind"] == "node" and owner["uid"] not in canonical_nodes:
+                raise WorkflowBundleError(
+                    f"workflow presentation annotation {index} references an unknown node"
+                )
+        result["annotations"] = annotations
+    return result
+
+
+def _strict_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise WorkflowBundleError(f"duplicate JSON key {key!r}")
+        result[key] = value
+    return result
+
+
+def _read_json_object(path: Path, *, label: str) -> dict[str, Any]:
+    try:
+        raw = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_strict_json_object,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                WorkflowBundleError(f"{label} contains non-finite number {value}")
+            ),
+        )
+    except WorkflowBundleError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise WorkflowBundleError(f"could not read {label} {path}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise WorkflowBundleError(f"{label} must contain a JSON object")
+    return raw
+
+
+def _validate_v2_marker(marker: Any) -> dict[str, Any]:
+    if not isinstance(marker, Mapping):
+        raise WorkflowBundleError("READY_METADATA source_bundle must be an object")
+    _closed_keys(marker, _V2_MARKER_KEYS, "READY_METADATA source_bundle")
+    if set(marker) != _V2_MARKER_KEYS or marker.get("format_version") != 2:
+        raise WorkflowBundleError(
+            "READY_METADATA source_bundle must contain format_version 2, generation_id, and custody_digest"
+        )
+    for field in ("generation_id", "custody_digest"):
+        value = marker.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise WorkflowBundleError(f"READY_METADATA source_bundle {field} must be nonblank")
+    return dict(marker)
+
+
+def _validate_native_ports(value: Any, where: str) -> dict[str, Any]:
+    allowed = frozenset({
+        "native_input_names", "native_output_names", "native_input_types",
+        "native_output_types", "native_input_optional", "native_input_asset_kinds",
+        "native_output_slots",
+    })
+    if not isinstance(value, Mapping):
+        raise WorkflowBundleError(f"{where} must be an object")
+    _closed_keys(value, allowed, where)
+    result = copy.deepcopy(dict(value))
+    for key, items in result.items():
+        if items is not None and not isinstance(items, list):
+            raise WorkflowBundleError(f"{where}.{key} must be a list or null")
+    input_names = result.get("native_input_names")
+    if isinstance(input_names, list):
+        for key in ("native_input_types", "native_input_optional", "native_input_asset_kinds"):
+            items = result.get(key)
+            if items is not None and len(items) != len(input_names):
+                raise WorkflowBundleError(f"{where}.{key} length must match native_input_names")
+    output_names = result.get("native_output_names")
+    if isinstance(output_names, list):
+        for key in ("native_output_types",):
+            items = result.get(key)
+            if items is not None and len(items) != len(output_names):
+                raise WorkflowBundleError(f"{where}.{key} length must match native_output_names")
+    slots = result.get("native_output_slots")
+    if isinstance(slots, list):
+        if any(type(item) is not int or item < 0 for item in slots):
+            raise WorkflowBundleError(f"{where}.native_output_slots must contain non-negative integers")
+        if len(set(slots)) != len(slots):
+            raise WorkflowBundleError(f"{where}.native_output_slots must be unique")
+    return result
+
+
+def _validate_v2_custody(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise WorkflowBundleError("workflow companion custody must be an object")
+    _closed_keys(value, _V2_CUSTODY_KEYS, "workflow companion custody")
+    if set(value) != _V2_CUSTODY_KEYS or not isinstance(value.get("scopes"), list):
+        raise WorkflowBundleError("workflow companion custody must contain one scopes list")
+    scopes: list[dict[str, Any]] = []
+    seen_scopes: set[str] = set()
+    for scope_index, raw_scope in enumerate(value["scopes"]):
+        where = f"workflow companion custody scope {scope_index}"
+        if not isinstance(raw_scope, Mapping):
+            raise WorkflowBundleError(f"{where} must be an object")
+        _closed_keys(raw_scope, _V2_SCOPE_KEYS, where)
+        if set(raw_scope) != _V2_SCOPE_KEYS:
+            raise WorkflowBundleError(f"{where} must contain scope_path, nodes, and helpers")
+        scope_path = raw_scope.get("scope_path")
+        if not isinstance(scope_path, str) or any(part in {"sg0", "sg1"} for part in scope_path.split("/")):
+            raise WorkflowBundleError(f"{where}.scope_path is invalid")
+        if scope_path in seen_scopes:
+            raise WorkflowBundleError(f"duplicate workflow companion custody scope {scope_path!r}")
+        seen_scopes.add(scope_path)
+        raw_nodes = raw_scope.get(_V2_SCOPE_NODES_KEY)
+        raw_helpers = raw_scope.get(_V2_SCOPE_HELPERS_KEY)
+        if not isinstance(raw_nodes, list) or not isinstance(raw_helpers, list):
+            raise WorkflowBundleError(f"{where} nodes and helpers must be lists")
+        nodes: list[dict[str, Any]] = []
+        labels: set[str] = set()
+        ids: set[str] = set()
+        uids: set[str] = set()
+        for node_index, raw_node in enumerate(raw_nodes):
+            node_where = f"{where} node {node_index}"
+            if not isinstance(raw_node, Mapping):
+                raise WorkflowBundleError(f"{node_where} must be an object")
+            _closed_keys(raw_node, _V2_NODE_KEYS, node_where)
+            required = {"label", "id", "uid", "class_type"}
+            if not required.issubset(raw_node):
+                raise WorkflowBundleError(f"{node_where} is missing a required identity field")
+            node = copy.deepcopy(dict(raw_node))
+            for field in required:
+                if not isinstance(node[field], str) or not node[field].strip():
+                    raise WorkflowBundleError(f"{node_where}.{field} must be nonblank")
+            for field, seen in (("label", labels), ("id", ids), ("uid", uids)):
+                if node[field] in seen:
+                    raise WorkflowBundleError(f"duplicate {field} {node[field]!r} in scope {scope_path!r}")
+                seen.add(node[field])
+            if "native_ports" in node:
+                node["native_ports"] = _validate_native_ports(
+                    node["native_ports"], f"{node_where}.native_ports"
+                )
+            for field in ("metadata", "widget_channels", "output_slot_names"):
+                if field in node and not isinstance(node[field], Mapping):
+                    raise WorkflowBundleError(f"{node_where}.{field} must be an object")
+            for field in ("none_input_fields", "none_widget_fields", "construction_output_names"):
+                if field in node and (
+                    not isinstance(node[field], list)
+                    or not all(isinstance(item, str) for item in node[field])
+                ):
+                    raise WorkflowBundleError(f"{node_where}.{field} must be a string list")
+            canonical_digest(node)
+            nodes.append(node)
+        helpers: list[dict[str, Any]] = []
+        helper_ids: set[str] = set()
+        helper_uids: set[str] = set()
+        for helper_index, raw_helper in enumerate(raw_helpers):
+            helper_where = f"{where} helper {helper_index}"
+            if not isinstance(raw_helper, Mapping):
+                raise WorkflowBundleError(f"{helper_where} must be an object")
+            _closed_keys(raw_helper, _V2_HELPER_KEYS, helper_where)
+            helper = copy.deepcopy(dict(raw_helper))
+            for field in ("id", "uid", "class_type"):
+                if not isinstance(helper.get(field), str) or not helper[field].strip():
+                    raise WorkflowBundleError(f"{helper_where}.{field} must be nonblank")
+            if helper["id"] in helper_ids or helper["uid"] in helper_uids:
+                raise WorkflowBundleError(f"duplicate helper identity in scope {scope_path!r}")
+            helper_ids.add(helper["id"])
+            helper_uids.add(helper["uid"])
+            if "native_ports" in helper:
+                helper["native_ports"] = _validate_native_ports(
+                    helper["native_ports"], f"{helper_where}.native_ports"
+                )
+            canonical_digest(helper)
+            helpers.append(helper)
+        scopes.append({"scope_path": scope_path, "nodes": nodes, "helpers": helpers})
+    if "" not in seen_scopes:
+        raise WorkflowBundleError("workflow companion custody must contain the root scope")
+    return {"scopes": scopes}
+
+
+def _validate_v2_sidecar(
+    sidecar: Any,
+    workflow: VibeWorkflow,
+    *,
+    marker: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(sidecar, Mapping):
+        raise WorkflowBundleError("workflow companion must contain a JSON object")
+    _closed_keys(sidecar, _V2_KEYS, "workflow companion")
+    if set(sidecar) != _V2_KEYS or sidecar.get("format_version") != 2:
+        raise WorkflowBundleError(
+            "workflow companion v2 must contain exactly format_version, bind, custody, and presentation"
+        )
+    bind = sidecar.get("bind")
+    if not isinstance(bind, Mapping):
+        raise WorkflowBundleError("workflow companion bind must be an object")
+    _closed_keys(bind, _V2_BIND_KEYS, "workflow companion bind")
+    if set(bind) != _V2_BIND_KEYS:
+        raise WorkflowBundleError("workflow companion bind is incomplete")
+    if bind.get("workflow_identity") != workflow.id:
+        raise WorkflowBundleError("workflow companion identity does not match Python authority")
+    for field in ("generation_id", "custody_digest"):
+        if not isinstance(bind.get(field), str) or not bind[field].strip():
+            raise WorkflowBundleError(f"workflow companion bind {field} must be nonblank")
+    custody = _validate_v2_custody(sidecar.get("custody"))
+    if canonical_digest(custody) != bind["custody_digest"]:
+        raise WorkflowBundleError("workflow companion custody digest does not match custody")
+    if marker is not None:
+        checked_marker = _validate_v2_marker(marker)
+        if checked_marker["generation_id"] != bind["generation_id"]:
+            raise WorkflowBundleError("workflow companion generation does not match Python")
+        if checked_marker["custody_digest"] != bind["custody_digest"]:
+            raise WorkflowBundleError("workflow companion custody digest does not match Python")
+    presentation = sidecar.get("presentation")
+    if not isinstance(presentation, Mapping) or set(presentation) != _V2_PRESENTATION_KEYS:
+        raise WorkflowBundleError(
+            "workflow companion presentation must contain exactly nodes, links, groups, canvas, and annotations"
+        )
+    annotations = _validate_annotations(presentation.get("annotations"), workflow)
+    # API-only captures have no canvas furniture to validate.  Their empty
+    # presentation is intentional; requiring UI foreign keys here would turn
+    # a semantic-only graph (which may still contain executable edges) into a
+    # false malformed-sidecar refusal.
+    if (
+        presentation[_V2_PRESENTATION_NODES_KEY] == {}
+        and presentation[_V2_PRESENTATION_LINKS_KEY] == []
+        and presentation[_V2_PRESENTATION_GROUPS_KEY] == []
+        and presentation[_V2_PRESENTATION_CANVAS_KEY] == {}
+    ):
+        validated_presentation = {
+            "nodes": {},
+            "links": [],
+            "groups": [],
+            "canvas": {},
+        }
+    else:
+        validated_presentation = _validate_v1_sidecar(
+            {
+                "format_version": 1,
+                "bind": {
+                    "workflow_identity": workflow.id,
+                    "semantic_digest": workflow.semantic_digest(),
+                },
+                **{
+                    key: value
+                    for key, value in presentation.items()
+                    if key != "annotations"
+                },
+            },
+            workflow,
+        )
+    return {
+        "format_version": 2,
+        "bind": dict(bind),
+        "custody": custody,
+        "presentation": {
+            key: validated_presentation[key]
+            for key in ("nodes", "links", "groups", "canvas")
+        } | {"annotations": annotations},
+    }
+
+
+def validate_sidecar(sidecar: Any, workflow: VibeWorkflow) -> dict[str, Any]:
+    """Validate and canonically normalize a v1 presentation or v2 companion."""
+    if isinstance(sidecar, Mapping) and sidecar.get("format_version") == 2:
+        marker = None
+        metadata = getattr(workflow, "metadata", {})
+        if isinstance(metadata, Mapping):
+            marker = metadata.get("source_bundle")
+        return _validate_v2_sidecar(sidecar, workflow, marker=marker)
+    return _validate_v1_sidecar(
+        sidecar,
+        workflow,
+        allow_annotations=isinstance(sidecar, Mapping) and "annotations" in sidecar,
+    )
+
+
+@contextmanager
+def _staged_companion_context(
+    logical_python_path: Path,
+    companion: Mapping[str, Any],
+):
+    token = _COMPANION_LOAD_CONTEXT.set(
+        _CompanionLoadContext(logical_python_path.resolve(), copy.deepcopy(dict(companion)))
+    )
+    try:
+        yield
+    finally:
+        _COMPANION_LOAD_CONTEXT.reset(token)
+
+
+def _v2_companion_for_build(
+    metadata: Mapping[str, Any],
+    source_path: str | Path | None,
+) -> dict[str, Any] | None:
+    """Load and validate marked custody before the first workflow constructor."""
+    marker_value = metadata.get("source_bundle")
+    if marker_value is None:
+        return None
+    marker = _validate_v2_marker(marker_value)
+    if source_path is None:
+        raise WorkflowBundleError("v2 workflow source has no path for its required companion")
+    logical_path = Path(source_path).resolve()
+    context = _COMPANION_LOAD_CONTEXT.get()
+    if context is not None:
+        if context.logical_python_path != logical_path:
+            raise WorkflowBundleError("staged companion context does not match logical Python path")
+        sidecar = copy.deepcopy(dict(context.companion))
+    else:
+        candidate = _sidecar_path(logical_path)
+        if not candidate.is_file():
+            raise WorkflowBundleError(f"v2 workflow companion is missing: {candidate}")
+        sidecar = _read_json_object(candidate, label="workflow companion")
+    if sidecar.get("format_version") != 2:
+        raise WorkflowBundleError("marked v2 Python requires a format_version 2 companion")
+    bind = sidecar.get("bind")
+    if not isinstance(bind, Mapping):
+        raise WorkflowBundleError("workflow companion bind must be an object")
+    if bind.get("workflow_identity") != (
+        metadata.get("ready_template") or metadata.get("workflow_template")
+    ):
+        raise WorkflowBundleError("workflow companion identity does not match READY_METADATA")
+    custody = _validate_v2_custody(sidecar.get("custody"))
+    if canonical_digest(custody) != marker["custody_digest"] or bind.get("custody_digest") != marker["custody_digest"]:
+        raise WorkflowBundleError("workflow companion custody digest mismatch")
+    if bind.get("generation_id") != marker["generation_id"]:
+        raise WorkflowBundleError("workflow companion generation mismatch")
+    return {
+        "format_version": 2,
+        "bind": dict(bind),
+        "custody": custody,
+        "presentation": copy.deepcopy(sidecar.get("presentation")),
+    }
 
 
 def _identity_declarations(value: Any, *, container: str = "") -> list[tuple[str, Any]]:
@@ -643,184 +1069,87 @@ def _read_sidecar(path: Path | None) -> dict[str, Any] | None:
     candidate = _sidecar_path(path)
     if not candidate.is_file():
         return None
-    try:
-        raw = json.loads(candidate.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise WorkflowBundleError(f"could not read workflow sidecar {candidate}: {exc}") from exc
-    if not isinstance(raw, dict):
-        raise WorkflowBundleError("workflow sidecar must contain a JSON object")
-    return raw
+    return _read_json_object(candidate, label="workflow sidecar")
 
 
 def _ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str, Any]) -> dict[str, Any]:
-    """Convert a captured UI envelope into presentation-only sidecar data."""
-    if set(candidate) >= _SIDECAR_KEYS:
-        return dict(candidate)
-    from vibecomfy.porting.emit.ui import capture_presentation_graph_records
+    """Delegate LiteGraph capture to the named presentation boundary."""
+    from vibecomfy.porting.emit.ui import capture_ui_candidate_sidecar
 
-    presentation = capture_presentation_graph_records(candidate)
-    raw_nodes = presentation.nodes
-    if not isinstance(raw_nodes, list):
-        raise WorkflowBundleError("captured candidate is not a strict sidecar or LiteGraph UI envelope")
-    ids: dict[str, str] = {}
-    nodes: dict[str, Any] = {}
-    workflow_by_id = {str(key): node for key, node in workflow.nodes.items()}
-    workflow_by_uid = {str(node.uid): node for node in workflow.nodes.values() if node.uid}
-    from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
+    return capture_ui_candidate_sidecar(workflow, candidate)
 
-    raw_groups = presentation.groups if presentation.groups_present else []
-    if not isinstance(raw_groups, list):
-        raise WorkflowBundleError("captured groups must be a list")
-    group_for_node: dict[str, str] = {}
-    for group in raw_groups:
-        if not isinstance(group, Mapping):
-            raise WorkflowBundleError("captured group is malformed")
-        group_id = group.get("vibecomfy_group_id", group.get("id"))
-        if group_id is None:
-            raise WorkflowBundleError("captured group has no stable presentation id")
-        members = group.get("nodes", [])
-        if not isinstance(members, list):
-            raise WorkflowBundleError("captured group nodes must be a list")
-        for member in members:
-            member_key = str(member)
-            prior = group_for_node.get(member_key)
-            if prior is not None and prior != str(group_id):
-                raise WorkflowBundleError(f"captured node {member_key!r} has ambiguous group membership")
-            group_for_node[member_key] = str(group_id)
-    for node in raw_nodes:
-        if not isinstance(node, Mapping) or type(node.get("id")) is not int:
-            raise WorkflowBundleError("captured node must contain an integer native id")
-        properties = node.get("properties")
-        if "properties" in node and not isinstance(properties, Mapping):
-            raise WorkflowBundleError("captured node properties must be a mapping")
-        native_id = str(node["id"])
-        if native_id in ids:
-            raise WorkflowBundleError(f"duplicate captured native node id {native_id}")
-        explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
-        owner = workflow_by_uid.get(explicit_uid) if isinstance(explicit_uid, str) else None
-        if explicit_uid is None:
-            owner = workflow_by_id.get(native_id)
-        raw_class_type = node.get("type", node.get("class_type"))
-        if owner is None or not owner.uid:
-            # ``emit_prepare`` intentionally removes pure canvas furniture
-            # from the Python projection.  Keep its layout in the sidecar,
-            # but require an explicit allowlisted class witness; unknown
-            # unmapped nodes remain a hard custody error.
-            if raw_class_type not in UI_ONLY_CLASS_TYPES:
-                raise WorkflowBundleError(f"captured node {native_id!r} cannot be mapped to one Python node")
-            explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
-            uid = str(explicit_uid) if isinstance(explicit_uid, str) and explicit_uid else f"ui_only_{native_id}"
-        else:
-            uid = str(owner.uid)
-        if uid in nodes:
-            raise WorkflowBundleError(f"duplicate captured node UID {uid!r}")
-        ids[native_id] = uid
-        if isinstance(properties, Mapping):
-            # Extra presentation keys (e.g. Use Everywhere widget_ue_connectable)
-            # are ignored. Fail-closing here aborted implement apply of graphs
-            # that already run in Comfy.
-            if properties.get("rejected"):
-                raise WorkflowBundleError(f"known node {uid!r} contains rejected metadata; reconcile the node metadata")
-        entry: dict[str, Any] = {}
-        for key in ("id", "pos", "size", "color", "bgcolor", "title"):
-            if key not in node:
-                continue
-            value = node[key]
-            if key in {"color", "bgcolor", "title"} and not isinstance(value, str):
-                continue
-            entry[key] = copy.deepcopy(value)
-        if "order" in node:
-            entry["z_order"] = copy.deepcopy(node["order"])
-        elif "z_order" in node:
-            entry["z_order"] = copy.deepcopy(node["z_order"])
-        flags = node.get("flags")
-        if isinstance(flags, Mapping) and "collapsed" in flags:
-            entry["collapsed"] = flags["collapsed"]
-        elif "collapsed" in node:
-            entry["collapsed"] = node["collapsed"]
-        group = group_for_node.get(native_id)
-        if group is not None:
-            entry["group"] = str(group)
-        if owner is None or not owner.uid:
-            entry["class_type"] = str(raw_class_type)
-        nodes[uid] = entry
-    links: list[dict[str, Any]] = []
-    for link in presentation.links if isinstance(presentation.links, list) else ():
-        if isinstance(link, Mapping):
-            allowed_link = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type", "reroute"}
-            unknown_link = set(link) - allowed_link
-            if unknown_link:
-                raise WorkflowBundleError(f"captured link contains unsupported field(s): {', '.join(sorted(str(key) for key in unknown_link))}")
-            if type(link.get("id")) is not int:
-                raise WorkflowBundleError("captured link must contain an integer native id")
-            if "reroute" in link:
-                raise WorkflowBundleError("captured link reroute geometry is unsupported; use a Reroute node")
-            link = [link["id"], link.get("origin_id"), link.get("origin_slot"), link.get("target_id"), link.get("target_slot"), link.get("type", "")]
-        if not isinstance(link, (list, tuple)) or len(link) not in (5, 6):
-            raise WorkflowBundleError("captured link is malformed")
-        if type(link[0]) is not int:
-            raise WorkflowBundleError("captured link must contain an integer native id")
-        if len(link) > 5 and not isinstance(link[5], str):
-            raise WorkflowBundleError("captured link sixth member is not a supported presentation field")
-        source, target = ids.get(str(link[1])), ids.get(str(link[3]))
-        if source is None or target is None:
-            raise WorkflowBundleError("captured link endpoint does not match a captured node")
-        # Links touching stripped canvas furniture are not semantic Python
-        # edges and cannot be represented by the v1 sidecar foreign-key
-        # contract.  Preserve the UI-only node custody itself, while refusing
-        # to invent executable topology from its presentation links.
-        source_entry = nodes.get(source, {})
-        target_entry = nodes.get(target, {})
-        if (
-            source_entry.get("class_type") in UI_ONLY_CLASS_TYPES
-            or target_entry.get("class_type") in UI_ONLY_CLASS_TYPES
-        ):
-            continue
-        ref = {"scope_path": "", "from_uid": source, "from_port": link[2], "to_uid": target, "to_port": link[4]}
-        item: dict[str, Any] = {
-            "edge_ref": ref,
-            "occurrence_index": sum(1 for prior in links if prior["edge_ref"] == ref),
-        }
-        item["id"] = link[0]
-        links.append(item)
-    groups: list[dict[str, Any]] = []
-    for group_index, group in enumerate(raw_groups):
-        if not isinstance(group, Mapping):
-            raise WorkflowBundleError("captured group is malformed")
-        presentation_id = group.get("presentation_id", group.get("vibecomfy_group_id", group.get("id")))
-        if presentation_id is None:
-            raise WorkflowBundleError("captured group has no stable presentation id")
-        item = {"scope_path": str(group.get("scope_path", "")), "presentation_id": str(presentation_id)}
-        bounds = group.get("bounds", group.get("bounding"))
-        if bounds is not None:
-            item["bounds"] = copy.deepcopy(bounds)
-        for key in ("title", "color"):
-            if key not in group:
-                continue
-            value = group[key]
-            if not isinstance(value, str):
-                continue
-            item[key] = copy.deepcopy(value)
-        item["z_order"] = copy.deepcopy(group.get("order", group.get("z_order", group_index)))
-        groups.append(item)
-    canvas: dict[str, Any] = {}
-    raw_canvas = candidate.get("canvas")
-    if isinstance(raw_canvas, Mapping):
-        for key in ("zoom", "pan"):
-            if key in raw_canvas:
-                canvas[key] = copy.deepcopy(raw_canvas[key])
-    extra = candidate.get("extra")
-    ds = extra.get("ds") if isinstance(extra, Mapping) else None
-    if isinstance(ds, Mapping):
-        canvas.setdefault("zoom", ds.get("scale"))
-        canvas.setdefault("pan", ds.get("offset"))
+
+def _presentation_payload(
+    workflow: VibeWorkflow,
+    candidate: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if candidate is None:
+        return {"nodes": {}, "links": [], "groups": [], "canvas": {}, "annotations": []}
+    if candidate.get("format_version") == 2:
+        presentation = candidate.get("presentation")
+        if not isinstance(presentation, Mapping):
+            raise WorkflowBundleError("workflow companion presentation must be an object")
+        result = copy.deepcopy(dict(presentation))
+        result.setdefault("annotations", [])
+        return result
+    v1 = (
+        dict(candidate)
+        if set(candidate) >= _SIDECAR_KEYS
+        else _ui_candidate_sidecar(workflow, candidate)
+    )
+    annotations = v1.pop("annotations", [])
+    validated = _validate_v1_sidecar(v1, workflow)
     return {
-        "format_version": 1,
-        "bind": {"workflow_identity": workflow.id, "semantic_digest": workflow.semantic_digest()},
-        "nodes": nodes,
-        "links": links,
-        "groups": groups,
-        "canvas": canvas,
+        key: copy.deepcopy(validated[key])
+        for key in ("nodes", "links", "groups", "canvas")
+    } | {"annotations": _validate_annotations(annotations, workflow)}
+
+
+def _build_v2_sidecar(
+    workflow: VibeWorkflow,
+    candidate: Mapping[str, Any] | None,
+    *,
+    provenance: Any,
+    operation: str,
+    parent_revision: str,
+) -> dict[str, Any]:
+    """Build one deterministic publication capsule around Python semantics."""
+    from vibecomfy.porting.emit.emit_ready import canonical_v2_custody
+
+    custody = canonical_v2_custody(workflow)
+    custody_digest = canonical_digest(custody)
+    presentation = _presentation_payload(workflow, candidate)
+    generation_id = canonical_digest(
+        {
+            "workflow_identity": workflow.id,
+            "semantic_digest": workflow.semantic_digest(),
+            "custody_digest": custody_digest,
+            "presentation_digest": canonical_digest(presentation),
+            "provenance": filter_provenance(provenance, default_operation=operation),
+            "parent_revision": parent_revision,
+        }
+    )
+    sidecar = {
+        "format_version": 2,
+        "bind": {
+            "workflow_identity": workflow.id,
+            "generation_id": generation_id,
+            "custody_digest": custody_digest,
+        },
+        "custody": custody,
+        "presentation": presentation,
+    }
+    return _validate_v2_sidecar(sidecar, workflow)
+
+
+def _v2_marker(sidecar: Mapping[str, Any]) -> dict[str, Any]:
+    bind = sidecar.get("bind")
+    if sidecar.get("format_version") != 2 or not isinstance(bind, Mapping):
+        raise WorkflowBundleError("cannot mark Python from a non-v2 companion")
+    return {
+        "format_version": 2,
+        "generation_id": bind["generation_id"],
+        "custody_digest": bind["custody_digest"],
     }
 
 
@@ -1513,11 +1842,29 @@ def materialize_ui_json(
     if isinstance(source_path, (str, Path)) and Path(source_path).suffix.lower() == ".json":
         raise _workflow_authority_error(workflow, "UI materialization")
     validated = validate_sidecar(sidecar, workflow) if sidecar is not None else None
+    presentation = (
+        validated.get("presentation")
+        if isinstance(validated, Mapping) and validated.get("format_version") == 2
+        else validated
+    )
+    if isinstance(validated, Mapping) and validated.get("format_version") == 2:
+        # The lower-level UI emitter owns the legacy presentation overlay
+        # contract.  Keep the v2 companion boundary here, but hand that owner
+        # the same closed v1 envelope it already validates rather than the
+        # bare presentation payload.
+        presentation = {
+            "format_version": 1,
+            "bind": {
+                "workflow_identity": workflow.id,
+                "semantic_digest": workflow.semantic_digest(),
+            },
+            **dict(presentation or {}),
+        }
     from vibecomfy.porting.emit.ui import materialize_ui_json as _materialize_ui_json
 
     return _materialize_ui_json(
         workflow,
-        validated,
+        presentation,
         schema_provider=schema_provider,
         strict=strict,
     )
@@ -1542,7 +1889,7 @@ def _make_bundle(
     _check_sidecar_identity(ui_sidecar, workflow)
     semantic_digest = workflow.semantic_digest()
     sidecar = validate_sidecar(ui_sidecar, workflow) if ui_sidecar is not None else None
-    ui_digest = canonical_digest(sidecar) if sidecar is not None else ""
+    ui_digest = _sidecar_ui_digest(sidecar)
     filtered = filter_provenance(provenance, default_operation=operation)
     parent = _resolve_parent(workflow, parent_revision, parent_evidence)
     bound_authority = (
@@ -1597,6 +1944,15 @@ def _make_bundle(
         authority_kind=bound_authority,
     )
     return bundle
+
+
+def _sidecar_ui_digest(sidecar: Mapping[str, Any] | None) -> str:
+    """Digest presentation state without making custody part of UI identity."""
+    if sidecar is None:
+        return ""
+    if sidecar.get("format_version") == 2 and isinstance(sidecar.get("presentation"), Mapping):
+        return canonical_digest(sidecar["presentation"])
+    return canonical_digest(sidecar)
 
 
 def _resolve_reference(reference: str | Path) -> tuple[str | Path, Path | None, str]:
@@ -1810,10 +2166,17 @@ def emit_bundle(
     # Preserve an already-present strict presentation candidate when replacing
     # the Python source.  A legacy .layout.json is deliberately not consulted.
     existing_sidecar = _read_sidecar(path)
+    sidecar = _build_v2_sidecar(
+        workflow,
+        existing_sidecar,
+        provenance=provenance,
+        operation="authored",
+        parent_revision=parent_revision,
+    )
     bundle = _make_bundle(
         workflow,
         python_path=path,
-        ui_sidecar=existing_sidecar,
+        ui_sidecar=sidecar,
         provenance=provenance,
         operation="authored",
         parent_revision=parent_revision,
@@ -1821,8 +2184,10 @@ def emit_bundle(
     from vibecomfy.porting.emit import emit_scratchpad_python
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    emitted_workflow = workflow.copy()
+    emitted_workflow.metadata["source_bundle"] = _v2_marker(sidecar)
     source = emit_scratchpad_python(
-        workflow,
+        emitted_workflow,
         workflow_id=workflow.id,
         source_path=str(path),
         provenance=dict(bundle.provenance),
@@ -1899,20 +2264,29 @@ def _atomic_publish_pair(
         if expected is not None:
             from vibecomfy.scratchpad_loader import load_scratchpad
 
-            staged_workflow = load_scratchpad(staged[0][0], provenance_override=Provenance.USER_CONFIRMED)
+            staged_sidecar_payload = None
+            if sidecar is not None:
+                staged_sidecar_path = next(item for item, destination in staged if destination == _sidecar_path(path))
+                staged_sidecar_payload = _read_json_object(
+                    staged_sidecar_path, label="staged workflow sidecar"
+                )
+            companion_context = (
+                _staged_companion_context(path, staged_sidecar_payload)
+                if staged_sidecar_payload is not None
+                else nullcontext()
+            )
+            with companion_context:
+                staged_workflow = load_scratchpad(
+                    staged[0][0],
+                    provenance_override=Provenance.USER_CONFIRMED,
+                    logical_path=path,
+                )
             if staged_workflow.id != expected.workflow.id:
                 raise WorkflowBundleError("staged Python identity differs from intended bundle")
             if staged_workflow.semantic_digest() != expected.semantic_digest:
                 raise WorkflowBundleError("staged Python semantic digest differs from intended bundle")
-            staged_sidecar_payload = None
-            if sidecar is not None:
-                staged_sidecar_path = next(item for item, destination in staged if destination == _sidecar_path(path))
-                try:
-                    staged_sidecar_payload = json.loads(staged_sidecar_path.read_text(encoding="utf-8"))
-                except (OSError, UnicodeError, json.JSONDecodeError) as load_exc:
-                    raise WorkflowBundleError(f"could not read staged workflow sidecar: {load_exc}") from load_exc
             staged_sidecar = validate_sidecar(staged_sidecar_payload, staged_workflow) if sidecar is not None else None
-            staged_ui_digest = canonical_digest(staged_sidecar) if staged_sidecar is not None else ""
+            staged_ui_digest = _sidecar_ui_digest(staged_sidecar)
             if staged_ui_digest != expected.ui_digest:
                 raise WorkflowBundleError("staged sidecar digest differs from intended bundle")
 
@@ -2002,14 +2376,28 @@ def emit_bundle_with_candidate(
     parent_revision: str = "",
     parent_evidence: Mapping[str, Any] | None = None,
     operation: str = "authored",
+    source_provenance: Mapping[str, Any] | None = None,
 ) -> WorkflowBundle:
     """Internal shared writer for emit/capture candidate bundles."""
     path = _destination_path(destination, workflow)
-    candidate = _ui_candidate_sidecar(workflow, candidate) if candidate is not None else _read_sidecar(path)
+    existing_candidate = (
+        _ui_candidate_sidecar(workflow, candidate)
+        if candidate is not None and candidate.get("format_version") != 2
+        else candidate
+        if candidate is not None
+        else _read_sidecar(path)
+    )
+    sidecar = _build_v2_sidecar(
+        workflow,
+        existing_candidate,
+        provenance=provenance,
+        operation=operation,
+        parent_revision=parent_revision,
+    )
     bundle = _make_bundle(
         workflow,
         python_path=path,
-        ui_sidecar=candidate,
+        ui_sidecar=sidecar,
         provenance=provenance,
         operation=operation,
         parent_revision=parent_revision,
@@ -2018,13 +2406,15 @@ def emit_bundle_with_candidate(
     from vibecomfy.porting.emit import emit_scratchpad_python
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    emitted_workflow = workflow.copy()
+    emitted_workflow.metadata["source_bundle"] = _v2_marker(sidecar)
     _atomic_publish_pair(
         path,
         emit_scratchpad_python(
-            workflow,
+            emitted_workflow,
             workflow_id=workflow.id,
             source_path=str(path),
-            provenance=dict(bundle.provenance),
+            provenance=dict(source_provenance or bundle.provenance),
         ),
         bundle.ui_sidecar,
         expected=bundle,

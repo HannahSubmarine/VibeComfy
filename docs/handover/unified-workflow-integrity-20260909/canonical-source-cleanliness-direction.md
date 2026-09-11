@@ -1,13 +1,12 @@
 # Canonical source cleanliness direction
 
-Status: direction adopted; implementation and validation are still pending.
+Status: direction adopted; implementation and validation are active.
 
-Current authorization: **preparation only**, per the user's latest instruction
-on 2026-09-11: “Don't actually execute this, by the way, just prep it.” Do not
-dispatch implementation or run the proposed product validation for this
-amendment. The execution sequence below is prepared future work. Historical
-delivery authorization and results remain history, not permission to execute
-this amendment now.
+Current authorization: **delivery approved**, per the user's latest instruction
+on 2026-09-11 to refine and execute the existing plan end to end. Dispatch
+implementation and required product validation under the active Megado run.
+Earlier preparation-only statements are historical and do not override this
+authorization.
 
 This document is the current amendment to the unified plan. Its custody-v2
 requirements supersede older embedded-custody allowances in the tasklist and
@@ -567,7 +566,7 @@ document and the existing untracked corpus evidence. Product source was clean.
 Detailed findings and their dispositions are in the
 [run receipt](/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/runs/unified-workflow-integrity-20260909/receipts/canonical-cleanliness-luna-audit-20260911.md).
 The [prepared Megado brief](/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/runs/unified-workflow-integrity-20260909/briefs/canonical-cleanliness-prepared.md)
-records the latest preparation-only authority, source custody, task routes,
+records the latest delivery authority, source custody, task routes,
 estimate and review-history constraints.
 
 The implementation must use these existing owners. File references are relative
@@ -779,8 +778,8 @@ plan, not an added audit/review stage or authorization to implement.
 
 The owner census is sufficient to prepare implementation. The user subsequently
 requested a bounded Luna investigation of the four risks below; that factual
-inspection is authorized in preparation-only mode. It does not authorize product
-execution or another general audit. Distinguish source-backed findings from
+inspection is now part of the authorized delivery work. It does not authorize
+another general audit. Distinguish source-backed findings from
 untested hypotheses and reuse existing coverage when implementing later.
 
 | Risk worth checking | Smallest useful check / existing task | Stop rule |

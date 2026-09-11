@@ -17,6 +17,7 @@ from vibecomfy.porting.convert import (
 from vibecomfy.porting.layout_store import write_layout
 from vibecomfy.porting.workbench import analyze_source, load_port_source
 from vibecomfy.porting.import_errors import native_boundary_recovery
+from vibecomfy.workflow_bundle import WorkflowBundleError
 
 from ._shared import (
     _attach_contract_fields,
@@ -157,13 +158,78 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        write_result = port_convert_and_write(
-            result,
-            out,
-            dry_run=dry_run,
-            diff=diff_mode,
-        )
-    except ManualTemplateRefusal as exc:
+        if not dry_run and not diff_mode and args.ready_id is None:
+            # The default conversion path publishes the same canonical pair as
+            # SDK/canvas capture: readable Python plus its required v2
+            # companion.  ``port_convert_workflow`` remains the diagnostic and
+            # parity preflight above; the bundle writer is the final atomic
+            # publication gate, so a failed pair never leaves a new Python file
+            # without its custody/presentation partner.
+            from vibecomfy.porting.convert import (
+                _build_emitted_workflow_from_text,
+                _manual_template_refusal_preview,
+            )
+            from vibecomfy.porting.emit.ui import is_litegraph_candidate
+            from vibecomfy.workflow_bundle import emit_bundle_with_candidate
+
+            manual_refusal = _manual_template_refusal_preview(out)
+            if manual_refusal["refused"]:
+                raise ManualTemplateRefusal(str(manual_refusal["message"]))
+
+            # The diagnostic converter intentionally works on a detached,
+            # normalized copy.  Rebuild that exact copy before pair
+            # publication so native helper lowering/virtual-wire repair is
+            # shared with the successful preflight rather than re-admitting
+            # the raw importer graph at the bundle boundary.
+            bundle_workflow = _build_emitted_workflow_from_text(result.text)
+            ui_candidate = (
+                loaded.raw_workflow
+                if isinstance(loaded.raw_workflow, dict)
+                and is_litegraph_candidate(loaded.raw_workflow)
+                else None
+            )
+
+            bundle = emit_bundle_with_candidate(
+                bundle_workflow,
+                out,
+                report.provenance,
+                ui_candidate,
+                operation="captured" if ui_candidate is not None else "authored",
+                source_provenance={
+                    key: report.provenance[key]
+                    for key in (
+                        "source_kind",
+                        "ready_id",
+                    )
+                    if key in report.provenance
+                }
+                | {
+                    "source_hash": report.source_hash,
+                    "workflow_shape": report.workflow_shape,
+                    "output_mode": "scratchpad",
+                    "source_type": str(loaded.workflow.source.source_type),
+                },
+            )
+            write_result = {
+                "written": True,
+                "dry_run": False,
+                "diff_requested": False,
+                "diff_forced_dry_run": False,
+                "target": str(out),
+                "target_exists": out.exists(),
+                "companion": str(out.with_suffix(".vibe.json")),
+                "revision_id": bundle.revision_id,
+                "semantic_digest": bundle.semantic_digest,
+                "ui_digest": bundle.ui_digest,
+            }
+        else:
+            write_result = port_convert_and_write(
+                result,
+                out,
+                dry_run=dry_run,
+                diff=diff_mode,
+            )
+    except (ManualTemplateRefusal, WorkflowBundleError) as exc:
         # In dry-run mode, skip manual refusal and show the diff anyway
         if dry_run:
             print(f"port convert note: {exc} (showing dry-run diff anyway)")
@@ -210,8 +276,11 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         _emit_convert_payload(payload, json_output=args.json)
         return 1
 
-    # Emit layout sidecar alongside the .py (skip in dry-run/diff)
-    if not dry_run and not diff_mode:
+    # Canonical v2 conversion publishes exactly the Python/companion pair.
+    # The legacy layout store remains a separate explicit export concern; a
+    # sibling .layout.json would make the canonical loader reject an otherwise
+    # valid pair as a mixed-generation source.
+    if not dry_run and not diff_mode and args.ready_id is not None:
         try:
             write_layout(out, loaded.workflow)
         except Exception as exc:

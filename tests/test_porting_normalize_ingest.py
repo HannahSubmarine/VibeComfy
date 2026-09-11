@@ -25,6 +25,7 @@ from vibecomfy.ingest.normalize import (
     normalize_to_api,
 )
 from vibecomfy.porting.emit.ui import emit_ui_json
+from vibecomfy.workflow import VibeEdge
 
 
 def _t06_recursive_graph(*, links=None, **extra):
@@ -61,6 +62,24 @@ def test_bundle_source_kind_classification_stays_at_ingest_door() -> None:
     assert door_import_source_kind(
         {"nodes": {}, "prompt": {"nodes": []}}
     ) == "api"
+
+
+def test_api_import_recognizes_legacy_numeric_scoped_links() -> None:
+    workflow = from_api(
+        {
+            "238:218": {
+                "class_type": "PrimitiveInt",
+                "inputs": {"value": 4},
+            },
+            "238:240": {
+                "class_type": "ComfySwitchNode",
+                "inputs": {"on_true": ["238:218", 0]},
+            },
+        }
+    )
+
+    assert workflow.edges == [VibeEdge("238:218", "0", "238:240", "on_true")]
+    assert workflow.nodes["238:240"].inputs == {}
 
 
 def test_t06_rework_native_sentinel_never_bypasses_config_extra() -> None:

@@ -45,7 +45,7 @@ def _nonempty_workflow(workflow_id: str = "bundle-test") -> VibeWorkflow:
     return workflow
 
 
-def test_revision_uses_exact_root_preimage_and_missing_sidecar_is_empty(tmp_path: Path) -> None:
+def test_revision_uses_exact_root_preimage_and_emitted_companion(tmp_path: Path) -> None:
     workflow = _nonempty_workflow()
     bundle = emit_bundle(workflow, tmp_path / "workflow.py", {"operation": "authored", "timestamp": "drop"})
 
@@ -53,12 +53,16 @@ def test_revision_uses_exact_root_preimage_and_missing_sidecar_is_empty(tmp_path
         canonical_json([
             workflow.id,
             bundle.semantic_digest,
-            "",
+            bundle.ui_digest,
             {"operation": "authored"},
             "",
         ]).encode("utf-8")
     ).hexdigest()
-    assert bundle.ui_digest == ""
+    assert bundle.ui_sidecar is not None
+    assert bundle.ui_sidecar["format_version"] == 2
+    assert bundle.ui_digest == hashlib.sha256(
+        canonical_json(bundle.ui_sidecar["presentation"]).encode()
+    ).hexdigest()
     assert bundle.revision_id == expected
 
 
@@ -889,15 +893,17 @@ def test_capture_preserves_ui_fidelity_and_rejects_known_raw_properties(
     }
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(graph, tmp_path / "capture.py", {"operation": "captured"})
-    assert bundle.ui_sidecar["nodes"]["source"]["collapsed"] is True
-    assert bundle.ui_sidecar["nodes"]["source"]["group"] == "7"
-    assert bundle.ui_sidecar["groups"][0]["presentation_id"] == "7"
-    assert bundle.ui_sidecar["canvas"] == {"zoom": 1.5, "pan": [11.0, 12.0]}
-    assert "reroute" not in bundle.ui_sidecar["links"][0]
+    presentation = bundle.ui_sidecar["presentation"]
+    assert presentation["nodes"]["source"]["collapsed"] is True
+    assert presentation["nodes"]["source"]["group"] == "7"
+    assert presentation["groups"][0]["presentation_id"] == "7"
+    assert presentation["canvas"] == {"zoom": 1.5, "pan": [11.0, 12.0]}
+    assert "reroute" not in presentation["links"][0]
     graph["nodes"][0]["properties"]["widget_ue_connectable"] = True
     extra = capture_bundle(graph, tmp_path / "extra-prop.py", {"operation": "captured"})
-    assert extra.ui_sidecar["nodes"]["source"]["id"] == 1
-    assert "widget_ue_connectable" not in extra.ui_sidecar["nodes"]["source"]
+    extra_presentation = extra.ui_sidecar["presentation"]
+    assert extra_presentation["nodes"]["source"]["id"] == 1
+    assert "widget_ue_connectable" not in extra_presentation["nodes"]["source"]
 
 
 def test_capture_coerces_oversized_node_size_pair(
@@ -930,8 +936,9 @@ def test_capture_coerces_oversized_node_size_pair(
     }
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(graph, tmp_path / "size.py", {"operation": "captured"})
-    assert bundle.ui_sidecar["nodes"]["source"]["size"] == [3.0, 4.0]
-    assert bundle.ui_sidecar["nodes"]["source"]["pos"] == [1.0, 2.0]
+    presentation = bundle.ui_sidecar["presentation"]
+    assert presentation["nodes"]["source"]["size"] == [3.0, 4.0]
+    assert presentation["nodes"]["source"]["pos"] == [1.0, 2.0]
 
 
 def test_emit_bundle_rejects_semantic_digest_drift_before_replacement(
@@ -1066,7 +1073,7 @@ def test_capture_unknown_node_keeps_local_fallback_properties_out_of_sidecar(
     }
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(graph, tmp_path / "unknown.py", {"operation": "captured"})
-    assert bundle.ui_sidecar["nodes"]["u"] == {"id": 1}
+    assert bundle.ui_sidecar["presentation"]["nodes"]["u"] == {"id": 1}
 
 
 def test_staged_sidecar_corruption_and_first_replace_failure_preserve_old_pair(
@@ -1139,7 +1146,85 @@ def test_api_capture_separates_identity_envelope(tmp_path: Path, monkeypatch: py
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(api, tmp_path / "api.py", {"operation": "captured"})
     assert bundle.workflow_identity == workflow.id
-    assert bundle.ui_sidecar is None
+    assert bundle.ui_sidecar is not None
+    assert bundle.ui_sidecar["format_version"] == 2
+    assert bundle.ui_sidecar["presentation"] == {
+        "nodes": {}, "links": [], "groups": [], "canvas": {}, "annotations": []
+    }
+
+
+def test_v2_companion_keeps_generated_python_small_and_round_trippable(tmp_path: Path) -> None:
+    workflow = _nonempty_workflow("v2-shape")
+    path = tmp_path / "v2-shape.py"
+
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    source = path.read_text(encoding="utf-8")
+
+    assert path.with_suffix(".vibe.json").is_file()
+    assert bundle.ui_sidecar is not None
+    assert set(bundle.ui_sidecar) == {"format_version", "bind", "custody", "presentation"}
+    assert all(
+        token not in source
+        for token in (
+            "CANONICAL_CUSTODY",
+            "HELPER_CUSTODY",
+            "resolver_helper_custody",
+            "wf.connect(",
+            "wf.nodes[",
+        )
+    )
+    assert "wf = wf.finalize({}, outputs=[])" in source
+    loaded = load_bundle(path, trust=Provenance.USER_CONFIRMED)
+    assert loaded.semantic_digest == bundle.semantic_digest
+    assert loaded.ui_digest == bundle.ui_digest
+    assert validate_sidecar(loaded.ui_sidecar, loaded.workflow) == loaded.ui_sidecar
+
+
+def test_v2_companion_is_required_and_swapping_it_is_refused(tmp_path: Path) -> None:
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    emit_bundle(_nonempty_workflow("first"), first, {"operation": "authored"})
+    emit_bundle(_nonempty_workflow("second"), second, {"operation": "authored"})
+
+    companion = first.with_suffix(".vibe.json")
+    original = companion.read_bytes()
+    companion.unlink()
+    with pytest.raises(WorkflowBundleError, match="companion is missing"):
+        load_bundle(first, trust=Provenance.USER_CONFIRMED)
+
+    companion.write_bytes(second.with_suffix(".vibe.json").read_bytes())
+    with pytest.raises(WorkflowBundleError, match="identity"):
+        load_bundle(first, trust=Provenance.USER_CONFIRMED)
+    companion.write_bytes(original)
+
+
+def test_v2_companion_rejects_duplicate_json_keys_before_loading_python(tmp_path: Path) -> None:
+    path = tmp_path / "duplicate.py"
+    emit_bundle(_nonempty_workflow("duplicate"), path, {"operation": "authored"})
+    path.with_suffix(".vibe.json").write_text(
+        '{"format_version": 2, "format_version": 2}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(WorkflowBundleError, match="duplicate JSON key"):
+        load_bundle(path, trust=Provenance.USER_CONFIRMED)
+
+
+def test_v2_companion_regeneration_is_deterministic(tmp_path: Path) -> None:
+    first = emit_bundle(
+        _nonempty_workflow("deterministic"),
+        tmp_path / "one.py",
+        {"operation": "authored"},
+    )
+    second = emit_bundle(
+        _nonempty_workflow("deterministic"),
+        tmp_path / "two.py",
+        {"operation": "authored"},
+    )
+
+    assert (tmp_path / "one.py").read_bytes() == (tmp_path / "two.py").read_bytes()
+    assert (tmp_path / "one.vibe.json").read_bytes() == (tmp_path / "two.vibe.json").read_bytes()
+    assert first.revision_id == second.revision_id
 
 
 def test_real_converter_backed_public_capture_roundtrips_pair(tmp_path: Path) -> None:

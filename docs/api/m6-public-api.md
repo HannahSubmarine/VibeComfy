@@ -18,7 +18,10 @@ canonical candidate, `load_bundle()`/`WorkflowBundle.compile()` provide the
 identity- and revision-bound approval path; the returned record contains the
 API projection, UI projection, input binding, revision, and API digest. A
 legacy `.layout.json` sidecar is layout evidence only and is never the
-semantic/API authority.
+semantic/API authority. Canonical converted Python is paired with a validated
+same-basename `.vibe.json` companion; that companion carries identity,
+provenance, custody, and presentation annotations without changing the
+`compile("api")` projection contract.
 
 ## Import, drafts, and native subgraphs
 

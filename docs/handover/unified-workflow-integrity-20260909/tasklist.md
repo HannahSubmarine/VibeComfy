@@ -6,7 +6,8 @@ for the pending external-custody, concise-finalizer, widget-resolution and
 annotation work. Its implementation seams and validation matrix refine the
 existing E0/E1/T1/T2/T3/E2/T4 scopes; they do not add review stages or reset
 historical evidence. The older embedded-custody wording below describes the
-preceding implementation. New amendment acceptance remains NOT RUN.
+preceding implementation. The current candidate has completed those scopes;
+criterion evidence is recorded and awaits the configured independent reviews.
 
 S90 refinement: use one ordered labelled custody sequence per scope and direct
 construction compatibility checks, without a stored structure digest. Keep
@@ -16,7 +17,7 @@ Use fixtures per invariant and selected integration combinations, retaining the
 full corpus/H3/entrypoint validation. See the direction's S90 section for exact
 boundaries. No future assignments are dispatched in preparation-only mode.
 
-Future work only. Model/reasoning resolution comes from run.yaml; the E1 route resolves through the configured worker_xhard slot. Coordinator owns dispatch/counters, reviewers inspect independently, oracle adjudicates consequential uncertainty. NS references mean principles in northstar.md; I references mean implementation criteria in acceptance-ledger.md.
+Active delivery work. Model/reasoning resolution comes from run.yaml; the E1 route resolves through the configured worker_xhard slot. Coordinator owns dispatch/counters, reviewers inspect independently, oracle adjudicates consequential uncertainty. NS references mean principles in northstar.md; I references mean implementation criteria in acceptance-ledger.md.
 
 ## Current amendment dispatch map
 
@@ -24,7 +25,8 @@ User reaffirmed [mandatory end-of-run practical validation](acceptance-ledger.md
 E2/T4 must produce actual pipeline/corpus/H3 evidence and passing integrated
 checks before final review/completion; failures feed the existing correction
 loop. Two additional final Astra medium calls are explicitly approved in the
-current run.yaml, preserving all historical charges. No execution starts now.
+current run.yaml, preserving all historical charges. Execution and validation
+are complete; only the configured independent review dispositions remain.
 
 The [adopted test-signal supplement](test-signal-cleanup-plan.md) adds bounded
 assertion/fixture improvements to these same owners: E0/T3 characterization
@@ -33,8 +35,9 @@ identity oracles; T2 real ingress/Comfy Node persistence; E2/T4 original
 corpus/H3 validation and final full configured checks. No new task family,
 cleanup prerequisite or review stage; optional unrelated hygiene is deferred.
 
-This table is the pending amendment's dispatch map; the v5 table below records
-the inherited scopes. All rows are prepared, not dispatched. Ordinary work
+This table is the amendment's dispatch map; the v5 table below records the
+inherited scopes. The rows were dispatched through the configured roles and
+their evidence is retained in the active run. Ordinary work
 routes through worker_normal (Luna medium); the original coupled E1 hard kernel
 retains its existing assignment only if needed, with no automatic rerun.
 

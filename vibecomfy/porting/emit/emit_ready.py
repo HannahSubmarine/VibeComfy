@@ -675,6 +675,7 @@ def _format_ready_metadata_build(
     has_public_inputs: bool,
     custom_node_packs: Mapping[str, Any] | None = None,
     output_node_class_type: str | None = None,
+    external_custody: bool = False,
 ) -> list[str]:
     template_id = str(metadata.get("ready_template") or metadata.get("workflow_template") or "ready_template")
     raw_capability = str(metadata.get("capability") or "unknown")
@@ -701,7 +702,9 @@ def _format_ready_metadata_build(
         lines.append(f"    requirements={requirements_expr},")
     if custom_node_packs:
         lines.append(f"    custom_node_packs={_format_value(dict(custom_node_packs))},")
-    for key, value in _metadata_extras_for_emit(metadata).items():
+    for key, value in _metadata_extras_for_emit(
+        metadata, external_custody=external_custody
+    ).items():
         lines.append(f"    {key}={_format_value(value)},")
     lines.append(")")
     return lines
@@ -920,7 +923,7 @@ def _emit_ready_template_python_inner(
     out_lines.append("from __future__ import annotations")
     out_lines.append("")
     out_lines.append(
-        "from vibecomfy.templates import InputSpec, ModelAsset, ReadyMetadata, authored_channel, finalize, new_workflow, node as raw_call, ref"
+        "from vibecomfy.templates import InputSpec, ModelAsset, OutputSpec, ReadyMetadata, authored_channel, finalize, new_workflow, node as raw_call, ref"
     )
     out_lines.append("from vibecomfy.workflow import VibeWorkflow")
     for module_name, names in sorted(wrapper_imports.items()):
@@ -969,9 +972,12 @@ def _emit_ready_template_python_inner(
         edges_in=edges_in,
         name_authority=prepared.get("name_authority"),
     )
-    out_lines.extend(_format_canonical_custody(custody))
+    v2_marker = metadata.get("source_bundle")
+    external_custody = isinstance(v2_marker, Mapping) and v2_marker.get("format_version") == 2
+    if not external_custody:
+        out_lines.extend(_format_canonical_custody(custody))
     helper_custody = _canonical_helper_custody(workflow)
-    if helper_custody:
+    if helper_custody and not external_custody:
         out_lines.extend(_format_helper_custody(helper_custody))
     out_lines.append("")
     output_node_ids = _terminal_output_node_ids(workflow_nodes, edges_in)
@@ -986,6 +992,7 @@ def _emit_ready_template_python_inner(
             has_public_inputs=has_public_inputs,
             custom_node_packs=custom_node_packs,
             output_node_class_type=output_node_cls,
+            external_custody=external_custody,
         )
     )
     out_lines.append("")
@@ -1002,23 +1009,27 @@ def _emit_ready_template_python_inner(
     )
     input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
     tail_lines[-1] = f"    return wf.finalize({input_expr})"
-    binding_expr = "{" + ", ".join(
-        f"{label!r}: {label}" for label in custody
-    ) + "}"
-    canonical_outputs_expr = _canonical_outputs_expr(workflow, var_names)
-    canonical_requirements_expr = _format_value({
-        key: copy.deepcopy(getattr(workflow.requirements, key))
-        for key in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported")
-    })
     finalize_line = tail_lines[-1].replace("return wf.finalize(", "wf = wf.finalize(", 1)
     if not finalize_line.endswith(")"):
         raise RuntimeError("canonical finalize line is malformed")
-    finalize_line = (
-        finalize_line[:-1]
-        + f", canonical_outputs={canonical_outputs_expr}, canonical_requirements={canonical_requirements_expr}, canonical_custody=CANONICAL_CUSTODY, canonical_bindings={binding_expr}"
-        + (", canonical_helpers=HELPER_CUSTODY" if helper_custody else "")
-        + ")"
-    )
+    if external_custody:
+        input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
+        finalize_line = f"    wf = wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
+    else:
+        binding_expr = "{" + ", ".join(
+            f"{label!r}: {label}" for label in custody
+        ) + "}"
+        canonical_outputs_expr = _canonical_outputs_expr(workflow, var_names)
+        canonical_requirements_expr = _format_value({
+            key: copy.deepcopy(getattr(workflow.requirements, key))
+            for key in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported")
+        })
+        finalize_line = (
+            finalize_line[:-1]
+            + f", canonical_outputs={canonical_outputs_expr}, canonical_requirements={canonical_requirements_expr}, canonical_custody=CANONICAL_CUSTODY, canonical_bindings={binding_expr}"
+            + (", canonical_helpers=HELPER_CUSTODY" if helper_custody else "")
+            + ")"
+        )
     # Finalization owns compact identity/schema rebinding.  Runtime values and
     # topology are already authoritative in the constructor calls above.
     tail_lines = [
@@ -1048,6 +1059,7 @@ def _emit_ready_template_python_inner(
             emit_all_ids=False,
             constant_map=constant_map,
             section_groups=section_groups,
+            external_custody=external_custody,
         )
     )
     out_lines.append("")
@@ -1169,6 +1181,47 @@ def _canonical_node_custody(
         if node.native_output_names is None and construction_output_names:
             custody[label]["construction_output_names"] = construction_output_names
     return custody
+
+
+def canonical_v2_custody(workflow: Any) -> dict[str, Any]:
+    """Project the emitted constructor roster into the closed v2 capsule.
+
+    This deliberately reuses the canonical execution preparation and label
+    assignment used by the Python renderer.  The returned records contain no
+    runtime values or semantic edges.
+    """
+    from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit
+
+    prepared = _prepare_workflow_for_emit(
+        workflow.copy(),
+        apply_overrides=None,
+        template_id=str(workflow.id),
+        diagnostics=None,
+        project_execution_edges=True,
+        omit_terminal_ui_only=False,
+        keep_virtual_wires=True,
+        prune_dead_branches=False,
+    )
+    prepared["name_authority"] = {}
+    nodes = door_nodes(prepared)
+    records = _canonical_node_custody(
+        nodes,
+        prepared["var_names"],
+        edges_in=prepared["edges_in"],
+        name_authority=prepared["name_authority"],
+    )
+    return {
+        "scopes": [
+            {
+                "scope_path": "",
+                "nodes": [
+                    {"label": label, **copy.deepcopy(record)}
+                    for label, record in records.items()
+                ],
+                "helpers": _canonical_helper_custody(workflow),
+            }
+        ]
+    }
 
 
 def _canonical_helper_custody(workflow: Any) -> list[dict[str, Any]]:
@@ -1327,6 +1380,77 @@ def _canonical_outputs_expr(
         parts.extend(f"{key!r}: {_format_value(value)}" for key, value in fields.items())
         records.append("{" + ", ".join(parts) + "}")
     return "[" + ", ".join(records) + "]"
+
+
+def _v2_output_args(
+    workflow: Any,
+    var_names: Mapping[str, str],
+    metadata: Mapping[str, Any],
+) -> str:
+    """Render the concise typed output declaration for a v2 source."""
+    outputs = list(workflow.outputs)
+    if not outputs:
+        return ", outputs=[]"
+
+    def binding(item: Any) -> str:
+        value = var_names.get(str(item.node_id))
+        if value is None:
+            raise ValueError(
+                f"public output {item.node_id!r} does not survive canonical execution projection"
+            )
+        return value
+
+    if len(outputs) == 1:
+        item = outputs[0]
+        node = workflow.nodes.get(str(item.node_id))
+        derived_kind = None
+        if node is not None:
+            from vibecomfy.templates import _derive_output_kind
+
+            derived_kind = _derive_output_kind(str(node.class_type))
+        if (
+            node is not None
+            and _is_output_class(str(node.class_type))
+            and item.output_type == str(node.class_type)
+            and item.name is None
+            and item.artifact_kind == derived_kind
+            and item.mime_type is None
+            and (
+                item.filename_prefix is None
+                or item.filename_prefix == metadata.get("output_prefix")
+            )
+            and item.expected_cardinality is None
+        ):
+            return f", output_node={binding(item)}"
+        if (
+            node is not None
+            and item.output_type == str(node.class_type)
+            and item.name is None
+            and item.artifact_kind is None
+            and item.mime_type is None
+            and item.filename_prefix is None
+            and item.expected_cardinality is None
+        ):
+            # Preserve an explicit null artifact kind without expanding the
+            # declaration into an importer-shaped record.  ``output_node``
+            # intentionally infers an artifact kind, so this typed minimum is
+            # the lossless concise form for legacy/opaque outputs.
+            return f", outputs=[OutputSpec(node={binding(item)})]"
+
+    records: list[str] = []
+    for item in outputs:
+        fields = (
+            ("output_type", item.output_type),
+            ("name", item.name),
+            ("artifact_kind", item.artifact_kind),
+            ("mime_type", item.mime_type),
+            ("filename_prefix", item.filename_prefix),
+            ("expected_cardinality", item.expected_cardinality),
+        )
+        args = [f"node={binding(item)}"]
+        args.extend(f"{name}={_format_value(value)}" for name, value in fields)
+        records.append(f"OutputSpec({', '.join(args)})")
+    return ", outputs=[" + ", ".join(records) + "]"
 
 
 def _plain_canonical_value(value: Any) -> Any:
@@ -2106,6 +2230,7 @@ def _emit_build_function(
     node_id_prefix: str | None = None,
     required_ids: set[str] | None = None,
     emit_all_ids: bool = False,
+    external_custody: bool = False,
 ) -> list[str]:
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
         EmissionDiagnostic,
@@ -2189,13 +2314,14 @@ def _emit_build_function(
         # new_workflow() eagerly binds the ContextVar, so emit a plain assignment
         # rather than wrapping the body in `with new_workflow(...) as wf:`.
         # finalize() releases the binding.
+        custody_argument = "" if external_custody else ", canonical_custody=CANONICAL_CUSTODY"
         if source_type != "ready_template":
             out_lines.append(
-                f"    wf = new_workflow({workflow_id_expr}, source_path={source_path_expr}, source_type={source_type!r}, canonical_custody=CANONICAL_CUSTODY)"
+                f"    wf = new_workflow({workflow_id_expr}, source_path={source_path_expr}, source_type={source_type!r}{custody_argument})"
             )
         else:
             out_lines.append(
-                f"    wf = new_workflow({workflow_id_expr}, source_path={source_path_expr}, canonical_custody=CANONICAL_CUSTODY)"
+                f"    wf = new_workflow({workflow_id_expr}, source_path={source_path_expr}{custody_argument})"
             )
         body_indent = "    "
         continuation_indent = "        "
