@@ -162,6 +162,52 @@ def test_v2_export_passes_canonical_presentation_directly(
     assert "prior_store" not in seen[-1]
 
 
+def test_v2_from_overlay_preserves_annotation_content_and_applies_furniture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vibecomfy.commands.port import _export as port_export_cmd
+
+    source = tmp_path / "canonical.py"
+    source.write_text("# canonical\n", encoding="utf-8")
+    workflow = _fake_workflow(source)
+    presentation = {
+        "nodes": {
+            "uid-1": {"id": 1, "class_type": "LoadImage", "pos": [1, 2]},
+            "note-1": {"id": 2, "class_type": "MarkdownNote", "pos": [3, 4]},
+        },
+        "links": [], "groups": [], "canvas": {},
+        "annotations": [{
+            "annotation_id": "note-1", "scope_path": "",
+            "owner": {"kind": "node", "uid": "note-1"},
+            "class_type": "MarkdownNote", "title": "H3", "content": "keep this",
+        }],
+    }
+    seen: list[dict[str, object]] = []
+    monkeypatch.setattr(port_commands, "_build_conversion_provider", lambda args: object())
+    monkeypatch.setattr(port_commands, "load_workflow_reference", lambda *args, **kwargs: workflow)
+    monkeypatch.setattr(port_export_cmd, "_read_canonical_presentation", lambda *args: presentation)
+    monkeypatch.setattr(
+        port_export_cmd,
+        "_resolve_preserve_source",
+        lambda *args: ({"entries": {"uid-1": {"pos": [90, 100]}}}, str(source), None, None),
+    )
+    monkeypatch.setattr(
+        port_commands,
+        "emit_ui_json",
+        lambda *args, **kwargs: (seen.append(kwargs) or _fake_ui()),
+    )
+
+    prior = tmp_path / "prior.json"
+    prior.write_text("{}", encoding="utf-8")
+    assert port_commands._cmd_port_export(
+        _args(source, tmp_path / "out.json", from_path=str(prior))
+    ) == 0
+
+    emitted = seen[-1]["presentation"]
+    assert emitted["nodes"]["uid-1"]["pos"] == [90, 100]
+    assert emitted["annotations"][0]["content"] == "keep this"
+
+
 def test_presentation_overlay_preserves_canvas_id_when_semantic_id_collides() -> None:
     from vibecomfy.porting.emit.ui import _overlay_validated_presentation
 

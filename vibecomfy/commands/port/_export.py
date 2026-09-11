@@ -4,6 +4,7 @@ import argparse
 import dataclasses
 import json
 import sys
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -454,6 +455,37 @@ def _read_canonical_presentation(
     }
 
 
+def _overlay_from_store_on_canonical_presentation(
+    presentation: dict[str, Any],
+    from_store: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Apply explicit ``--from`` furniture edits without dropping annotations.
+
+    A v2 companion is the authoritative presentation record.  The established
+    layout store is still useful for reading a user's explicit ``--from``
+    canvas, but its projection intentionally omits annotation content.  Merge
+    only presentation fields for UIDs already owned by the canonical pair;
+    semantic records and annotation records remain sourced from the companion.
+    """
+    merged = deepcopy(presentation)
+    canonical_nodes = merged.get("nodes")
+    source_entries = from_store.get("entries") if isinstance(from_store, Mapping) else None
+    if not isinstance(canonical_nodes, dict) or not isinstance(source_entries, Mapping):
+        return merged
+
+    furniture_fields = (
+        "pos", "size", "collapsed", "color", "bgcolor", "title", "group", "z_order",
+    )
+    for uid, source_entry in source_entries.items():
+        canonical_entry = canonical_nodes.get(str(uid))
+        if not isinstance(canonical_entry, dict) or not isinstance(source_entry, Mapping):
+            continue
+        for field in furniture_fields:
+            if field in source_entry:
+                canonical_entry[field] = deepcopy(source_entry[field])
+    return merged
+
+
 def _should_persist_sidecar(args: argparse.Namespace) -> bool:
     """Return whether this export has authority to update the source sidecar.
 
@@ -517,8 +549,13 @@ def _cmd_port_export(args: argparse.Namespace) -> int:
             # --from overlays; passing it to emit_ui_json would drop note
             # widgets/content and presentation-only geometry.
             canonical_presentation = None
-            if not getattr(args, "fresh", False) and not getattr(args, "from_path", None):
+            if not getattr(args, "fresh", False):
                 canonical_presentation = _read_canonical_presentation(py_path, workflow)
+                if canonical_presentation is not None and getattr(args, "from_path", None):
+                    canonical_presentation = _overlay_from_store_on_canonical_presentation(
+                        canonical_presentation,
+                        store,
+                    )
             if store is not None and "groups" in store:
                 workflow.groups = deepcopy(store["groups"])
 
