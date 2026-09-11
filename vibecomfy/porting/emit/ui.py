@@ -362,6 +362,37 @@ def canonical_presentation_to_layout_store(
     }
 
 
+def _overlay_from_store_on_canonical_presentation(
+    presentation: Mapping[str, Any],
+    from_store: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Apply explicit ``--from`` furniture edits without dropping annotations.
+
+    A v2 companion is the authoritative presentation record.  The established
+    layout store is useful for reading a user's explicit ``--from`` canvas, but
+    its projection intentionally omits annotation content.  Merge only
+    presentation fields for UIDs already owned by the canonical pair; semantic
+    and annotation records remain sourced from the companion.
+    """
+    merged = deepcopy(presentation)
+    canonical_nodes = merged.get("nodes")
+    source_entries = from_store.get("entries") if isinstance(from_store, Mapping) else None
+    if not isinstance(canonical_nodes, dict) or not isinstance(source_entries, Mapping):
+        return merged
+
+    furniture_fields = (
+        "pos", "size", "collapsed", "color", "bgcolor", "title", "group", "z_order",
+    )
+    for uid, source_entry in source_entries.items():
+        canonical_entry = canonical_nodes.get(str(uid))
+        if not isinstance(canonical_entry, dict) or not isinstance(source_entry, Mapping):
+            continue
+        for field in furniture_fields:
+            if field in source_entry:
+                canonical_entry[field] = deepcopy(source_entry[field])
+    return merged
+
+
 # Documented default control_after_generate mode when none is retained in metadata.
 _CONTROL_AFTER_GENERATE_DEFAULT = "fixed"
 
