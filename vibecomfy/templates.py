@@ -1343,9 +1343,25 @@ def _finalize_impl(
     if derived_output_kind is None:
         derived_output_kind = _derive_output_kind(str(bind_kwargs.get("output_type") or ""))
 
-    requirements = _requirements_with_models(requirements, metadata.get("model_assets", []))
-
     wf.finalize_metadata()
+    # Recompute inferred requirements before applying ready metadata.  Edits
+    # to model-picker fields must win over the source template's old witness.
+    if external_custody is not None and isinstance(requirements, Mapping):
+        # The companion stores the original requirement witness, but model
+        # picker values remain ordinary editable constructor inputs.  Refresh
+        # only the model field from the rebuilt IR so editing a loader cannot
+        # silently leave a stale model declaration behind.
+        from vibecomfy.model_assets import _referenced_model_values
+
+        current_models = [
+            str(item["value"])
+            for item in _referenced_model_values(wf)
+            if isinstance(item, Mapping) and item.get("value")
+        ]
+        if current_models:
+            requirements = dict(requirements)
+            requirements["models"] = current_models
+    requirements = _requirements_with_models(requirements, metadata.get("model_assets", []))
     if canonical_custody is None or wf.nodes:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=PendingDeprecationWarning)

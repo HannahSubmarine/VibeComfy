@@ -5275,6 +5275,47 @@ def _overlay_nested_presentation(
                 if "z_order" in entry: node["order"] = deepcopy(entry["z_order"])
                 if "group" in entry: node["group"] = deepcopy(entry["group"])
 
+            # Scoped annotation notes are presentation custody, not semantic
+            # definition nodes.  Materialize them in the same definition when
+            # their validated scoped sidecar entry is present.
+            next_ui_id = max(occupied_node_ids, default=0) + 1
+            for uid, entry in side_nodes.items():
+                if not isinstance(entry, Mapping) or not str(uid).startswith(f"{scope}#"):
+                    continue
+                local = str(uid).split("#", 1)[1]
+                if local in by_local or entry.get("class_type") not in UI_ONLY_CLASS_TYPES:
+                    continue
+                while next_ui_id in occupied_node_ids:
+                    next_ui_id += 1
+                note = {
+                    "id": next_ui_id,
+                    "type": entry["class_type"],
+                    "properties": {
+                        "Node name for S&R": entry["class_type"],
+                        "vibecomfy_uid": str(uid),
+                    },
+                    "widgets_values": [""],
+                }
+                for field in ("pos", "size", "color", "bgcolor", "title"):
+                    if field in entry:
+                        note[field] = deepcopy(entry[field])
+                out_nodes.append(note)
+                by_local[local] = note
+                occupied_node_ids.add(next_ui_id)
+                next_ui_id += 1
+
+            for annotation in sidecar.get("annotations", []) if isinstance(sidecar.get("annotations"), list) else []:
+                if not isinstance(annotation, Mapping) or str(annotation.get("scope_path")) != scope:
+                    continue
+                owner = annotation.get("owner")
+                if not isinstance(owner, Mapping) or owner.get("kind") != "node":
+                    continue
+                owner_uid = str(owner.get("uid"))
+                local = owner_uid.split("#", 1)[1] if "#" in owner_uid else owner_uid
+                target = by_local.get(local)
+                if isinstance(target, dict) and annotation.get("class_type") in UI_ONLY_CLASS_TYPES:
+                    target["widgets_values"] = [deepcopy(annotation.get("content", ""))]
+
             # Groups inside definitions are presentation records too.  Rebuild
             # them by structural scope and sidecar presentation id, retaining
             # Python-emitted membership ids while overlaying only the closed

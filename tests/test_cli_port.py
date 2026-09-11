@@ -1265,6 +1265,33 @@ def _patch_convert_all_fixture(
     return good_path, bad_path
 
 
+def test_port_convert_dry_run_admits_source_once_and_keeps_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"workflow_id": "one-source", "nodes": [{
+        "id": 1, "type": "PrimitiveInt", "inputs": [], "outputs": [],
+        "widgets_values": [1], "properties": {}
+    }], "links": [], "groups": []}), encoding="utf-8")
+    import vibecomfy.commands.port._convert as convert_command
+    original_load = convert_command.load_port_source
+    calls: list[str] = []
+
+    def counted_load(path: str, **kwargs: object):
+        calls.append(path)
+        return original_load(path, **kwargs)
+
+    monkeypatch.setattr(convert_command, "load_port_source", counted_load)
+    args = argparse.Namespace(
+        workflow=str(source), out=None, ready_id=None, json=True,
+        head_check_models=False, strict_ready_template=False, dry_run=True,
+        diff=False, all=False, keep_virtual_wires=False,
+    )
+
+    assert _cmd_port_convert(args) == 0
+    assert calls == [str(source)]
+
+
 def test_port_convert_all_json_marks_parity_and_validation_failures(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

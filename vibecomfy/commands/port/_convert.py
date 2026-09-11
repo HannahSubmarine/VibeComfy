@@ -62,11 +62,13 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         else "auto"
     )
     try:
+        loaded = load_port_source(args.workflow, schema_provider=schema_provider)
         report = analyze_source(
             args.workflow,
             schema_provider=schema_provider,
             head_check_models=args.head_check_models,
             mode=port_mode,
+            loaded_source=loaded,
         )
         _inject_schema_source_metadata(report, args)
         if getattr(args, "strict_ready_template", False):
@@ -91,7 +93,6 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             _emit_convert_payload(payload, json_output=args.json)
             return 1
 
-        loaded = load_port_source(args.workflow, schema_provider=schema_provider)
         # ``from_ui`` is the sole native-boundary materialization owner.  The
         # the loader retains the authored source as evidence, but conversion
         # consumes only the normalized IR.  Passing raw source back into the
@@ -151,7 +152,6 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         out = Path(args.out)
     elif dry_run or diff_mode:
         # Derive target from ready-template argument
-        loaded = load_port_source(args.workflow, schema_provider=schema_provider)
         out = Path(loaded.source_path) if loaded.source_path else Path(args.workflow)
     else:
         print("--out is required for write mode.", file=sys.stderr)

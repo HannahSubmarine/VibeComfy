@@ -103,6 +103,18 @@ def test_port_convert_ready_template_emits_structured_custom_node_refs():
     assert "abc123" in result.text
 
 
+def test_ready_requirements_do_not_keep_edited_model_value_stale() -> None:
+    wf = _wf("edited-model")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "new-model.safetensors"
+    wf.metadata["model_assets"] = [{"name": "old-model.safetensors", "url": "https://example.test/old"}]
+    wf.requirements.models = ["new-model.safetensors"]
+
+    requirements = convert_module._ready_requirements(wf)
+
+    assert requirements["models"] == ["new-model.safetensors"]
+
+
 def test_port_convert_does_not_mutate_caller_owned_workflow_or_raw_evidence():
     wf = _wf("caller-owned")
     wf.nodes["1"] = VibeNode("1", "PrimitiveInt", inputs={"value": 7})

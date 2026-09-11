@@ -7,6 +7,7 @@ import importlib.util
 import logging
 import tempfile
 from dataclasses import asdict, dataclass, field
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -717,7 +718,21 @@ def _repo_relative_provenance_path(path: str) -> str:
 
 def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     model_assets = workflow.metadata.get("model_assets")
-    models = model_assets if isinstance(model_assets, list) else list(workflow.requirements.models)
+    current_model_names = {
+        str(item.get("value"))
+        for item in _referenced_model_values_for_workflow(workflow)
+        if isinstance(item, Mapping) and item.get("value")
+    }
+    if isinstance(model_assets, list):
+        models = [
+            item for item in model_assets
+            if isinstance(item, Mapping)
+            and (not current_model_names or str(item.get("name", item.get("filename", ""))) in current_model_names)
+        ]
+        if not models and current_model_names:
+            models = list(workflow.requirements.models)
+    else:
+        models = list(workflow.requirements.models)
     requirements = {
         "models": models,
         "custom_nodes": list(workflow.requirements.custom_nodes),
@@ -734,6 +749,15 @@ def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     if refs:
         requirements["custom_node_refs"] = refs
     return requirements
+
+
+def _referenced_model_values_for_workflow(workflow: VibeWorkflow) -> list[dict[str, str]]:
+    from vibecomfy.model_assets import _referenced_model_values
+
+    try:
+        return list(_referenced_model_values(workflow))
+    except (TypeError, ValueError, AttributeError):
+        return []
 
 
 # ---------------------------------------------------------------------------

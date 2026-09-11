@@ -101,8 +101,9 @@ def analyze_source(
     head_check_models: bool = False,
     head_client: Any | None = None,
     mode: PortAnalysisMode = "auto",
+    loaded_source: LoadedPortSource | None = None,
 ) -> PortReport:
-    loaded = load_port_source(
+    loaded = loaded_source or load_port_source(
         source,
         schema_provider=schema_provider,
         use_comfy_converter=use_comfy_converter,

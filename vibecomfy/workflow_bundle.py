@@ -324,7 +324,14 @@ def _virtual_legs(workflow: VibeWorkflow) -> dict[tuple[str, str], tuple[tuple[s
     }
 
 
-def _validate_annotations(value: Any, workflow: VibeWorkflow) -> list[dict[str, Any]]:
+def _validate_annotations(
+    value: Any,
+    workflow: VibeWorkflow,
+    *,
+    valid_scopes: set[str] | None = None,
+    valid_node_refs: set[tuple[str, str]] | None = None,
+    valid_groups: set[tuple[str, str]] | None = None,
+) -> list[dict[str, Any]]:
     from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
 
     if not isinstance(value, list):
@@ -344,6 +351,8 @@ def _validate_annotations(value: Any, workflow: VibeWorkflow) -> list[dict[str, 
             part in {"sg0", "sg1"} for part in scope_path.split("/")
         ):
             raise WorkflowBundleError(f"{where}.scope_path is invalid")
+        if valid_scopes is not None and scope_path not in valid_scopes:
+            raise WorkflowBundleError(f"{where}.scope_path does not match a structural workflow scope")
         if not isinstance(annotation_id, str) or not annotation_id.strip():
             raise WorkflowBundleError(f"{where}.annotation_id must be nonblank")
         identity = (scope_path, annotation_id)
@@ -360,6 +369,30 @@ def _validate_annotations(value: Any, workflow: VibeWorkflow) -> list[dict[str, 
             raise WorkflowBundleError(f"{where}.owner.kind is unsupported")
         if not isinstance(owner.get("uid"), str) or not owner["uid"].strip():
             raise WorkflowBundleError(f"{where}.owner.uid must be nonblank")
+        owner_uid = str(owner["uid"])
+        kind = str(owner["kind"])
+        if kind in {"node", "instance"}:
+            # Captured note annotations may be the sole presentation record;
+            # in that representation the annotation id is its self-owned
+            # synthetic node key.  Still require the closed UI-only class.
+            self_owned_note = (
+                kind == "node"
+                and owner_uid == str(annotation_id)
+                and raw.get("class_type") in UI_ONLY_CLASS_TYPES
+            )
+            if not self_owned_note and (
+                valid_node_refs is None or (scope_path, owner_uid) not in valid_node_refs
+            ):
+                raise WorkflowBundleError(f"{where}.owner does not identify a node in its scope")
+        elif kind == "group":
+            if valid_groups is None or (scope_path, owner_uid) not in valid_groups:
+                raise WorkflowBundleError(f"{where}.owner does not identify a group in its scope")
+        elif kind == "workflow":
+            if scope_path != "" or owner_uid != workflow.id:
+                raise WorkflowBundleError(f"{where}.owner does not identify this workflow")
+        elif kind == "definition":
+            if not scope_path or owner_uid != scope_path:
+                raise WorkflowBundleError(f"{where}.owner does not identify its definition scope")
         if raw.get("class_type") not in UI_ONLY_CLASS_TYPES:
             raise WorkflowBundleError(f"{where}.class_type must be an allowlisted note class")
         for field in ("title", "content"):
@@ -804,7 +837,38 @@ def _validate_v2_sidecar(
         raise WorkflowBundleError(
             "workflow companion presentation must contain exactly nodes, links, groups, canvas, and annotations"
         )
-    annotations = _validate_annotations(presentation.get("annotations"), workflow)
+    presentation_nodes = presentation.get(_V2_PRESENTATION_NODES_KEY)
+    presentation_groups = presentation.get(_V2_PRESENTATION_GROUPS_KEY)
+    projection = canonical_ir_projection(workflow)
+    valid_scopes = {
+        str(item["scope_path"])
+        for item in [*(projection.get("nodes", ()) or ()), *(projection.get("definitions", ()) or ())]
+        if isinstance(item, Mapping) and isinstance(item.get("scope_path"), str)
+    }
+    valid_scopes.add("")
+    valid_node_refs: set[tuple[str, str]] = {
+        (str(item["scope_path"]), str(item["uid"]))
+        for item in projection.get("nodes", ())
+        if isinstance(item, Mapping)
+        and isinstance(item.get("scope_path"), str)
+        and isinstance(item.get("uid"), str)
+    }
+    if isinstance(presentation_nodes, Mapping):
+        from vibecomfy.identity.uid import parse_uid
+
+        for uid in presentation_nodes:
+            if isinstance(uid, str):
+                valid_node_refs.add(parse_uid(uid))
+    valid_groups = {
+        (str(group.get("scope_path")), str(group.get("presentation_id")))
+        for group in presentation_groups if isinstance(group, Mapping)
+    } if isinstance(presentation_groups, list) else set()
+    annotations = _validate_annotations(
+        presentation.get("annotations"), workflow,
+        valid_scopes=valid_scopes,
+        valid_node_refs=valid_node_refs,
+        valid_groups=valid_groups,
+    )
     # API-only captures have no canvas furniture to validate.  Their empty
     # presentation is intentional; requiring UI foreign keys here would turn
     # a semantic-only graph (which may still contain executable edges) into a

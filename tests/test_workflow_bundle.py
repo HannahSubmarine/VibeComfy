@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
@@ -1178,6 +1179,152 @@ def test_v2_companion_keeps_generated_python_small_and_round_trippable(tmp_path:
     assert loaded.semantic_digest == bundle.semantic_digest
     assert loaded.ui_digest == bundle.ui_digest
     assert validate_sidecar(loaded.ui_sidecar, loaded.workflow) == loaded.ui_sidecar
+
+
+def _assert_clean_v2_source(source: str) -> None:
+    """Apply the whole-file readability contract used by the v2 evidence gate."""
+    tree = ast.parse(source)
+    assert not any(
+        isinstance(node, ast.Name) and "custody" in node.id.lower()
+        for node in ast.walk(tree)
+    )
+    assert not any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "connect"
+        for node in ast.walk(tree)
+    )
+    assert not any(
+        isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Attribute)
+        and isinstance(node.value.value, ast.Name)
+        and node.value.value.id == "wf"
+        and node.value.attr == "nodes"
+        for node in ast.walk(tree)
+    )
+
+    finalizers = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "finalize"
+    ]
+    assert len(finalizers) == 1
+    assert len(finalizers[0].args) == 1
+    assert {keyword.arg for keyword in finalizers[0].keywords} == {"outputs"}
+
+    marker_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "build"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "ReadyMetadata"
+    ]
+    assert len(marker_calls) == 1
+    source_bundle = next(
+        keyword.value
+        for keyword in marker_calls[0].keywords
+        if keyword.arg == "source_bundle"
+    )
+    assert isinstance(source_bundle, ast.Dict)
+    marker_keys = {
+        key.value for key in source_bundle.keys if isinstance(key, ast.Constant)
+    }
+    assert marker_keys == {"format_version", "generation_id", "custody_digest"}
+
+
+def test_v2_source_contract_rejects_whole_file_integrity_mutations(tmp_path: Path) -> None:
+    """Mutation evidence covers hidden custody, replay tails, and bloated finalizers."""
+    path = tmp_path / "source-contract.py"
+    emit_bundle(_nonempty_workflow("source-contract"), path, {"operation": "authored"})
+    source = path.read_text(encoding="utf-8")
+    _assert_clean_v2_source(source)
+    anchor = "    wf = wf.finalize({}, outputs=[] )"
+    if anchor not in source:
+        anchor = "    wf = wf.finalize({}, outputs=[])"
+    assert anchor in source
+
+    mutations = {
+        "hidden custody": source.replace(
+            "def build() -> VibeWorkflow:\n",
+            "def build() -> VibeWorkflow:\n    helper_custody = {}\n",
+            1,
+        ),
+        "replay topology": source.replace(
+            anchor,
+            "    wf.connect('integer-node.0', 'integer-node.value')\n" + anchor,
+            1,
+        ),
+        "duplicate runtime value": source.replace(
+            anchor,
+            "    wf.nodes['replay'] = object()\n" + anchor,
+            1,
+        ),
+        "bloated finalizer": source.replace(
+            anchor,
+            anchor[:-1] + ", canonical_custody={})",
+            1,
+        ),
+    }
+    for label, mutated in mutations.items():
+        with pytest.raises(AssertionError):
+            _assert_clean_v2_source(mutated)
+
+
+def test_v2_rebuild_refreshes_edited_model_requirement(tmp_path: Path) -> None:
+    workflow = _workflow("model-requirement-refresh")
+    workflow.nodes["1"] = VibeNode(
+        "1",
+        "CheckpointLoaderSimple",
+        inputs={"ckpt_name": "old.safetensors"},
+        uid="loader",
+    )
+    workflow.requirements.models = ["old.safetensors"]
+    path = tmp_path / "model-requirement-refresh.py"
+    emit_bundle(workflow, path, {"operation": "authored"})
+
+    source = path.read_text(encoding="utf-8")
+    source = source.replace(
+        "CKPT_NAME = 'old.safetensors'",
+        "CKPT_NAME = 'new.safetensors'",
+        1,
+    )
+    path.write_text(source, encoding="utf-8")
+
+    rebuilt = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+    assert rebuilt.nodes["1"].inputs["ckpt_name"] == "new.safetensors"
+    assert rebuilt.requirements.models == ["new.safetensors"]
+
+
+def test_v2_annotations_bind_scope_and_owner_and_materialize_content(tmp_path: Path) -> None:
+    workflow = _nonempty_workflow("annotation-binding")
+    companion = emit_bundle(
+        workflow, tmp_path / "annotation-binding.py", {"operation": "authored"}
+    ).ui_sidecar
+    assert companion is not None
+    presentation = companion["presentation"]
+    presentation["nodes"] = {"note": {"class_type": "MarkdownNote", "id": 7}}
+    presentation["annotations"] = [{
+        "annotation_id": "note", "scope_path": "",
+        "owner": {"kind": "node", "uid": "note"},
+        "class_type": "MarkdownNote", "title": "Note", "content": "preserve me",
+    }]
+    normalized = validate_sidecar(companion, workflow)
+    materialized = materialize_ui_json(workflow, normalized)
+    note = next(node for node in materialized["nodes"] if node.get("type") == "MarkdownNote")
+    assert note["widgets_values"] == ["preserve me"]
+
+    bad_scope = copy.deepcopy(companion)
+    bad_scope["presentation"]["annotations"][0]["scope_path"] = "definition:missing"
+    with pytest.raises(WorkflowBundleError, match="structural workflow scope"):
+        validate_sidecar(bad_scope, workflow)
+    bad_owner = copy.deepcopy(companion)
+    bad_owner["presentation"]["annotations"][0]["owner"]["uid"] = "ghost"
+    with pytest.raises(WorkflowBundleError, match="does not identify a node"):
+        validate_sidecar(bad_owner, workflow)
 
 
 def test_v2_companion_is_required_and_swapping_it_is_refused(tmp_path: Path) -> None:
