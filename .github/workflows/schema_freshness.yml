@@ -51,7 +51,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install package
-        run: python -m pip install -e .
+        run: python3 -m pip install -e .
 
       # ------------------------------------------------------------------
       # Guard: check ComfyUI availability.
@@ -63,7 +63,7 @@ jobs:
         id: comfy-gate
         run: |
           set -euo pipefail
-          python -c "
+          python3 -c "
           from vibecomfy.comfy_backend import ensure_nodes
           import os
           from pathlib import Path
@@ -94,7 +94,7 @@ jobs:
         id: hash-check
         if: steps.comfy-gate.outputs.available == 'true'
         run: |
-          python -c "
+          python3 -c "
           import hashlib, json, sys
           from collections import defaultdict
           from pathlib import Path

@@ -314,6 +314,28 @@ def _validate_field(workflow: Any, op: SetNodeFieldOp, provider: Any) -> None:
     schema = _schema_for(node, provider)
     specs = getattr(schema, "inputs", None) or {}
     spec = specs.get(field) if isinstance(specs, Mapping) else None
+    if spec is None and field == "control_after_generate":
+        # Comfy's seed randomisation selector is an authored UI widget, but it
+        # is intentionally absent from the execution schema.  Validate it
+        # from the sealed widget roster rather than treating the canvas field
+        # as schema authority or accepting arbitrary values.
+        from vibecomfy.porting.edit.widget_slots import _canonical_ui_only_widget_field
+
+        if _canonical_ui_only_widget_field(
+            raw_ui if isinstance(raw_ui, Mapping) else {},
+            field,
+            schema_provider=provider,
+        ) is not None:
+            from vibecomfy.schema import InputSpec
+
+            from vibecomfy.porting.widgets.compact_resolver import (
+                _CONTROL_AFTER_GENERATE_VALUES,
+            )
+
+            spec = InputSpec(
+                type="COMBO",
+                choices=sorted(_CONTROL_AFTER_GENERATE_VALUES),
+            )
     positional_index: int | None = None
     if spec is None and field not in widgets and field not in inputs:
         try:
@@ -347,6 +369,17 @@ def _validate_field(workflow: Any, op: SetNodeFieldOp, provider: Any) -> None:
 
     if spec is None:
         if schema is not None:
+            # Some Comfy object-info snapshots omit a widget-backed input
+            # that the retained IR already materialized (for example
+            # CLIPTextEncode.text).  An indexed widget edit may have been
+            # canonically named from the retained UI roster; accepting that
+            # existing IR carrier preserves the established edit surface
+            # without inventing a field from canvas bytes alone.  A named
+            # ``widgets_values`` mapping is canvas evidence, not that witness.
+            if (field in widgets or field in inputs) and not (
+                isinstance(ui_values, Mapping)
+            ):
+                return
             raise ApplyOpsError(
                 "unknown_target_field",
                 f"field {field!r} has no exact authoring-schema witness on {node.class_type!r}; canvas/compiled fields are not schema authority.",

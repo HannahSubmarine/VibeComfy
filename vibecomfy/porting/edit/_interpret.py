@@ -75,7 +75,10 @@ from vibecomfy.identity.codec import (
 )
 from vibecomfy.porting.emit.emit_kwargs import _compute_variable_names
 from vibecomfy.porting.emit.emit_prepare import _agent_edit_output_ports
-from vibecomfy.porting.emit.ui import guard_exit_ui as _canonical_guard_exit_ui
+from vibecomfy.porting.emit.ui import (
+    _unattributed_node_order_change,
+    guard_exit_ui as _canonical_guard_exit_ui,
+)
 from vibecomfy.porting.edit._resolve import (
     _EXEC_CLASS_TYPE,
     _exec_semantic_slot_name,
@@ -861,6 +864,7 @@ def _evaluate_operation(
                 presentation_index=presentation_index,
             )
         cursor = workflow
+        validation_diagnostics: list[CompactDiagnostic] = []
         staged_components: list[EditOp] = []
         finalized_lowered = list(lowered)
         for component_index, component in enumerate(lowered):
@@ -912,6 +916,13 @@ def _evaluate_operation(
                 )
             try:
                 _validate_one(cursor, component, frozen_provider)
+                validation_diagnostics.extend(
+                    _nonfatal_validation_diagnostics(
+                        cursor,
+                        component,
+                        frozen_provider,
+                    )
+                )
                 cursor = apply_edit_cow(cursor, component, schema_provider=frozen_provider)
                 # Finalize semantic add-node metadata before any projection,
                 # index construction, or promotion.  The evaluator's cursor
@@ -1023,6 +1034,30 @@ def _evaluate_operation(
                     presentation_index=None,
                 )
             if candidate_ui is not None:
+                # Inspect the raw candidate before furniture pinning.  The
+                # pinning step intentionally restores retained presentation
+                # order for normal reconstructive emission, but it must not
+                # erase evidence that the projection itself was forged.
+                if _unattributed_node_order_change(
+                    lint_ui,
+                    candidate_ui,
+                    guard_ops,
+                ):
+                    return OperationEvaluation(
+                        workflow=workflow,
+                        normalized=lint_op,
+                        lowered=lowered,
+                        outcome="rejected",
+                        diagnostics=lint_diags + (_diag(
+                            "full_ui_node_order_changed_unattributed",
+                            "Candidate changed the relative order of existing nodes without an attributed operation.",
+                            severity="error",
+                        ),),
+                        lint_issue=lint_issue,
+                        lint_disposition=lint_disposition,
+                        presentation_ui=candidate_ui,
+                        presentation_index=LintIndex.build(candidate_ui),
+                    )
                 # Reconstructive emission may hydrate untouched sockets from a
                 # schema and thereby rewrite presentation-only bytes (for
                 # example an existing input type ``IMAGE`` becoming ``*``).
@@ -1077,7 +1112,7 @@ def _evaluate_operation(
             # not allocate another COW write.
             lowered=tuple(finalized_lowered),
             outcome="staged",
-            diagnostics=lint_diags,
+            diagnostics=lint_diags + tuple(validation_diagnostics),
             lint_issue=lint_issue,
             lint_disposition=lint_disposition,
             presentation_ui=candidate_ui,
@@ -1160,6 +1195,21 @@ def _touched_classes_for_interpret(
         for node_id, name in emitted.items():
             if name in names and str(node_id) in workflow.nodes:
                 touched.add(str(workflow.nodes[str(node_id)].class_type))
+        # Literal node("ClassType") calls identify their authoritative class
+        # without requiring the advisory catalog.  Keep this witness in the
+        # initial sealed-snapshot closure so an unresolved added class cannot
+        # be hidden by a different already-known node referenced in the same
+        # batch.
+        for call in (node for node in ast.walk(module) if isinstance(node, ast.Call)):
+            if (
+                isinstance(call.func, ast.Name)
+                and call.func.id == "node"
+                and call.args
+                and isinstance(call.args[0], ast.Constant)
+                and isinstance(call.args[0].value, str)
+                and call.args[0].value
+            ):
+                touched.add(call.args[0].value)
         if catalog:
             from vibecomfy.porting.authoring_names import (
                 constructor_aliases_for_class_types,
@@ -1177,9 +1227,6 @@ def _touched_classes_for_interpret(
                     and call.func.id == "node"
                     and call.args
                 ):
-                    raw = call.args[0]
-                    if isinstance(raw, ast.Constant) and isinstance(raw.value, str):
-                        touched.add(raw.value)
                     continue
                 constructor = None
                 if isinstance(call.func, ast.Name):
@@ -1225,6 +1272,26 @@ def _frozen_provider_for_interpret(
     catalog_error = getattr(schema_provider, "_frozen_schema_catalog_error", None)
     catalog_provider = schema_provider
     catalog = dict(frozen_catalog) if isinstance(frozen_catalog, Mapping) else None
+    # A retained ingress snapshot is already complete for ordinary edits to
+    # nodes it contains.  Resolve that narrow touched-class closure without
+    # opening the provider's live catalog; the live surface is advisory only
+    # once ingress has sealed the authority needed by this batch.  Catalog
+    # completion remains available below for genuinely unresolved constructor
+    # classes.
+    snapshot_touched = (
+        _touched_classes_for_interpret(
+            pre_workflow,
+            batch_source,
+            snapshot,
+            catalog=None,
+        )
+        if snapshot is not None
+        else ()
+    )
+    if snapshot is not None and snapshot_touched and all(
+        class_type in snapshot.schemas for class_type in snapshot_touched
+    ):
+        return frozen_provider or FrozenSchemaSnapshotProvider(snapshot)
     schemas = getattr(catalog_provider, "schemas", None)
     if catalog is None and callable(schemas):
         try:
@@ -1325,6 +1392,62 @@ def _frozen_provider_for_interpret(
             )
             provider._frozen_schema_catalog = dict(catalog)
             return provider
+    # Keep the small legacy provider surface usable when it only exposes
+    # ``get_schema``.  Freeze exactly the classes touched by this batch before
+    # interpretation; the evaluator and all later phases still consume only
+    # the resulting immutable snapshot.  This is deliberately bounded to the
+    # delta (and current workflow node classes for typed field edits), rather
+    # than treating an arbitrary live provider as a complete catalog.
+    if snapshot is None:
+        from vibecomfy.schema.types import capture_schema_snapshot, schema_payload_from_node_schema
+
+        touched = _touched_classes_for_interpret(
+            pre_workflow,
+            batch_source,
+            None,
+            catalog=None,
+        )
+        getter = getattr(schema_provider, "get_schema", None)
+        if not callable(getter):
+            getter = getattr(schema_provider, "get", None)
+        if callable(getter) and touched:
+            payload: dict[str, Any] = {}
+            missing: list[str] = []
+            catalog_values: dict[str, Any] = {}
+            lookup_error: str | None = None
+            for class_type in touched:
+                try:
+                    candidate = getter(class_type)
+                except Exception as exc:
+                    candidate = None
+                    lookup_error = f"{type(exc).__name__}: {exc}"
+                if candidate is None:
+                    missing.append(class_type)
+                    continue
+                try:
+                    payload[class_type] = schema_payload_from_node_schema(
+                        class_type,
+                        candidate,
+                    )
+                    catalog_values[class_type] = candidate
+                except Exception as exc:
+                    missing.append(class_type)
+                    lookup_error = f"{type(exc).__name__}: {exc}"
+            if payload or missing:
+                provider = FrozenSchemaSnapshotProvider(
+                    capture_schema_snapshot(
+                        class_types=touched,
+                        request_snapshot={
+                            "schemas": payload,
+                            "missing_classes": missing,
+                        },
+                        node_classes=_workflow_node_classes(pre_workflow),
+                    )
+                )
+                if lookup_error:
+                    provider._frozen_schema_catalog_error = lookup_error
+                provider._frozen_schema_catalog = catalog_values
+                return provider
     if frozen_provider is not None:
         return frozen_provider
     if snapshot is not None:
@@ -2327,6 +2450,7 @@ class _InterpretRunner:
         fields: dict[str, Any] = {}
         linked: dict[str, LinkSourceRef] = {}
         issues: list[CompactDiagnostic] = []
+        warnings: list[CompactDiagnostic] = []
         # uid comment present ⇒ emit replay of an existing instance.  User
         # add (no uid) still enforces enum/asset bounds.
         reconstructing = bool(
@@ -2502,6 +2626,13 @@ class _InterpretRunner:
             if hard:
                 issues.extend(_port_issues(hard))
                 continue
+            warnings.extend(
+                _port_issues(
+                    issue
+                    for issue in bound_issues
+                    if getattr(issue, "severity", "error") != "error"
+                )
+            )
             fields[name] = literal
         roster = emit_order_names or widget_field_names
         if roster:
@@ -2610,7 +2741,10 @@ class _InterpretRunner:
             status="applied",
             op_kind="node_call",
             op=self._last_effective_op or op,
-            diagnostics=() if inferred_anchor_diag is None else (inferred_anchor_diag,),
+            diagnostics=(
+                *warnings,
+                *((inferred_anchor_diag,) if inferred_anchor_diag is not None else ()),
+            ),
             detail={"target_name": target_name, "minted_uid": minted, "class_type": class_type},
         )
 
@@ -2826,6 +2960,11 @@ class _InterpretRunner:
         hard = [issue for issue in bound_issues if getattr(issue, "severity", "error") == "error"]
         if hard:
             return self._reject_diagnostics(item, "set_node_field", _port_issues(hard))
+        warnings = _port_issues(
+            issue
+            for issue in bound_issues
+            if getattr(issue, "severity", "error") != "error"
+        )
         current = _current_field_value(node, field_name)
         cas_key = (str(node.uid), field_name)
         expected = self.cas_old.get(cas_key)
@@ -2854,6 +2993,7 @@ class _InterpretRunner:
             status="applied",
             op_kind="set_node_field",
             op=self._last_effective_op or op,
+            diagnostics=warnings,
         )
 
     def _upsert_link(
@@ -4461,6 +4601,66 @@ def _port_issues(issues: Iterable[Any]) -> tuple[CompactDiagnostic, ...]:
         )
         for issue in issues
     )
+
+
+def _nonfatal_validation_diagnostics(
+    workflow: Any,
+    operation: EditOp,
+    provider: Any,
+) -> tuple[CompactDiagnostic, ...]:
+    """Retain accepted literal-value warnings from typed operations.
+
+    ``_validate_one`` intentionally raises only for hard failures, so its
+    legacy ``None`` return cannot carry warnings such as an asset filename
+    that is validly authored but absent from the local choices.  Re-evaluate
+    the same frozen schema witness after validation and publish only the
+    non-error issues; this does not add a second authority or validation
+    policy.
+    """
+    if isinstance(operation, AddNodeOp):
+        class_type = str(operation.class_type)
+        fields = operation.fields
+    elif isinstance(operation, SetNodeFieldOp) and not operation.target.scope_path:
+        node = next(
+            (
+                candidate
+                for candidate in (getattr(workflow, "nodes", {}) or {}).values()
+                if str(getattr(candidate, "uid", "") or "")
+                == str(operation.target.uid)
+            ),
+            None,
+        )
+        if node is None:
+            return ()
+        class_type = str(getattr(node, "class_type", ""))
+        fields = {str(operation.target.field_path): operation.value}
+    else:
+        return ()
+    schema = schema_for(provider, class_type)
+    schema_inputs = getattr(schema, "inputs", None) or {}
+    if not isinstance(schema_inputs, Mapping):
+        return ()
+    from vibecomfy.porting.edit.value_defaults import VALUE_DEFAULT_FIELDS_MARKER
+
+    warnings: list[Any] = []
+    for field, value in fields.items():
+        if str(field) == VALUE_DEFAULT_FIELDS_MARKER:
+            continue
+        spec = _input_spec_for_field(schema_inputs, str(field))
+        if spec is None:
+            continue
+        warnings.extend(
+            issue
+            for issue in _validate_literal_value(
+                value=value,
+                spec=spec,
+                class_type=class_type,
+                input_name=str(field),
+                context="typed edit",
+            )
+            if getattr(issue, "severity", "error") != "error"
+        )
+    return _port_issues(warnings)
 
 
 __all__ = [

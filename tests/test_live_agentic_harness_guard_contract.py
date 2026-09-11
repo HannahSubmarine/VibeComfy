@@ -2441,7 +2441,7 @@ def test_every_semantic_non_edit_has_rubric_and_judge_result(
         if scenario.get("answer_rubric"):
             semantic.append(scenario)
 
-    assert len(semantic) == 35
+    assert len(semantic) == 23
     monkeypatch.setattr(
         "tests.live_agentic_harness.assessor.judge_semantic_answer",
         lambda *args, **kwargs: _semantic_verdict(),

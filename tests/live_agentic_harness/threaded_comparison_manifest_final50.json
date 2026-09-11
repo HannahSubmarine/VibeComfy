@@ -7,15 +7,15 @@
   "entries": [
     {
       "id": "audio-tts-narration-using-indextts-2",
-      "descriptor_sha256": "4e55deceb5b3cb551aea17a49436b5749ee5a9ef0c8109239503c7297cf242ff",
+      "descriptor_sha256": "f0cc84fd762bd87b36ff8edb9e7d1203bf862435afe4b28ee4447dac2f31c79c",
       "source_workflow_sha256": "c77073490f3892e5b847588c734ae3ba2565b3e1de9326f927170496f28b7727",
-      "locked_input_sha256": "c099f40b9208579ce320a0e5bcd9c579b78265f3639f828059efee41c26fb28d"
+      "locked_input_sha256": "df9ae25a78376eb598191594c2f6308b844a97ee94478c6fdf27b29491202eed"
     },
     {
       "id": "image-image-editing-with-qwen-image",
-      "descriptor_sha256": "84fd815360181be85daa88df0078b17bf9e25791ffd71f1318458c5b6b3cb9be",
+      "descriptor_sha256": "d5115b297f0e3cdeb41517047679f1a1d4dedd50c108d7581a388c2ff44a2e46",
       "source_workflow_sha256": "e639739cd84018810243c609441cb8e8f56f7735be2682578d14fdda7c49fff2",
-      "locked_input_sha256": "dc1062c6fd00ef18395d403ce725964c1d68e354ba9ac6ed56278b835fae20f3"
+      "locked_input_sha256": "e5d22163401e4ba6abdf253cdceaddc95a23735e77b3cc58c6148a0bf1735b9c"
     },
     {
       "id": "live-graph-explanation-smoke",
@@ -25,9 +25,9 @@
     },
     {
       "id": "multi-video-based-character-replacement-using",
-      "descriptor_sha256": "f096cd3491a6d5b5c33ed81dff425360cde4b11a297c2f0c1220dde7f55291f6",
+      "descriptor_sha256": "77f83eabc294dbecaeb9044cce17f2119d470f29331ef34b8a29bac0fd9bf0cf",
       "source_workflow_sha256": "4b91ba865e85eec812ff4e57248460d6d71ac9a588e96603a66305d2b93e4c27",
-      "locked_input_sha256": "625ed91eacf070e1d531a806b69b8221bf7a02f1e5c2a42b98502b0ae48ac63d"
+      "locked_input_sha256": "851ed98dc393a40f8b78b24c962ef38cd21d519d5576f855f13b2a689f852c20"
     },
     {
       "id": "speed-distillation-research",
@@ -37,273 +37,273 @@
     },
     {
       "id": "3d-3d-inpainting-with-controlnet-and-detail-daemo-c24aa2",
-      "descriptor_sha256": "f2d7ac44c1d69ddbc3da300e0700868a9107e64c2ce5b75a405d92080b761f46",
+      "descriptor_sha256": "4ae9dcfc357a740c9c0ddeab5eac33c8711fe937f5e8f3385a604c222b276340",
       "source_workflow_sha256": "3c605c00652907736c02e5c4bfff6fa17c9edbfd06024be972b004dc2332f180",
-      "locked_input_sha256": "de8aa426aa8470f8d89629a66a8217565daa916aa92b1b85f52a868c5ce761a6"
+      "locked_input_sha256": "f85ec1e4630f426497923bac3af73049e46e18a50fb699a737c8a8db60d2194e"
     },
     {
       "id": "3d-3d-model-generation-and-preview-workflow-cc0df7",
-      "descriptor_sha256": "1cfb6896b256d1822aebbf9368c770c5378c96bf2cf4fa3484f0a795b7f75b36",
+      "descriptor_sha256": "5826d69ac546ccf0c55c59f5730c1446c42d07c8815890c8df13995c95a899f3",
       "source_workflow_sha256": "f59807058734a50e245e4d97446e42d378a6589457f9359a05f9b5da09400583",
-      "locked_input_sha256": "b7cd2dda58c2b47fb218f481811c08b4aba63555d8aa663e1a308f4f3cbf6e0b"
+      "locked_input_sha256": "cde289359f5f8f62d5d015ab3737175d505a886bf35c81bbd174f0e4712b626f"
     },
     {
       "id": "3d-3d-model-generation-and-retargeting-workflow-f65774",
-      "descriptor_sha256": "f00572c6cf8e56e3ef061b51ae064593f7b683b568532ae362ab7fd470e4c40f",
+      "descriptor_sha256": "151fec7dd3b2deab5dd94159e66804c939f0bfbec69552809d5541a0a7f603d5",
       "source_workflow_sha256": "4874162874ab6ddce8b7a248382e5ee20a392158f423c14f8ce1fffd4f21833e",
-      "locked_input_sha256": "2ef1ff9f6addf7b9093c60b92555c6fcbf2d3b930ca2118cc8226487500710e0"
+      "locked_input_sha256": "5d762990e8ec65a4b11339db96ab2b0120f93953bd69b28028c26533d26b8d17"
     },
     {
       "id": "3d-3d-model-generation-and-rigging-from-image-352066",
-      "descriptor_sha256": "4f875566cdfc542a798240bd2eb678af760683d0626452a272f2dc83db795d0f",
+      "descriptor_sha256": "165bd4fed0bcdf7c2ff3b09b2fbc4f208d426fd0267075701134f62c5600933c",
       "source_workflow_sha256": "cb759b44eeef9b28df2ed3f0d0e835ce3d2d35770930a7d0a95cbaccb80b68f3",
-      "locked_input_sha256": "f7cbdf5236caef6c29820e67eeb765773557679a493fae3d7c3e2128de8daecd"
+      "locked_input_sha256": "cfcf52cf06deb363408009a62fe2c08b9d009d153de0555d65efb7b46f1e0f12"
     },
     {
       "id": "3d-3d-model-generation-and-rigging-workflow-90a1d5",
-      "descriptor_sha256": "171b43c967b4c73b2030c7637b7d51c39fba40044b401b4d473a13719d8c0818",
+      "descriptor_sha256": "324e0d0a13fb4570efeed1c400bb103ce09d1a2f26d49fafee1a6be117242420",
       "source_workflow_sha256": "3f7fe8c665328f4ffa8db8f851da2081f288c9e2d107fd697c89de8655cf5f63",
-      "locked_input_sha256": "cd1864bbe93781f5841c16071937e8fc917c82a1b2144d7ee727c154ee503996"
+      "locked_input_sha256": "a7b5ee3be9ce5ec3d6320f67d771d46e68208a58bb2dc63791dcf5a9f9482c74"
     },
     {
       "id": "3d-3d-model-load-edit-and-export-workflow-d66a66",
-      "descriptor_sha256": "5fe9bba69049a4849346c505321eac3e7a4c44b212b67d8e940de12f92874bbe",
+      "descriptor_sha256": "119162a556cdc2a59492f38e6b1db5348e98f274bb2aa34c80fd300e9f1f2b99",
       "source_workflow_sha256": "6855d89472a70305bedfdcdd14b1caaf4287afe333cd1e4f6c5a409d2b77b44c",
-      "locked_input_sha256": "5ed7f8f4934a98bcad86a4e5dd2fcddbe204b2baeb37f12c26eb5cb1ac44f1aa"
+      "locked_input_sha256": "81e695a48629a0744e22b41acae546740da4ba8a5f431131dd84012052aca580"
     },
     {
       "id": "3d-3d-shape-generation-and-export-workflow-8800a9",
-      "descriptor_sha256": "e6e0a2001429726f0f46be56cdb414d5388bc3803cff63cca0c4b5d2f0afeefc",
+      "descriptor_sha256": "afc1ab24d234a76ad5b945d6aae8237507a7eb6fbcdaf46ebf7487d41206d8cc",
       "source_workflow_sha256": "134ec19b6bd7158373e968face34c9bd2390c8e1011d40c92fc077e6a08f7658",
-      "locked_input_sha256": "302337c316073ecaca5b4c34f2329cee395979f79bfce56ac42ee07dad231170"
+      "locked_input_sha256": "b3f6d29e779596402613f4a06cbf42d68dc6b0655730be9e7f68c81fa9f4f627"
     },
     {
       "id": "3d-converts-image-to-3d-model",
-      "descriptor_sha256": "5f131e3f6743491dc8ce59b63d5e52d50091d8f4bf7c199f76b130ada6f2214c",
+      "descriptor_sha256": "77c3a9e3fc096cde6e87be94c880198b7996838eee389fa8e64e8ddc651a92cc",
       "source_workflow_sha256": "d587fb6ac78718887c0a77b00a778ba43e662ccf69d024e54dcb1b12ca4c0aa0",
-      "locked_input_sha256": "624f2de8cf97113885ee4d478882bb8456a6de691e8b3bff762b419611a8c9ff"
+      "locked_input_sha256": "c38f3746b35218811745012dce52479648bc8333cf496ac72ddc2448876e9058"
     },
     {
       "id": "3d-generates-a-3d-mesh-from",
-      "descriptor_sha256": "78500beb98600be76f05723fee97c4acb2894a7b7d71b6217fc176fc04cd461f",
+      "descriptor_sha256": "5a5a031137e449b70fdecc170776c103a0d4307b39c6f8064c34a7e53521aca6",
       "source_workflow_sha256": "a44f0b8c613d8b7355c2969b284e1daa2ad0b105fa6c7479ad60f784714e47d3",
-      "locked_input_sha256": "b02c395279cc3205ef5dd13e2ff4ff5172125b1855d0c25c833f4cc63c97f64d"
+      "locked_input_sha256": "661259bd24ec973dd8825d30bf6c07dec69b8c8a2ba551bb92ee1e6fb48a9f53"
     },
     {
       "id": "audio-acestep-audio-generation-and-processing-workfl-1b1360",
-      "descriptor_sha256": "1bea80b24b15dfa6de0d0e1ab0d22de564bcfa694043a7d84bf0bae60c733da9",
+      "descriptor_sha256": "eebb42a75145879ecd58f5c9d4ae97fedfa178d02f882cbc0e443bd60cfb1057",
       "source_workflow_sha256": "e5846011433a2fe294236d76ed89c90f3d5e14fdd2046720d2d3db8eaba23fa9",
-      "locked_input_sha256": "3a1e6f9a4ed339073219b52e8cf47cf0eee9e1edf91f6ee4beb8cacfa28fd3f6"
+      "locked_input_sha256": "07e8bc31a023e9689d572b1739b7be1231764e5d00ae3d1007cda77cc23ba7aa"
     },
     {
       "id": "audio-acestep-audio-generation-with-detail-daemon-f0859f",
-      "descriptor_sha256": "9f7fde490b1dc5d43edf0c322240d2d287bad00bbcdf3a7caa9567fede4ac387",
+      "descriptor_sha256": "a3c8587dbdb45c3e13b43e5075f4f748cfc3070bfc117010dce11202bfbf3943",
       "source_workflow_sha256": "b26e42fc1c8e6b2fa39836107e2161f5d67a35d6e5863a0266ae32f4801a6d4d",
-      "locked_input_sha256": "f8cda517b15b1ddd68e29cbb77ee329c5ce1ada9884143cc733938f4d870e352"
+      "locked_input_sha256": "2036d94281585323adfa945905a749fd5aad2d2c130eec66836647e1e80a7afa"
     },
     {
       "id": "audio-acestep-audio-generation-with-ksampler-e8c20a",
-      "descriptor_sha256": "77838383270cd869d9f8f74e29e9778e7022b10a7fdd6d094f54a5848e127b01",
+      "descriptor_sha256": "6a4a07e49dba70c84d7fa301c1e51212bc498345b4f0c4d28573b784b590de5a",
       "source_workflow_sha256": "0f5f93b84e41c7149d14df40ecdd8ce22b8f9d6a3f27fa40adba03563fd06d88",
-      "locked_input_sha256": "c2e858af825a16d78c09eee2a96d723c55808caee0b558a9fbb98bec5c682e7f"
+      "locked_input_sha256": "bd2f18b1bcb21db2ee54f319ebaa1313067ddc7b35c8649a8507c38bff04c869"
     },
     {
       "id": "audio-acestep-audio-generation-workflow-2a31ec",
-      "descriptor_sha256": "f48a0350bc94e328d3aaf0d81cd8eb67fa0a95c458c61b215ea844b4e802b248",
+      "descriptor_sha256": "045c54f66484a5f3dc6f66beaf0972ed399cf09766fb48777832c576796a254f",
       "source_workflow_sha256": "3902cecc195ce146f556f168b80847d57b4b87b81e9055cda2edafb2411e5f62",
-      "locked_input_sha256": "224b30d29562ec666252514994a9055e4d23599091cb920a745ae69608837528"
+      "locked_input_sha256": "003b5247bd62a14ab9aa77faaa696e19a30b3412866cd4a57b689da8b519130b"
     },
     {
       "id": "audio-acestep-audio-latent-workflow-with-vocal-separ-0eb676",
-      "descriptor_sha256": "a326d7d88480f48722e228ab484371972e72c7cde6947d9ae3d8ec18a17a0b95",
+      "descriptor_sha256": "6cb2bc1abb51a340c3e4cbdb53ae0c96f77f43e780692691a20922a51983ced3",
       "source_workflow_sha256": "bda4c6f02ff8c802b82a2e3abe79b631a5f4beccf2905bfb71a3824152cb319f",
-      "locked_input_sha256": "d2fa66af5903cd17d258fba8b2cdef74a8154e09cdde143d7b43654fec197ce2"
+      "locked_input_sha256": "f53ad0b0648529ff18ea86dff0ac7f93167ad07e64efd807d99c0f5d4db31ad6"
     },
     {
       "id": "audio-audio-processing-with-chatterbox-tts-and-vc-b55994",
-      "descriptor_sha256": "16d64e5ee2b4a1aa702f23b11276f16c5aa5b4c0f09ffea7875adb2f2a53184d",
+      "descriptor_sha256": "ac644020f1a63993b950a6ab0f5fa02d204e8cab2f04e92aa43ecba15716bc89",
       "source_workflow_sha256": "cf18d35e10586b45a798da007c09965f0abd89a5339a1d15507605c651fcdc22",
-      "locked_input_sha256": "b0d534d075ea3c625debf610fe3798bba2a4519056a169460f6dc90fed6c15de"
+      "locked_input_sha256": "4361ef8d8b7a62047f946f69b981e6a90076defcf12cd48d098fe7deb4f3ada4"
     },
     {
       "id": "audio-audio-processing-with-voice-tts-and-noise-remo-b80848",
-      "descriptor_sha256": "722adc306a51a7e09d438305a34fdc9ee3860b362a064dd800755f5736798528",
+      "descriptor_sha256": "f733ef63caeadbda365f1184999b9d7afe5dccaab7acddf0c968610b183461d3",
       "source_workflow_sha256": "b9d457b89bb7353cd60e0687d9f30edbc60c640001f10a99983915de45dca5f8",
-      "locked_input_sha256": "a8a8c3ffd345990c9d76328bf5441b8b473a8ce027a61a745725b0695335fb4c"
+      "locked_input_sha256": "11cde979a5c0f677c25ae15a06858558ad6aff8977f13af80da7fffc85fe7a8b"
     },
     {
       "id": "audio-ltx-video-and-audio-generation-with-lora-and-m-c80bbf",
-      "descriptor_sha256": "b07103aae29c19ab08d216b7cbcb2bc054f5c18c303df76db1d7cc98349e318f",
+      "descriptor_sha256": "e25d4a3c48761a22456538b57c0fee3c7c0947a4f7db5e6107a8dba9e424635b",
       "source_workflow_sha256": "50d0bae8056606a96cef8612a070d362eefefaf4863c1650a7ba073ae8cc3726",
-      "locked_input_sha256": "e441915be320511675da8b3b58c5d6817630872c3be77077560469dc0e566ada"
+      "locked_input_sha256": "45ec62b7d4511c49b6fd680c174c67e5f7fbd98e59e8c1fa42fb85ad6c8174d0"
     },
     {
       "id": "audio-transcribes-audio-appends-text-regenerates",
-      "descriptor_sha256": "c42d0bb2bd70932ab55c53930f2549c9cbe1afdc8738c104717aa74828648fcf",
+      "descriptor_sha256": "f84ca8f69d772aa42c8a972c589a70d548a5ffcd944c57a359e2ecff4df3042d",
       "source_workflow_sha256": "bb636c1f03add5825296d4177008d96493454bff45a0d933c7da2778fc875e5b",
-      "locked_input_sha256": "c10a403bd4ed831a97d92348341b53f2912e79081ed4f710e068f5529c7155f7"
+      "locked_input_sha256": "a1f4836978308e898cc55db8d2af56f146895627d7728174322f6c4a370c720e"
     },
     {
       "id": "hotshot-16-frames-agent-edit",
-      "descriptor_sha256": "8d265d7d527cae151fdbb3fb3490031810a34e1ff1b5d942a48eb190d5ff0b12",
+      "descriptor_sha256": "8d4686e38451d86f19cc28fdbb4a4322752c5a8ea55e48584bfd22a9df6e9251",
       "source_workflow_sha256": "13ed4f77db40b41c6378c596c24f6c0ad29e24aaa661e6ca04f6712a57baf7b6",
       "locked_input_sha256": "00dbcbbbd209629d1efff4533ae45b777d73fb273ac8d8fc4d7a173cb89f0b09"
     },
     {
       "id": "image-animatediff-image-to-video-with-latent-composi-17dc9b",
-      "descriptor_sha256": "3915cca35de860d81c3db17b70919138266a23f000c336cfd862512853578c14",
+      "descriptor_sha256": "9a6e93c218923c9257d643b374e96e5ddd5281b9eba1dda2ee3318d5c6bb67c9",
       "source_workflow_sha256": "3e00229733baeaeeec5239e71beeeda731bb154a3b1289512fa6778898efed31",
-      "locked_input_sha256": "5a13e3d05bf5123634e4f94ae231a6aff5ebfd418ab1e492fab8375934ff2f9a"
+      "locked_input_sha256": "4f8f8c110c01d64f155e51c81a23a1ff593f03e702fc09c9d80fb8d71adbfc58"
     },
     {
       "id": "image-animatediff-video-from-images-with",
-      "descriptor_sha256": "e281662a703a6adb6c8306b864b3d95c861216783559a5a26a4641922b9093d4",
+      "descriptor_sha256": "2498de60caa09e5dd1191dd1e07692d11ed589f62016926c45ef8bbde70ab19a",
       "source_workflow_sha256": "c3a41c3b5599276a4c8670a00454fda9772f9e48480461a2e6668cfeb3332912",
-      "locked_input_sha256": "ef9a6e35c75deb7b7787a25e4e45e1168a9ed0c48838a5a61d301e246f40f77a"
+      "locked_input_sha256": "4848378b2751cbaba708a1dfdff37af13933053d9fa1a1e94337adeed9a73060"
     },
     {
       "id": "image-animatediff-video-generation-with-vae-d20410",
-      "descriptor_sha256": "e18c6090e4b86904a4bbbbfe85bdbf6a46c0595f11f464306cea7c46ac8d2a5c",
+      "descriptor_sha256": "6d1e6caedb06b0e8a1b8c28df3a1899b085425db385dadd8dc5653554b8a53eb",
       "source_workflow_sha256": "6bfafa1aa997bad786f7080669ebc7aac1d53ea8578a7a4bb18ff4f5d0f87f31",
-      "locked_input_sha256": "1b513d10306d730b80b533bfbe618db5045e6e947907da5952a59848096df7cd"
+      "locked_input_sha256": "4901abae77bbe6096ef47c6a5e72a63cef86b4906610117c3b1430bdd6dec05e"
     },
     {
       "id": "image-auraflow-image-generation-with-qwen-clip-9a3109",
-      "descriptor_sha256": "fd319cfb3ad4de5bdb24921108e7a0a1e33ea6a5bf880b45e35f95aa107b12dd",
+      "descriptor_sha256": "a6cccd61c46e031a859d62ec1c4f4a303b1bc376500e111c90a769cabbe5c3b2",
       "source_workflow_sha256": "cf137b2940166dcd203390bd727f739d5944a025d323d7cf660c30423d192f54",
-      "locked_input_sha256": "3fde6eb097a2758dc14c02cbada965369d58dbe66c4f99e55f0fdf6d417373c8"
+      "locked_input_sha256": "1d7a37df6c7ac8f08ba71b8996728ad818527887b12d58239125129a0ad1b3f9"
     },
     {
       "id": "image-background-removal-and-grid-composition-54a681",
-      "descriptor_sha256": "1efa9c89b3d53db3020ec47f3fef9885366686ab7c7bd3151917b48b842c4e52",
+      "descriptor_sha256": "dbb18f8ca2964004a9a7905986684f5f5799572cf2b8e96943dce527a2da2120",
       "source_workflow_sha256": "3b207e76498cf7c34deec6479600832ecee7432143484bf7584db02c8daeb6ee",
-      "locked_input_sha256": "ffddf3a71e9d2d6c6e89a000130f8e467855f550dcbe1d623f819351f17de803"
+      "locked_input_sha256": "aab53b9796ac87544761a26ee61a66f6ed7b66c35fe5ba5d2bbd63bff30372c7"
     },
     {
       "id": "image-dual-checkpoint-xl-image-generation-with-refin-c9df19",
-      "descriptor_sha256": "1e7062329f4613d39cf741a8a7110116ebdcea839c524fac15fb8212af79583b",
+      "descriptor_sha256": "6c757940fa98bf12d8360d89dbdb3e86f93c97cf2dcb35254913914c6901835a",
       "source_workflow_sha256": "205c6a0aa195069e3ee4add27e8625dee2894f6750a8ca38b95d25fbcd008865",
-      "locked_input_sha256": "ca93cfa65ccda9d8a56fd6893fb123a659e21c7d32fca35890fc6e518efe346b"
+      "locked_input_sha256": "07ac30f4d4e771367e8c97c476239312f6da1ff16775a10327eeae96818113db"
     },
     {
       "id": "image-face-detection-and-cropping-workflow-949658",
-      "descriptor_sha256": "25bf07d86481a91cee23b2c8b20fdeb32512d85ec044506a51d2fb60c445e2e0",
+      "descriptor_sha256": "fa43665ea2d68ffd295ed042fae8434b9391514da05640670dc4600e7e434eb8",
       "source_workflow_sha256": "040a264e5eccfb3dd142f3e4af327cd3bcf7ae09c5e67e72534c83ff7efccab7",
-      "locked_input_sha256": "28d825c778473097246d811623a4686f9253860fbc0b8b7ced4ef85db99f286f"
+      "locked_input_sha256": "eee3f0aa3a4843d12b0f640e2c7039c1495a04196a1d1ed074ec118038792fe6"
     },
     {
       "id": "image-flux-image-inpainting-and-compositing-with-con-00444a",
-      "descriptor_sha256": "c883c311629a2468082d88246b1cc8dbf38e9912a64f86360c8699a3f99d9dac",
+      "descriptor_sha256": "78ed569744fd789d4114aa9a8c5e8818862e38f6aea763d09204a5ca6c908efc",
       "source_workflow_sha256": "cb4f9f41299923e421770c92a3b82e4d2bdd7092fd0848ee7e6c4ac59bec40cf",
-      "locked_input_sha256": "3e788021237d46d43b3253f050767c1130a1bd833d878fd482d9b4896f6495ba"
+      "locked_input_sha256": "dfa5a39e6bac6d463e4ebc8c682c025a9d7b18d67aae956eb8f192462a07bb29"
     },
     {
       "id": "image-gemini-prompt-splitter-and-text-display-workfl-caae97",
-      "descriptor_sha256": "d649bc94213323e06a83a5ade9c89ef79d75c2e910cd7a9ffe1c172e497f9d97",
+      "descriptor_sha256": "37bcfe97c09a41d9f995b4601e8429bcc9f972af4f4d096273f1d5e5197f1a32",
       "source_workflow_sha256": "1639eab3d5038e907e2cc858031ddb436c056fb76974012fc0ce59940c475456",
-      "locked_input_sha256": "a665b6c8da89e6a33ee6e2b1bfaa6d98d779a0433c11d23913da45c228e1b1a2"
+      "locked_input_sha256": "2a90d19049934fe2c30bcd89eb0880e181e54fcd93e472b88932f26e9ec47c1d"
     },
     {
       "id": "image-generates-a-2x2-seed-variation",
-      "descriptor_sha256": "97355c316f3b9f6285bf4f2866c93b361dacfc956eeff6c9ea87a24cada79b01",
+      "descriptor_sha256": "4ebea412a31083b81e3fffd26336aeb867cae2223cf7a2afae57c0c46660a15c",
       "source_workflow_sha256": "fe550572488ea0190a95021290f93630055c0c1ebde95963bc4c15e9f4b83b01",
-      "locked_input_sha256": "c7e55ad76f9afe4bcf960d0222b3ada0622de303fd68878fc320878858d8eeba"
+      "locked_input_sha256": "2576f72c3049aae8acfac4993d7fe2661a06b2e6fbb0ea1fe8f187c62b590a9b"
     },
     {
       "id": "image-image-comparison-and-enhancement-with-florence-007018",
-      "descriptor_sha256": "431327d8a1238b66be00a0cf5975c6e4c970993f4964cc343339e30bd3988ea7",
+      "descriptor_sha256": "f5dfd6d793942e09627a12e9875fa938597093dcec41f72d0a9b3917d450ce49",
       "source_workflow_sha256": "11e3fb489c3cc8aee26f3d86e9d34cd6c59ad6affe650eb68a5389015104b2d4",
-      "locked_input_sha256": "42cff9954e58312e55dae254c3a13bd97fc8d411d563a3b3a1a2cddb0f4f80c2"
+      "locked_input_sha256": "18334cde110fbc7bdd1a22a169640750d98121910a5c49f675cfe90917dd659c"
     },
     {
       "id": "image-image-processing-with-sharpening-film-grain-an-9aa0f1",
-      "descriptor_sha256": "7a01b9c36e189b5ef424344a0ca90eafc832022f71a14091a6e84a5f46d8bb91",
+      "descriptor_sha256": "b434052df214e24ea881174968722e0c59a5f68321af1150c5ec58a3ace00747",
       "source_workflow_sha256": "ba72e64d75fd46065df102d48766d5d43ed3f16fb9f7da314ca8d565ee809821",
-      "locked_input_sha256": "71fd55ba079191696d1222c25007bb09be4e13dd5bf70e584e0111219562d944"
+      "locked_input_sha256": "e34fff0c7fe055d76650fe52f9c4d3965356eb48f2806d6e120c29157ec4dc21"
     },
     {
       "id": "image-image-to-image-with-controlnet-and-dwpreproces-49d057",
-      "descriptor_sha256": "7bfd6fad80c36fbc574b4d24ae6f13b6837d8a145248192d707b8196b880726d",
+      "descriptor_sha256": "f2bc1b9997c0d577482fb264e2056c29ca69598458aa225cb9da6c8bfe972fec",
       "source_workflow_sha256": "08cee15268021cccedfae4b5cf7c9c689a135fb20cf83861a72d433471250b1d",
-      "locked_input_sha256": "9b837c2ae8bb59ac3b691eec01d90239823b67920b2b8ffb620117a2042f47d1"
+      "locked_input_sha256": "a48e852fe7b90dd2771e59d471055a50c6e5fe6041c098417917dddb37cf8f1a"
     },
     {
       "id": "image-image-to-image-with-ipadapter-and-controlnet-1999a9",
-      "descriptor_sha256": "12229915b1fc6a91fa40dbd8217de299577e02974cae4550af8f090cfa52797c",
+      "descriptor_sha256": "74e3d38b13c06887c7e7f718c0cbd3559fd6ed4e72c6a8ec08aa088fe72227eb",
       "source_workflow_sha256": "ca001814c33a186bc189891e96aa2dda45182b6c1405e02a0d803c0fbd5c1d63",
-      "locked_input_sha256": "5a42a7041005a83e759d7a0982836fab4440ffa5e7d0a49298eb2e59a880a3ca"
+      "locked_input_sha256": "b6f6724e67092e02b1013c13432a590a93306ee7517e32d8e034b94b3a20e191"
     },
     {
       "id": "image-image-to-image-with-stable-zero123-and-backgro-def5b5",
-      "descriptor_sha256": "52e569ac01f0eeb98e403b3e1c4f61534fb2fe2623fd7267f36c36f3165bd184",
+      "descriptor_sha256": "4aae133220fcd397c3050222f80c3dd4781d936eb8445e4c66e2f15e669210ce",
       "source_workflow_sha256": "68d3de381477d186c36446c69ec61ce20e5d5f79a0f2767fcfad43d9f8e0cb57",
-      "locked_input_sha256": "8c5d1549c73aa5caebfa21867eaedc4f4c5e5a658cca67a8daab5995ededbd75"
+      "locked_input_sha256": "11474f9bf74829142fe99c7e489e62791e033fab4885abf34b07788105503bcc"
     },
     {
       "id": "image-inpainting-with-differential-diffusion-and-rea-1d414c",
-      "descriptor_sha256": "7c5daa18f946968142a11c8acd6a41d70d1195d3cb40ecdcbc1fc6ae47d1cc69",
+      "descriptor_sha256": "796ad7729157677db0ea200dda591d52c3611065b96cbf284cc61093e6b3ab47",
       "source_workflow_sha256": "77200b0a1ecbad29f6951bd9dc07f189236925e8539e174bde1e174d0ad7f911",
-      "locked_input_sha256": "6b061454ae8391e39309c2f9ab1d35eb24fd4ccc0e8b68b0e24612a36c3d936f"
+      "locked_input_sha256": "92bd38b4efa56c3ed2fcafbb3be795096c5ae89cd6ce29c42485507699765c49"
     },
     {
       "id": "image-kolors-image-generation-with-segs-detailer-and-d813fe",
-      "descriptor_sha256": "5fd27f90d9aed4e864fe7e4eb657845d1b2d291ec1ed31c4ab8a0540be515c6c",
+      "descriptor_sha256": "95f2252d82a2286dd42d9ee917ecd4135a6f516672380baeb3a1d22ab11a7c27",
       "source_workflow_sha256": "501fe619c5f4f686d93053390843ade4100e8c8b8b20556e68c35451a4afccc0",
-      "locked_input_sha256": "c04c91eb9957dcc1e0cc637d2f189e2e7c73c19baba3bfdc961c2dc453a09aad"
+      "locked_input_sha256": "4722f15199b0ca0cee766a146f924c889095b37bbee9300b1c1e9d6379810878"
     },
     {
       "id": "image-llama-cpp-instruct-image-preview-and-save-5b54bf",
-      "descriptor_sha256": "fecd5fda89d2d2432fd8cc36f4f4dfb704472bd3e65e626d1e8cf06b7cfabd05",
+      "descriptor_sha256": "051b40b141e576594b1127038c5e17f78073b09a4ac46296862600e211233f79",
       "source_workflow_sha256": "741b45266de55b4fe10018b525c6d667e0826864e3c7722544f0d20b07c67930",
-      "locked_input_sha256": "db7e13e1c56073980bd875f63638d5cd1f4183dd0e3ebc20f559221d38676f38"
+      "locked_input_sha256": "6d9b292226ddd1c9ca594089c03e8b6eec4ddf9826e896c8626dce399c88f9b1"
     },
     {
       "id": "image-llava-image-captioning-and-keyword-extraction-d38dc8",
-      "descriptor_sha256": "0f5a115a9b5f97f8adfe889ff74d0d6eabb966acd979b9fb7e86484c40df2417",
+      "descriptor_sha256": "6d48c373b3d0c27bd861bdc48514219fb694228e77de8abba6567468aac5c4e8",
       "source_workflow_sha256": "1eda81a715b7064515c4f7e96a38908b76b54b4f1b4032316467ad5db1714261",
-      "locked_input_sha256": "37f066e59c5de98bbcfce1d68f45ec6e8cda999a8072be1d8e0bb72ceacbf8a8"
+      "locked_input_sha256": "28638c826b485f1e330a118b5ed76e6d8d34bbfce02e0d6cdef03e0f5ed46061"
     },
     {
       "id": "image-qwen-image-inpainting-with-controlnet-09fc64",
-      "descriptor_sha256": "1ae164bed94f42061305b46b445b5f90c046a47d7e468dda8b572ae93e871d52",
+      "descriptor_sha256": "353a77240bbef2bd6ec3da511989d04bc552c53336f69f59248d5dc267abee75",
       "source_workflow_sha256": "7698209b423a2ffd4dfbfd3f167fb680546c111474c69b8aff3e31a4912e185e",
-      "locked_input_sha256": "cc043b5a1bce85675c5c1b10b6f81c28f5d36f3cff633069e774d861643e4436"
+      "locked_input_sha256": "0196d1ceb3b537d8d3985227a2b8cf8c1322fc851432ac704112f27a41acd75c"
     },
     {
       "id": "image-sd3-image-generation-with-controlnet-19d221",
-      "descriptor_sha256": "8e47d2b6369512263e8193b9232372c8b97c970f162783789c597bbdf28d1f9e",
+      "descriptor_sha256": "ebe9d3770d181d6b54140971423e9db95d9ba5f59544b8efe1d999900280fc44",
       "source_workflow_sha256": "9acadc5405b97c0998e99a66dea4c064ab271e5feb34953fad3e6205d64ba83d",
-      "locked_input_sha256": "0dbd45a455ecf4f9a4d0b9b5802a74cad54a94d934437c4d3f16a52c2a75fc7e"
+      "locked_input_sha256": "854296dfa511b52e4ea52ae3028b1ccd92fcfafd5adfd51605932ab14097e695"
     },
     {
       "id": "image-sdxl-txt2img-cat-in-spacesuit",
-      "descriptor_sha256": "04bf444c3c44edc850a0a4c9a19a3664b31fd0d8ff4cff13826befd4f8d06080",
+      "descriptor_sha256": "eb80ba8473a8b12bb8df8c8896880c872e795d3a15d0575e1415f0e34a6910e1",
       "source_workflow_sha256": "8ae30394a10fe55697444b44a5aea6a922bba634ce161ba2c34a2c31d9f947d4",
-      "locked_input_sha256": "979d9c87053d9ad0d5214467034da32a077f576455796386dd7bb64f374c08a4"
+      "locked_input_sha256": "31d860a0e7ce76ad36dd1a0746ea377d3f1ff9540e035f731e0dab34cf40ade4"
     },
     {
       "id": "image-style-transfer-using-ip-adapter",
-      "descriptor_sha256": "ecc29b99ec087d1e184b2215948b1762c7b6c2adf161bb36a4269852acce999e",
+      "descriptor_sha256": "f2c5d57eccccc153c9b95e3666f313f14e0ef2d906121ce18be83dd6958e51e5",
       "source_workflow_sha256": "dc78f9218fa2e40166ed62cd6a266bcf33b05e5f5a19423b242de724ab6d14d0",
-      "locked_input_sha256": "6f0da56dbdf34043177a5627a724ed3fe1e878c84d05ae7276b3966b4d76e514"
+      "locked_input_sha256": "33e1454789eb42f6dbeca429b34dac03088ad22750e6d5d711dec0ba445d8d5e"
     },
     {
       "id": "image-two-stage-qwen-image-generation",
-      "descriptor_sha256": "0a2e921da3a8268c66a9459fd6c8374d823a890c34318fdac439bb12dad14635",
+      "descriptor_sha256": "f741519458d6a7ea99267a9c628e77f47f7404fa8b6e081758399bd93d814cb9",
       "source_workflow_sha256": "f8c0e7b8e9247725c51b6e804a579be8c0a24ead7912c32863e45cc12986d8cc",
-      "locked_input_sha256": "f076ccc1a48476311bc5d32d2067b323dc9ccf98d5e674424c88dce7a9565909"
+      "locked_input_sha256": "79c9a27292569be413a676eaab9bf468182a79c527ceb0024861d42c4ee098a4"
     },
     {
       "id": "image-wan2-2-video-generation-with-chroma-lut-and-fi-a7ecc5",
-      "descriptor_sha256": "b9c51894e6c3889a7beef0a58a0fc44f1ac9c59ad2fe4844e5666d10549ace2c",
+      "descriptor_sha256": "3f9a32610d850f80b7586aea1f17ee6356953033e9f2b2a0245bef074d7cd727",
       "source_workflow_sha256": "358bf188ef9d1452d9ccc30f226ac9062d98adccbc1415fb3343ddd98a171c81",
-      "locked_input_sha256": "02a87778ed411d420cde8041548966d239b0d68c5fe13de9942901b2ce560b12"
+      "locked_input_sha256": "6cd9cd12bc78352b7e588d1c659c1bf67d46a02b2c95b5bb1bcfb9aa0b303fd7"
     },
     {
       "id": "multi-3d-gaussian-splatting-from-video-with-hunyuan-432652",
-      "descriptor_sha256": "73775928b403370e2a56c5757de461103c610963fef8c9d7c6c206c41edebe22",
+      "descriptor_sha256": "c31c4f63d4690ecfff46e55e875b19da6a3295ae38f0f5ea29fa99894bfa88a4",
       "source_workflow_sha256": "2e0605381ff0570cb18ebf0cba85cb7199fd45a46e8b5fb9c87a1e98866226d1",
-      "locked_input_sha256": "9aec3e7765caaa16f9bdc1809df6dbd5fd3417eb1bbd9fb6894f7d42ccf88411"
+      "locked_input_sha256": "3f08f61ce812f04175743cc8c36b832e2b8a00235076e7ea6c50265fd93b3b8a"
     }
   ]
 }

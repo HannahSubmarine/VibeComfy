@@ -439,12 +439,21 @@ def _publish_session_candidate(state: AgentEditState, session: Any) -> None:
             code="missing_workflow_authority",
         )
     landed = tuple(getattr(session, "landed_ops", ()) or ())
-    session_schema_provider = getattr(session, "schema_provider", None)
-    session_schema = getattr(session_schema_provider, "snapshot", None)
+    # A successful apply may enrich the ingress snapshot for a touched class.
+    # That returned snapshot is already frozen admission evidence, not a live
+    # provider lookup, so carry it into final publication for the same landed
+    # batch.  Empty-delta publication has no apply witness and must use the
+    # retained state snapshot only.
+    state_schema = getattr(state, "schema_snapshot", None)
+    # A session snapshot may refine a valid state witness after apply, but it
+    # cannot substitute for missing or malformed ingress custody.
+    session_schema = getattr(getattr(session, "schema_provider", None), "snapshot", None)
     retained_schema = (
         session_schema
-        if landed and isinstance(session_schema, SchemaSnapshot)
-        else getattr(state, "schema_snapshot", None)
+        if isinstance(state_schema, SchemaSnapshot)
+        and landed
+        and isinstance(session_schema, SchemaSnapshot)
+        else state_schema
     )
     retained_workflow = getattr(state, "workflow_snapshot", None)
     if retained_workflow is None:

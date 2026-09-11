@@ -1881,6 +1881,33 @@ def _widget_key_count(values: Any) -> int:
     return max(indices) + 1 if sorted(indices) == expected else 0
 
 
+def _authored_widget_count(node: Any) -> int:
+    """Return the highest explicitly retained widget slot, if any.
+
+    Canonical generated templates retain ``keep_defaults`` as custody for
+    widget-only fields that are not present in the compact schema roster. A
+    generated workflow therefore has valid widget evidence even after its
+    captured raw UI payload has been discarded.
+    """
+    metadata = getattr(node, "metadata", None)
+    keep_defaults = (
+        metadata.get("keep_defaults")
+        if isinstance(metadata, Mapping)
+        else None
+    )
+    if not isinstance(keep_defaults, (list, tuple)):
+        return 0
+    indices: list[int] = []
+    for field in keep_defaults:
+        text = str(field)
+        if not text.startswith("widget_"):
+            continue
+        suffix = text.split("_", 1)[1]
+        if suffix.isdigit():
+            indices.append(int(suffix))
+    return max(indices) + 1 if indices else 0
+
+
 _UI_ONLY_OBJECT_INFO_NAMES = frozenset({"control_after_generate"})
 
 
@@ -3094,6 +3121,9 @@ def derive_widget_shape_evidence(
         schema,
         schema_provider=schema_provider,
     )
+    authored_widget_count = _authored_widget_count(node)
+    if authored_widget_count:
+        schema_widget_count = max(schema_widget_count or 0, authored_widget_count)
     raw_widget_count, raw_widget_shape, has_dict_rows = _raw_widget_shape_from_node(node)
     if node.class_type == "vibecomfy.exec" and _exec_io_for_node(node) is not None:
         # The exec node's `io` mapping is its validated socket declaration,
@@ -6137,6 +6167,67 @@ def _attribution(ops: Iterable[EditOp]) -> dict[str, Any]:
     }
 
 
+def _unattributed_node_order_change(
+    original_ui: Mapping[str, Any],
+    candidate_ui: Mapping[str, Any],
+    ops: Sequence[EditOp] = (),
+) -> bool:
+    """Detect node-order drift before furniture pinning can hide it.
+
+    ``pin_untouched_ui`` restores the retained order so ordinary
+    reconstructive emission is stable.  The evaluator must nevertheless
+    inspect the raw candidate first; otherwise a forged projection that only
+    reverses the node list becomes indistinguishable from a valid candidate.
+    New and removed nodes are excluded because their relative placement is
+    already attributed by the accepted edit.
+    """
+    attribution = _attribution(ops)
+    original_scopes = dict(_iter_scopes(_thaw_json_view(original_ui)))
+    candidate_scopes = dict(_iter_scopes(_thaw_json_view(candidate_ui)))
+
+    def _is_deterministic_emitter_order(scope: Mapping[str, Any]) -> bool:
+        """Return whether a candidate scope has the emitter's native order.
+
+        The Python surface is dependency ordered, while the UI emitter's
+        stable tie-breaker is the canonical native node id.  During
+        ``interpret(∅, emit(wf))`` those orders can legitimately differ from
+        the retained canvas order as nodes are added one statement at a time.
+        This narrow allowance does not make arbitrary projection furniture
+        authoritative: a forged permutation still fails unless it is exactly
+        the deterministic native-id order produced by this emitter.
+        """
+        nodes = scope.get("nodes")
+        if not isinstance(nodes, list):
+            return False
+        native_ids: list[int] = []
+        for node in nodes:
+            if not isinstance(node, Mapping) or type(node.get("id")) is not int:
+                return False
+            native_ids.append(int(node["id"]))
+        return len(native_ids) == len(set(native_ids)) and native_ids == sorted(native_ids)
+
+    for scope_path in set(original_scopes) | set(candidate_scopes):
+        original_scope = original_scopes.get(scope_path)
+        candidate_scope = candidate_scopes.get(scope_path)
+        if not isinstance(original_scope, Mapping) or not isinstance(candidate_scope, Mapping):
+            continue
+        original_order = [
+            uid
+            for uid in _scope_node_uids(original_scope)
+            if (scope_path, uid) not in attribution["removed_nodes"]
+        ]
+        candidate_order = [
+            uid
+            for uid in _scope_node_uids(candidate_scope)
+            if uid in set(original_order)
+        ]
+        if original_order != candidate_order:
+            if _is_deterministic_emitter_order(candidate_scope):
+                continue
+            return True
+    return False
+
+
 def _link_attributed_to_add(
     link: Any,
     scope: Mapping[str, Any],
@@ -7436,6 +7527,33 @@ def pin_untouched_ui(
                     nodes[index] = merged
                     continue
                 nodes[index] = deepcopy(dict(original_node))
+            # Reconstructive emission walks the IR in dependency order, while
+            # LiteGraph treats the serialized node list order as presentation
+            # state.  Keep the relative order of every retained node exactly
+            # as authored; newly added nodes may follow the retained list and
+            # are still attributed by ``new_nodes`` in the exit guard.
+            candidate_by_uid = {
+                _node_uid(node): node
+                for node in nodes
+                if isinstance(node, Mapping) and _node_uid(node) is not None
+            }
+            retained_order: list[dict[str, Any]] = []
+            used_uids: set[str] = set()
+            for original_node in original_scope_for_topology.get("nodes", ()) if isinstance(original_scope_for_topology, Mapping) else ():
+                if not isinstance(original_node, Mapping):
+                    continue
+                uid = _node_uid(original_node)
+                if uid is None or uid not in candidate_by_uid:
+                    continue
+                retained_order.append(candidate_by_uid[uid])
+                used_uids.add(uid)
+            retained_order.extend(
+                node
+                for node in nodes
+                if isinstance(node, dict) and (_node_uid(node) not in used_uids)
+            )
+            if retained_order:
+                scope["nodes"] = retained_order
         original_scope = original_scopes.get(scope_path)
         if original_scope is None:
             continue
@@ -7516,6 +7634,16 @@ def pin_untouched_ui(
                 scope[key] = deepcopy(original_scope[key])
             elif key in _EMIT_SCOPE_FURNITURE or key in {"extra", "config", "groups"}:
                 del scope[key]
+        # An emitter is allowed to omit untouched optional canvas furniture,
+        # but omission is not an edit. Restore missing fields from the
+        # retained ingest projection so the strict guard compares only the
+        # accepted semantic delta (for example, ``revision`` on an add-node
+        # operation).
+        for key, value in original_scope.items():
+            if key in {"nodes", "links", "definitions", "last_node_id", "last_link_id"}:
+                continue
+            if key not in scope:
+                scope[key] = deepcopy(value)
     if candidate_definitions is not None:
         pinned["definitions"] = candidate_definitions
     return pinned

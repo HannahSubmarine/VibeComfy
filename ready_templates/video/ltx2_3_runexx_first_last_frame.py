@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from vibecomfy.templates import InputSpec, ReadyMetadata, new_workflow
-from vibecomfy.nodes.core import CFGGuider, CLIPTextEncode, ComfySwitchNode, DualCLIPLoader, EmptyLTXVLatentVideo, GetImageSize, ImagePadForOutpaint, ImageScaleBy, ImageStitch, KSamplerSelect, LTXVAddGuide, LTXVConcatAVLatent, LTXVConditioning, LTXVCropGuides, LTXVLatentUpsampler, LTXVPreprocess, LTXVSeparateAVLatent, LatentUpscaleModelLoader, LoadImage, LoraLoaderModelOnly, ManualSigmas, RandomNoise, ResizeImageMaskNode, ResizeImagesByLongerEdge, SamplerCustomAdvanced, StringConcatenate, TextGenerateLTX2Prompt, UNETLoader, VAEDecodeTiled, VAELoader
+from vibecomfy.nodes.core import CFGGuider, CLIPTextEncode, ComfySwitchNode, DualCLIPLoader, EmptyLTXVLatentVideo, GetImageSize, ImagePadForOutpaint, ImageScaleBy, ImageStitch, KSamplerSelect, LTXVAddGuide, LTXVAudioVAELoader, LTXVConcatAVLatent, LTXVConditioning, LTXVCropGuides, LTXVEmptyLatentAudio, LTXVLatentUpsampler, LTXVPreprocess, LTXVSeparateAVLatent, LatentUpscaleModelLoader, LoadImage, LoraLoaderModelOnly, ManualSigmas, RandomNoise, ResizeImageMaskNode, ResizeImagesByLongerEdge, SamplerCustomAdvanced, StringConcatenate, TextGenerateLTX2Prompt, UNETLoader, VAEDecodeTiled, VAELoader
 from vibecomfy.nodes.kjnodes import INTConstant, ImageResizeKJv2, LTX2AttentionTunerPatch, LTX2MemoryEfficientSageAttentionPatch, LTX2SamplingPreviewOverride, LTX2_NAG, LTXVChunkFeedForward, LTXVImgToVideoInplaceKJ, PathchSageAttentionKJ, SimpleCalculatorKJ
 from vibecomfy.nodes.rgthree import Power_Lora_Loader_rgthree
 from vibecomfy.nodes.videohelpersuite import VHS_VideoCombine
@@ -154,6 +154,10 @@ def build() -> VibeWorkflow:
     # Loaders
     vaeloader = VAELoader(_id='180', vae_name=VAE_TAESD_NAME)
     vaeloader_2 = VAELoader(_id='181', vae_name=VIDEO_VAE_NAME)
+    ltxvaudiovaeloader = LTXVAudioVAELoader(
+        _id='175',
+        ckpt_name='LTX23_audio_vae_bf16_KJ.safetensors',
+    )
 
     latentupscalemodelloader = LatentUpscaleModelLoader(
         _id='182',
@@ -206,6 +210,13 @@ def build() -> VibeWorkflow:
         expression='((round((a * b -1) / 8)) * 8) + 1 ',
         b=24.0,
         a=intconstant,
+    )
+
+    ltxvemptylatentaudio = LTXVEmptyLatentAudio(
+        _id='9',
+        frames_number=calc_int,
+        frame_rate=24,
+        audio_vae=ltxvaudiovaeloader,
     )
 
     imagescaleby = ImageScaleBy(
@@ -309,6 +320,7 @@ def build() -> VibeWorkflow:
     ltxvconcatavlatent = LTXVConcatAVLatent(
         _id='24',
         video_latent=ltxvimgtovideoinplacekj,
+        audio_latent=ltxvemptylatentaudio,
     )
 
     model, _ = Power_Lora_Loader_rgthree(_id='2107', model=ltx2attentiontunerpatch)
@@ -358,7 +370,7 @@ def build() -> VibeWorkflow:
         sigmas=manualsigmas,
     )
 
-    video_latent, _ = LTXVSeparateAVLatent(_id='18', av_latent=output)
+    video_latent, audio_latent = LTXVSeparateAVLatent(_id='18', av_latent=output)
 
     ltxvlatentupsampler = LTXVLatentUpsampler(
         _id='25',
@@ -388,7 +400,11 @@ def build() -> VibeWorkflow:
         vae=vaeloader_2,
     )
 
-    ltxvconcatavlatent_2 = LTXVConcatAVLatent(_id='34', video_latent=latent)
+    ltxvconcatavlatent_2 = LTXVConcatAVLatent(
+        _id='34',
+        video_latent=latent,
+        audio_latent=audio_latent,
+    )
 
     output_2, _ = SamplerCustomAdvanced(
         _id='21',
@@ -431,4 +447,3 @@ def build() -> VibeWorkflow:
     )
 
     return wf.finalize(PUBLIC_INPUT_METADATA, output_node=vhs_videocombine, output_type='VHS_VideoCombine', name='video', artifact_kind='video', mime_type='video/mp4', expected_cardinality='one', filename_prefix='LTX-2')
-

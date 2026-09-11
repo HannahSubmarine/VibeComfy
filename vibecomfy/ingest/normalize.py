@@ -2352,6 +2352,14 @@ def from_ui(
 ) -> VibeWorkflow:
     """Ingest a LiteGraph list-nodes graph into a :class:`VibeWorkflow`."""
     raw = deepcopy(raw)
+    # Validate the two root LiteGraph collections before any boundary-marker
+    # inspection.  Besides giving malformed UI a stable product error, this
+    # prevents ``None`` from escaping into the marker walk as an untyped
+    # ``TypeError``.
+    if not isinstance(raw.get("nodes"), list):
+        raise ValueError("UI nodes must be a list")
+    if not isinstance(raw.get("links", []), list):
+        raise ValueError("UI links must be a list")
     # Native ComfyUI subgraph definitions have one supported materialization
     # owner.  Let that owner consume supported definitions before applying the
     # generic refusal, so the remainder of this function stays the sole UI
@@ -2383,7 +2391,7 @@ def from_ui(
                 for node in nodes
             ):
                 return True
-            if any(endpoint_marker(link) for link in definition.get("links", ())):
+            if any(endpoint_marker(link) for link in (definition.get("links", ()) or ())):
                 return True
             nested = definition.get("definitions")
             entries = nested.get("subgraphs", ()) if isinstance(nested, Mapping) else nested
@@ -2397,7 +2405,7 @@ def from_ui(
             for node in nodes
         ):
             return True
-        if any(endpoint_marker(link) for link in value.get("links", ())):
+        if any(endpoint_marker(link) for link in (value.get("links", ()) or ())):
             return True
         definitions = value.get("definitions")
         entries = definitions.get("subgraphs", ()) if isinstance(definitions, Mapping) else definitions
@@ -2409,6 +2417,17 @@ def from_ui(
         raw = expand_native_subgraphs(raw)
     except Exception as exc:
         if type(exc).__name__ == "NativeSubgraphError":
+            # A malformed native expansion can fail before the generic marker
+            # check below gets a chance to report the stable boundary error.
+            # Preserve the single public refusal for sources that still carry
+            # native inputNode/outputNode or -10/-20 markers; do not leak an
+            # expansion-internal detail as the boundary contract.
+            if contains_native_marker(native_source):
+                raise ValueError(
+                    "unsupported_boundary_encoding: UI source contains native "
+                    "inputNode/outputNode markers that were not consumed; "
+                    "use an explicit Python-owned boundary mapping"
+                ) from exc
             raise ValueError(f"unsupported_boundary_encoding: {exc}") from exc
         raise
     if contains_native_marker(raw):

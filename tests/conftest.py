@@ -30,6 +30,13 @@ _KNOWN_FAILURES_FILE = pathlib.Path(__file__).parent / "known_failures.txt"
 _QUARANTINE_DIR = pathlib.Path(__file__).parent / "quarantine"
 _QUARANTINE_REQUIRED_METADATA = ("owner", "reason")
 
+# Test modules can temporarily replace the ComfyUI entry-point package while
+# exercising loader registration.  Keep the module objects imported during
+# collection authoritative so a later monkeypatch targets the same module as
+# collection-time handler imports.
+_CANONICAL_AGENT_PACKAGE = None
+_CANONICAL_AGENT_ROUTES = None
+
 
 @dataclass(frozen=True)
 class QuarantineEntry:
@@ -253,6 +260,72 @@ def _isolate_comfyui_import_state() -> None:
         ):
             sys.modules.pop(name, None)
 
+    # A failed import (or a deliberate headless import probe) can remove a
+    # submodule from sys.modules while Python leaves the old module object on
+    # its parent package.  A later ``from package import child`` then receives
+    # that orphan, making monkeypatches ineffective and importlib.reload fail.
+    # Remove only such stale module attributes; ordinary package attributes and
+    # live modules are untouched.
+    for package_name, child_name in (
+        ("vibecomfy.agent", "service"),
+        ("vibecomfy.comfy_nodes.agent", "routes"),
+        ("vibecomfy.runtime", "server"),
+        ("vibecomfy.comfy_nodes", "web"),
+    ):
+        module_name = f"{package_name}.{child_name}"
+        if module_name in sys.modules:
+            continue
+        package = sys.modules.get(package_name)
+        child = getattr(package, child_name, None) if package is not None else None
+        if getattr(child, "__name__", None) == module_name:
+            try:
+                delattr(package, child_name)
+            except AttributeError:
+                pass
+
+
+def _restore_canonical_agent_module_identity() -> None:
+    """Undo in-process entry-point module swaps after fixture teardown."""
+    package = _CANONICAL_AGENT_PACKAGE
+    routes = _CANONICAL_AGENT_ROUTES
+    if package is None or routes is None:
+        return
+
+    sys.modules["vibecomfy.comfy_nodes.agent"] = package
+    sys.modules["vibecomfy.comfy_nodes.agent.routes"] = routes
+
+    parent = sys.modules.get("vibecomfy.comfy_nodes")
+    if parent is not None:
+        setattr(parent, "agent", package)
+    setattr(package, "routes", routes)
+
+
+@pytest.hookimpl(hookwrapper=True, trylast=True)
+def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> None:
+    """Restore canonical module identity after all fixture finalizers run."""
+    yield
+    _restore_canonical_agent_module_identity()
+
+    # Entry-point tests temporarily install synthetic ``vibecomfy.comfy_nodes``
+    # packages/modules in sys.modules.  They have no source file and must not
+    # shadow the real package for later tests that imported route handlers at
+    # collection time.
+    for module_name in (
+        "vibecomfy.comfy_nodes.agent.routes",
+        "vibecomfy.comfy_nodes.agent",
+    ):
+        module = sys.modules.get(module_name)
+        if module is None or getattr(module, "__file__", None) is not None:
+            continue
+        sys.modules.pop(module_name, None)
+        parent_name, _, child_name = module_name.rpartition(".")
+        parent = sys.modules.get(parent_name)
+        if parent is not None and getattr(parent, child_name, None) is module:
+            try:
+                delattr(parent, child_name)
+            except AttributeError:
+                pass
+
 
 def pytest_configure(config: pytest.Config) -> None:
     # Hand the active pytest config to the runpod budget helpers so that
@@ -329,6 +402,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    global _CANONICAL_AGENT_PACKAGE, _CANONICAL_AGENT_ROUTES
+    if _CANONICAL_AGENT_PACKAGE is None:
+        _CANONICAL_AGENT_PACKAGE = sys.modules.get("vibecomfy.comfy_nodes.agent")
+        _CANONICAL_AGENT_ROUTES = sys.modules.get("vibecomfy.comfy_nodes.agent.routes")
+
     runpod_enabled = config.getoption("--runpod")
     runpod_full_enabled = config.getoption("--runpod-full")
     run_live_enabled = config.getoption("--run-live")

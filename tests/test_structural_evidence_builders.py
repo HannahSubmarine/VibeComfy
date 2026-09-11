@@ -103,6 +103,9 @@ def test_hotshot_16_frames_agent_edit_evidence_adds_registry_backed_missing_node
     implementation_result = json.loads(
         (report_dir / "implementation_result.json").read_text(encoding="utf-8")
     )
+    research_result = json.loads(
+        (report_dir / "research_result.json").read_text(encoding="utf-8")
+    )
     candidate = json.loads((report_dir / "candidate.ui.json").read_text(encoding="utf-8"))
     messages = [
         json.loads(line)
@@ -124,16 +127,20 @@ def test_hotshot_16_frames_agent_edit_evidence_adds_registry_backed_missing_node
     assert "ADE_AnimateDiffLoaderWithContext" in (
         implementation_result.get("message") or ""
     )
-    research_batches = [
+    # Research is now an executor-owned stage.  Its bounded ledger is handed
+    # to the implement phase through the frozen protocol note; implement
+    # messages therefore contain only executable edits, never research calls.
+    implementation_batches = [
         message.get("batch", "")
         for message in messages
-        if str(message.get("batch", "")).startswith("research(")
+        if message.get("batch")
     ]
-    assert len(research_batches) >= 2
-    assert 'sources=["workflows"]' in research_batches[0]
-    assert 'sources=["registry"]' in research_batches[1]
-    assert "Hotshot XL ComfyUI workflow" in research_batches[0]
-    assert any("ComfyUI-AnimateDiff-Evolved" in message.get("report", "") for message in messages)
+    assert implementation_batches
+    assert not any(batch.startswith("research(") for batch in implementation_batches)
+    assert "ADE_AnimateDiffLoaderWithContext" in implementation_batches[0]
+    assert research_result["mode"] == "agent_owned"
+    assert research_result["route"] == "adapt"
+    assert research_result["ledger"]["entries"]
     node_types = {
         node.get("type") or node.get("class_type")
         for node in candidate.get("nodes", [])

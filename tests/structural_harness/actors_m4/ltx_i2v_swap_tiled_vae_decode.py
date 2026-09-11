@@ -42,7 +42,7 @@ def _swap_one(workflow: Any, tiled_id: str, consumer_id: str) -> str:
     latents_from = incoming["latents"]
     vae_from = incoming["vae"]
 
-    decode = workflow.add_node("VAEDecode")
+    decode = workflow.node("VAEDecode")
     workflow.connect(f"{latents_from[0]}.{latents_from[1]}", f"{decode.id}.samples")
     workflow.connect(f"{vae_from[0]}.{vae_from[1]}", f"{decode.id}.vae")
     workflow.replace_edge(f"{consumer_id}.images", f"{decode.id}.0")

@@ -9,15 +9,15 @@
   "rows": [
     {
       "scenario_id": "audio-tts-narration-using-indextts-2",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/0d470a47b5d7c601.json",
-      "query": "The narration sounds flat and monotone — can you make it more engaging?",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/0d470a47b5d7c601.json",
+      "query": "The narration sounds flat and monotone \u2014 can you make it more engaging?",
       "offending_phrase": null,
       "decision": "no-change",
       "authorability": "index_schema",
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/0d470a47b5d7c601.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/0d470a47b5d7c601.json",
           "node_id": "125",
           "class_type": "IndexTTSEmotionOptionsNode",
           "member_kind": "output",
@@ -26,7 +26,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/0d470a47b5d7c601.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/0d470a47b5d7c601.json",
           "node_id": "124",
           "class_type": "QwenEmotionNode",
           "member_kind": "widget",
@@ -54,15 +54,15 @@
     },
     {
       "scenario_id": "image-image-editing-with-qwen-image",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/465726d60a145b19.json",
-      "query": "The added soldier looks pasted on — it doesn't match the scene's lighting.",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/465726d60a145b19.json",
+      "query": "The added soldier looks pasted on \u2014 it doesn't match the scene's lighting.",
       "offending_phrase": null,
       "decision": "no-change",
       "authorability": "index_schema",
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/465726d60a145b19.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/465726d60a145b19.json",
           "node_id": "135",
           "class_type": "KSampler",
           "member_kind": "input",
@@ -71,7 +71,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/465726d60a145b19.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/465726d60a145b19.json",
           "node_id": "133",
           "class_type": "TextEncodeQwenImageEditPlus",
           "member_kind": "widget",
@@ -119,7 +119,7 @@
     },
     {
       "scenario_id": "multi-video-based-character-replacement-using",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/8e5619299bafee56.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/8e5619299bafee56.json",
       "query": "It keeps selecting the background too, not just the person.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -127,7 +127,7 @@
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/8e5619299bafee56.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/8e5619299bafee56.json",
           "node_id": "34",
           "class_type": "LayerMask: SegmentAnythingUltra V3",
           "member_kind": "input",
@@ -136,7 +136,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/8e5619299bafee56.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/8e5619299bafee56.json",
           "node_id": "36",
           "class_type": "GrowMaskWithBlur",
           "member_kind": "input",
@@ -199,7 +199,7 @@
     },
     {
       "scenario_id": "3d-3d-inpainting-with-controlnet-and-detail-daemo-c24aa2",
-      "workflow_path": "external_workflows/corpus/c24aa2ac329006f2.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/c24aa2ac329006f2.json",
       "query": "Instead of using the back-projection inpainting method, I want to use the SDXL inpainting model directly on the masked areas, but I also want the ControlNet to guide the inpainting after the fact rather than condition it initially. Can you restructure the workflow to do that?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -306,7 +306,7 @@
     },
     {
       "scenario_id": "3d-3d-model-generation-and-preview-workflow-cc0df7",
-      "workflow_path": "external_workflows/corpus/cc0df70583f28c98.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/cc0df70583f28c98.json",
       "query": "Enable the Rodin3D_Detail generation branch: set its Preview3D node to enabled so the detailed model previews, and bypass the Rodin3D_Regular node together with its Preview3D node. Keep the shared input-image batching feeding all branches and leave every other node wired as it is.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -376,7 +376,7 @@
     },
     {
       "scenario_id": "3d-3d-model-generation-and-retargeting-workflow-f65774",
-      "workflow_path": "external_workflows/corpus/f657743bc2a3db17.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/f657743bc2a3db17.json",
       "query": "Raise the Tripo texture node's texture quality from 'standard' to 'detailed' and keep its PBR texturing enabled, so the rigged model's materials come through with finer detail in the final 3D preview.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -416,7 +416,7 @@
     },
     {
       "scenario_id": "3d-3d-model-generation-and-rigging-from-image-352066",
-      "workflow_path": "external_workflows/corpus/352066ccef9dbe37.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/352066ccef9dbe37.json",
       "query": "The generated model's rig has the knees bending backward. Correct the joint orientation so the legs bend forward naturally.",
       "offending_phrase": "Correct the joint orientation",
       "decision": "ANNOTATE",
@@ -455,7 +455,7 @@
     },
     {
       "scenario_id": "3d-3d-model-generation-and-rigging-workflow-90a1d5",
-      "workflow_path": "external_workflows/corpus/90a1d5ff9044902e.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/90a1d5ff9044902e.json",
       "query": "Set the text-to-3D generation node's geometry quality to 'detailed' so the model captures more surface features like wrinkles and folds, and leave its face-limit and quad settings exactly as they are so the polygon count does not grow.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -495,7 +495,7 @@
     },
     {
       "scenario_id": "3d-3d-model-load-edit-and-export-workflow-d66a66",
-      "workflow_path": "external_workflows/corpus/d66a660d74cbc9ec.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/d66a660d74cbc9ec.json",
       "query": "Change the texture edit prompt to 'aged bronze statue with verdigris patina' and ensure the model exports as GLB with embedded textures.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -541,7 +541,7 @@
     },
     {
       "scenario_id": "3d-3d-shape-generation-and-export-workflow-8800a9",
-      "workflow_path": "external_workflows/corpus/8800a945cff8d090.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/8800a945cff8d090.json",
       "query": "Lower the shape refinement strength to 0.5 so the final mesh stays closer to the input coarse mesh.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -598,15 +598,15 @@
     },
     {
       "scenario_id": "3d-converts-image-to-3d-model",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/b3530ba884ac4625.json",
-      "query": "The 3D model looks too smooth and featureless — I want sharper surface detail.",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/b3530ba884ac4625.json",
+      "query": "The 3D model looks too smooth and featureless \u2014 I want sharper surface detail.",
       "offending_phrase": null,
       "decision": "no-change",
       "authorability": "index_schema",
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/b3530ba884ac4625.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/b3530ba884ac4625.json",
           "node_id": "28",
           "class_type": "Rodin3D_Regular",
           "member_kind": "widget",
@@ -654,7 +654,7 @@
     },
     {
       "scenario_id": "3d-generates-a-3d-mesh-from",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/2bdbaf79a96182c4.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/2bdbaf79a96182c4.json",
       "query": "The generated 3D mesh is full of floating bits and noise.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -662,7 +662,7 @@
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/2bdbaf79a96182c4.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/2bdbaf79a96182c4.json",
           "node_id": "62",
           "class_type": "VoxelToMeshBasic",
           "member_kind": "input",
@@ -706,7 +706,7 @@
     },
     {
       "scenario_id": "audio-acestep-audio-generation-and-processing-workfl-1b1360",
-      "workflow_path": "external_workflows/corpus/1b136036c776018a.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/1b136036c776018a.json",
       "query": "Integrate a spectral-gating noise reduction pass before the audio separation step, then route the cleaned audio into both the vocal removal and the separation branches.",
       "offending_phrase": "spectral-gating noise reduction",
       "decision": "ANNOTATE",
@@ -750,7 +750,7 @@
     },
     {
       "scenario_id": "audio-acestep-audio-generation-with-detail-daemon-f0859f",
-      "workflow_path": "external_workflows/corpus/f0859f5d99dc9bdf.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/f0859f5d99dc9bdf.json",
       "query": "The DetailDaemon sampler is used for enhancing audio detail. How does it work compared to standard audio diffusion samplers, and what settings would you recommend for generating a cinematic soundscape?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -769,7 +769,7 @@
     },
     {
       "scenario_id": "audio-acestep-audio-generation-with-ksampler-e8c20a",
-      "workflow_path": "external_workflows/corpus/e8c20a18bba6455d.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/e8c20a18bba6455d.json",
       "query": "Change the sampling steps to 30 and switch the scheduler to 'karras'.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -825,7 +825,7 @@
     },
     {
       "scenario_id": "audio-acestep-audio-generation-workflow-2a31ec",
-      "workflow_path": "external_workflows/corpus/2a31ec45fd22a623.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/2a31ec45fd22a623.json",
       "query": "Load a different AceStep base model checkpoint: use 'acestep-sft-v2.safetensors' instead of the current one.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -884,7 +884,7 @@
     },
     {
       "scenario_id": "audio-acestep-audio-latent-workflow-with-vocal-separ-0eb676",
-      "workflow_path": "external_workflows/corpus/0eb67659bfc4dc63.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/0eb67659bfc4dc63.json",
       "query": "Restructure the workflow to combine the separated vocals and background after separate decoding stages instead of before decoding, then save each as separate files.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -954,7 +954,7 @@
     },
     {
       "scenario_id": "audio-audio-processing-with-chatterbox-tts-and-vc-b55994",
-      "workflow_path": "external_workflows/corpus/b55994d9cb6aea42.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/b55994d9cb6aea42.json",
       "query": "Change the output audio format from MP3 to FLAC.",
       "offending_phrase": "WAV",
       "decision": "ALIGN",
@@ -1007,7 +1007,7 @@
     },
     {
       "scenario_id": "audio-audio-processing-with-voice-tts-and-noise-remo-b80848",
-      "workflow_path": "external_workflows/corpus/b808486c05ad607c.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/b808486c05ad607c.json",
       "query": "The processed audio has a faint robotic buzz after TTS. Can you make it cleaner?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1065,7 +1065,7 @@
     },
     {
       "scenario_id": "audio-ltx-video-and-audio-generation-with-lora-and-m-c80bbf",
-      "workflow_path": "external_workflows/corpus/c80bbf22890fc8df.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/c80bbf22890fc8df.json",
       "query": "Replace the MelBand RoFormer audio sampler with AudioLDM2 for audio generation, integrating it with the LTX video generation pipeline and LoRA, so that audio and video remain synchronized.",
       "offending_phrase": "AudioLDM2",
       "decision": "ANNOTATE",
@@ -1090,15 +1090,15 @@
     },
     {
       "scenario_id": "audio-transcribes-audio-appends-text-regenerates",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/9a7ef22a9d947e9f.json",
-      "query": "The transcription has too many errors — the speech-to-text stage seems weak.",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/9a7ef22a9d947e9f.json",
+      "query": "The transcription has too many errors \u2014 the speech-to-text stage seems weak.",
       "offending_phrase": null,
       "decision": "no-change",
       "authorability": "graph_widget",
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/9a7ef22a9d947e9f.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/9a7ef22a9d947e9f.json",
           "node_id": "71",
           "class_type": "Apply Whisper",
           "member_kind": "widget",
@@ -1107,7 +1107,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/9a7ef22a9d947e9f.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/9a7ef22a9d947e9f.json",
           "node_id": "77",
           "class_type": "Text Concatenate",
           "member_kind": "input",
@@ -1158,7 +1158,7 @@
     },
     {
       "scenario_id": "image-animatediff-image-to-video-with-latent-composi-17dc9b",
-      "workflow_path": "external_workflows/corpus/17dc9bc3ed806c24.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/17dc9bc3ed806c24.json",
       "query": "How does the latent compositing approach here compare to using an init image directly in the video latent space? Which gives better temporal coherence?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1177,7 +1177,7 @@
     },
     {
       "scenario_id": "image-animatediff-video-from-images-with",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/001cd1f527f7f288.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/001cd1f527f7f288.json",
       "query": "The animation barely follows my input images.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1185,7 +1185,7 @@
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/001cd1f527f7f288.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/001cd1f527f7f288.json",
           "node_id": "72",
           "class_type": "ControlNetApplyAdvanced",
           "member_kind": "widget",
@@ -1194,7 +1194,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/001cd1f527f7f288.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/001cd1f527f7f288.json",
           "node_id": "73",
           "class_type": "ADE_AnimateDiffLoaderV1Advanced",
           "member_kind": "widget",
@@ -1222,7 +1222,7 @@
     },
     {
       "scenario_id": "image-animatediff-video-generation-with-vae-d20410",
-      "workflow_path": "external_workflows/corpus/d20410227419c47a.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/d20410227419c47a.json",
       "query": "Reduce the number of frames from 16 to 8 for quicker test renders.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1279,7 +1279,7 @@
     },
     {
       "scenario_id": "image-auraflow-image-generation-with-qwen-clip-9a3109",
-      "workflow_path": "external_workflows/corpus/9a3109dc72a4bd11.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/9a3109dc72a4bd11.json",
       "query": "Increase the number of inference steps from 20 to 30 to get more detailed images.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1301,7 +1301,7 @@
           "class_type": "MarkdownNote",
           "member_kind": "widget",
           "member": null,
-          "observed": "- Steps: 30～50\n- cfg:  4～7"
+          "observed": "- Steps: 30\uff5e50\n- cfg:  4\uff5e7"
         },
         {
           "surface": "authoritative_index",
@@ -1324,7 +1324,7 @@
     },
     {
       "scenario_id": "image-background-removal-and-grid-composition-54a681",
-      "workflow_path": "external_workflows/corpus/54a681138bec8a37.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/54a681138bec8a37.json",
       "query": "The preview grid looks too small and blurry. Make each image in the 2x2 grid 512x512 pixels before compositing.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1378,7 +1378,7 @@
     },
     {
       "scenario_id": "image-dual-checkpoint-xl-image-generation-with-refin-c9df19",
-      "workflow_path": "external_workflows/corpus/c9df19048aae0738.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/c9df19048aae0738.json",
       "query": "I'm running this dual-checkpoint XL pipeline with juggernautXL as the base and sd_xl_refiner as the refiner. Are there any newer, better refiner models I should consider, and what are the tradeoffs between using a dedicated refiner vs. a single high-quality XL checkpoint that handles fine details natively? I'm particularly interested in how the LoRA timing (before or after the refiner) affects flexibility.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1397,7 +1397,7 @@
     },
     {
       "scenario_id": "image-face-detection-and-cropping-workflow-949658",
-      "workflow_path": "external_workflows/corpus/949658825bc5999a.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/949658825bc5999a.json",
       "query": "Replace the YOLOv8 face detection with a different face detection model like MTCNN or RetinaFace, and update the cropping logic accordingly.",
       "offending_phrase": "MTCNN or RetinaFace",
       "decision": "ANNOTATE",
@@ -1423,7 +1423,7 @@
     },
     {
       "scenario_id": "image-flux-image-inpainting-and-compositing-with-con-00444a",
-      "workflow_path": "external_workflows/corpus/00444a9409f56c07.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/00444a9409f56c07.json",
       "query": "Restructure the pipeline to first generate a base image with Flux, then use the inpainted region as a condition for ControlNet-driven style transfer to the entire image, effectively merging the two branches.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1493,7 +1493,7 @@
     },
     {
       "scenario_id": "image-gemini-prompt-splitter-and-text-display-workfl-caae97",
-      "workflow_path": "external_workflows/corpus/caae974fd091bde7.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/caae974fd091bde7.json",
       "query": "This workflow uses Gemini to process and split prompts. I'd like to compare Gemini to Claude for generating complex, multi-part image prompts. What are the trade-offs in terms of output quality, prompt structure, rate limits, and cost? Just research, don't modify the workflow.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1512,7 +1512,7 @@
     },
     {
       "scenario_id": "image-generates-a-2x2-seed-variation",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/cdb8167d4eccd0a8.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/cdb8167d4eccd0a8.json",
       "query": "Arrange the four variations in a single horizontal row instead of a 2x2 grid.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1520,7 +1520,7 @@
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/cdb8167d4eccd0a8.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/cdb8167d4eccd0a8.json",
           "node_id": "59",
           "class_type": "SimpleMath+",
           "member_kind": "widget",
@@ -1529,7 +1529,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/cdb8167d4eccd0a8.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/cdb8167d4eccd0a8.json",
           "node_id": "53",
           "class_type": "ImageBatch",
           "member_kind": "input",
@@ -1571,7 +1571,7 @@
     },
     {
       "scenario_id": "image-image-comparison-and-enhancement-with-florence-007018",
-      "workflow_path": "external_workflows/corpus/0070184c5f1c8ca2.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/0070184c5f1c8ca2.json",
       "query": "Restructure the blending logic so that instead of a single composite, the user can adjust the contribution of each filter (saturation, invert, high-pass, sharpen, normal map) independently using float sliders, and have these weights control the final blended image.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1616,7 +1616,7 @@
     },
     {
       "scenario_id": "image-image-processing-with-sharpening-film-grain-an-9aa0f1",
-      "workflow_path": "external_workflows/corpus/9aa0f1cd11147fe4.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/9aa0f1cd11147fe4.json",
       "query": "What alternative sharpening methods could replace the high pass filter in this workflow, and what are the tradeoffs in terms of edge halos vs. natural detail enhancement?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1635,7 +1635,7 @@
     },
     {
       "scenario_id": "image-image-to-image-with-controlnet-and-dwpreproces-49d057",
-      "workflow_path": "external_workflows/corpus/49d0579ed9932457.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/49d0579ed9932457.json",
       "query": "Change the ControlNet strength to 0.8 so the pose guidance is more subtle.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1671,7 +1671,7 @@
     },
     {
       "scenario_id": "image-image-to-image-with-ipadapter-and-controlnet-1999a9",
-      "workflow_path": "external_workflows/corpus/1999a9d36cb0a7f4.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/1999a9d36cb0a7f4.json",
       "query": "How can I balance the influence between the IPAdapter style reference and the Canny edge ControlNet strength to preserve more of the original image structure while still applying the desired style? What parameters control this interplay?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1690,7 +1690,7 @@
     },
     {
       "scenario_id": "image-image-to-image-with-stable-zero123-and-backgro-def5b5",
-      "workflow_path": "external_workflows/corpus/def5b5d3b3b372dd.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/def5b5d3b3b372dd.json",
       "query": "Set the number of sampling steps to 4 to speed up generation without drastically affecting quality.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1726,7 +1726,7 @@
     },
     {
       "scenario_id": "image-inpainting-with-differential-diffusion-and-rea-1d414c",
-      "workflow_path": "external_workflows/corpus/1d414c3424d15ae2.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/1d414c3424d15ae2.json",
       "query": "The inpainted area isn't blending seamlessly; increase the mask blur to 16 and reduce the padding to 32 pixels.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1771,7 +1771,7 @@
     },
     {
       "scenario_id": "image-kolors-image-generation-with-segs-detailer-and-d813fe",
-      "workflow_path": "external_workflows/corpus/d813fedaabea87b7.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/d813fedaabea87b7.json",
       "query": "Replace the Ultralytics detector with GroundingDINO for mask generation, and adjust the pipeline so that SAM segmentation still receives valid SEGS input from the new detector.",
       "offending_phrase": "GroundingDINO",
       "decision": "ANNOTATE",
@@ -1796,7 +1796,7 @@
     },
     {
       "scenario_id": "image-llama-cpp-instruct-image-preview-and-save-5b54bf",
-      "workflow_path": "external_workflows/corpus/5b54bf476f4234aa.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/5b54bf476f4234aa.json",
       "query": "Adjust the LLaMA instruct parameters: set temperature to 0.8 and max tokens to 512.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1839,7 +1839,7 @@
     },
     {
       "scenario_id": "image-llava-image-captioning-and-keyword-extraction-d38dc8",
-      "workflow_path": "external_workflows/corpus/d38dc8be1bfcda49.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/d38dc8be1bfcda49.json",
       "query": "What alternative image captioning models could I replace LLaVA with to produce longer, more detailed prompts? Are there any that also extract keywords directly, or should I keep separate steps?",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1858,7 +1858,7 @@
     },
     {
       "scenario_id": "image-qwen-image-inpainting-with-controlnet-09fc64",
-      "workflow_path": "external_workflows/corpus/09fc64f94ce5ed26.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/09fc64f94ce5ed26.json",
       "query": "For this Qwen Image inpainting workflow, I frequently get color mismatches between the inpainted area and the original image. Before editing anything, research the best techniques to improve color consistency specifically for ControlNet-based inpainting with Qwen-Image-Lightning. Also explore if there's a better method for mask feathering or blending that could reduce the mismatch.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1877,7 +1877,7 @@
     },
     {
       "scenario_id": "image-sd3-image-generation-with-controlnet-19d221",
-      "workflow_path": "external_workflows/corpus/19d221f074b42462.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/19d221f074b42462.json",
       "query": "Lower the ControlNet strength to 0.5 so the text prompt has more influence over the final image than the control image edges.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -1936,15 +1936,15 @@
     },
     {
       "scenario_id": "image-sdxl-txt2img-cat-in-spacesuit",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/38375c38c1d2e6de.json",
-      "query": "The render looks plastic and fake — the material isn't reading as real fabric.",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/38375c38c1d2e6de.json",
+      "query": "The render looks plastic and fake \u2014 the material isn't reading as real fabric.",
       "offending_phrase": null,
       "decision": "no-change",
       "authorability": "index_schema",
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/38375c38c1d2e6de.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/38375c38c1d2e6de.json",
           "node_id": "16",
           "class_type": "CLIPTextEncodeSDXL",
           "member_kind": "widget",
@@ -1954,7 +1954,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/38375c38c1d2e6de.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/38375c38c1d2e6de.json",
           "node_id": "36",
           "class_type": "KSampler",
           "member_kind": "input",
@@ -1982,15 +1982,15 @@
     },
     {
       "scenario_id": "image-style-transfer-using-ip-adapter",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/c226f6c5faae34de.json",
-      "query": "The statue style isn't coming through at all — it just looks like a normal photo.",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/c226f6c5faae34de.json",
+      "query": "The statue style isn't coming through at all \u2014 it just looks like a normal photo.",
       "offending_phrase": null,
       "decision": "no-change",
       "authorability": "index_schema",
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/c226f6c5faae34de.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/c226f6c5faae34de.json",
           "node_id": "12",
           "class_type": "StyleModelApply",
           "member_kind": "widget",
@@ -1999,7 +1999,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/c226f6c5faae34de.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/c226f6c5faae34de.json",
           "node_id": "16",
           "class_type": "LoadImage",
           "member_kind": "input",
@@ -2027,7 +2027,7 @@
     },
     {
       "scenario_id": "image-two-stage-qwen-image-generation",
-      "workflow_path": "tests/fixtures/live_agentic_corpus/8ac746c940b127b4.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/8ac746c940b127b4.json",
       "query": "The image gets distorted and the faces look wrong after the upscale/refinement stage.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -2035,7 +2035,7 @@
       "checks": [
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/8ac746c940b127b4.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/8ac746c940b127b4.json",
           "node_id": "53",
           "class_type": "LatentUpscaleBy",
           "member_kind": "widget",
@@ -2044,7 +2044,7 @@
         },
         {
           "surface": "graph",
-          "source": "tests/fixtures/live_agentic_corpus/8ac746c940b127b4.json",
+          "source": "tests/fixtures/live_agentic_corpus/corpus/8ac746c940b127b4.json",
           "node_id": "51",
           "class_type": "SamplerCustom",
           "member_kind": "widget",
@@ -2089,7 +2089,7 @@
     },
     {
       "scenario_id": "image-wan2-2-video-generation-with-chroma-lut-and-fi-a7ecc5",
-      "workflow_path": "external_workflows/corpus/a7ecc54027245cb7.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/a7ecc54027245cb7.json",
       "query": "Convert this video generation pipeline from text-to-video to image-to-video: take a single input image as the first frame, encode it through the Wan2.2 pipeline, and drive the rest of the motion from a text prompt, while keeping the Chroma LUT grading and film grain post-processing chain fully intact.",
       "offending_phrase": null,
       "decision": "no-change",
@@ -2150,7 +2150,7 @@
     },
     {
       "scenario_id": "multi-3d-gaussian-splatting-from-video-with-hunyuan-432652",
-      "workflow_path": "external_workflows/corpus/432652b04ff0738b.json",
+      "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/432652b04ff0738b.json",
       "query": "The 3D reconstruction has noticeable geometry flickering across frames, likely from inconsistent depth maps. Can you investigate this video-to-3D Gaussian Splatting pipeline and suggest alternative depth estimation approaches or stabilization techniques that could reduce temporal jitter in the output point cloud?",
       "offending_phrase": null,
       "decision": "no-change",

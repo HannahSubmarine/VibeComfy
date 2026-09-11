@@ -1186,6 +1186,22 @@ def _approval_preconditions(workflow: VibeWorkflow, schema_provider: Any) -> Non
             identity = node.metadata.get("object_info_identity") if isinstance(node.metadata, Mapping) else None
             if identity is None and isinstance(identity_table, Mapping):
                 identity = identity_table.get(str(node_id), identity_table.get(node_id))
+            # Ready templates are materialized from the repository's pinned
+            # schema cache, but their generated node metadata intentionally
+            # does not carry a per-node object-info identity.  Remember that
+            # distinction before deriving the pack's lock identity below;
+            # authored/captured workflows must remain fail-closed when an
+            # exact identity cannot be resolved.
+            has_explicit_identity = identity is not None or (
+                isinstance(source, Mapping)
+                and any(
+                    key in source
+                    for key in (
+                        "pack_slug", "pack", "package", "git_commit",
+                        "commit", "evidence_identity",
+                    )
+                )
+            )
             pack = pack_by_class.get(str(node.class_type))
             pack_name = str(pack.name) if pack is not None else None
             lock_entry = lock_by_name.get(pack_name) if pack_name is not None else None
@@ -1254,6 +1270,41 @@ def _approval_preconditions(workflow: VibeWorkflow, schema_provider: Any) -> Non
                 str(node.class_type), identity=identity, allow_class_fallback=False
             )
             if result.entry is None:
+                # A generated ready template has already been bound to a
+                # concrete schema provider.  The local object-info cache
+                # may only have a class-only entry for that same provider
+                # (for example, a custom node whose object-info snapshot
+                # is stored under the core cache).  Accept that bounded
+                # fallback only when the provider package agrees with the
+                # cache entry package, and only for this materialized
+                # ready-template path.  Explicit identities and ordinary
+                # captured/authored workflows still require an exact
+                # lock-pinned identity.
+                source_role = (
+                    metadata.get("source_role")
+                    if isinstance(metadata, Mapping)
+                    else None
+                )
+                if not has_explicit_identity and source_role == "materialized_ready_python_template":
+                    provider_schema = get_schema(str(node.class_type)) if callable(get_schema) else None
+                    provider_package = getattr(provider_schema, "source_package", None)
+                    fallback = resolve_class_entry(
+                        str(node.class_type), identity=identity, allow_class_fallback=True
+                    )
+                    fallback_entry = fallback.entry
+                    fallback_package = (
+                        fallback_entry.get("pack_slug") or fallback_entry.get("pack")
+                        if isinstance(fallback_entry, Mapping)
+                        else None
+                    )
+                    if (
+                        fallback.source == "class_fallback"
+                        and fallback_entry is not None
+                        and provider_package
+                        and fallback_package
+                        and str(provider_package) == str(fallback_package)
+                    ):
+                        continue
                 raise WorkflowBundleError(
                     f"object-info identity does not resolve for {node.class_type} ({node_id})"
                 )

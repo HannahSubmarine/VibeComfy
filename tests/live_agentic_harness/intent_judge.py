@@ -1479,13 +1479,31 @@ def judge_edit_intent(
     delta_ops = (
         delta_envelope.get("ops") if isinstance(delta_envelope, Mapping) else None
     )
-    from vibecomfy.schema.provider import SchemaSnapshotProvider  # late import: judge stays light
+    from vibecomfy.schema import get_schema_provider  # late import: judge stays light
+    from vibecomfy.schema.provider import SchemaSnapshotProvider
 
     # Evidence assessment is an offline/static operation.  Never start or
     # probe a managed ComfyUI server merely to decode persisted test artifacts.
-    # SchemaSnapshotProvider pins object-info cache at construction so
-    # interpret(pre, Δ) is not missing_schema_authority on a live Local provider.
-    schema_provider = SchemaSnapshotProvider()
+    # Use only the offline/local provider for legacy artifacts.  A direct
+    # snapshot provider remains the fallback for callers that inject an
+    # already-frozen provider at that boundary; neither branch may probe a
+    # managed ComfyUI server.
+    snapshot_provider = SchemaSnapshotProvider()
+    local_provider = get_schema_provider("local")
+
+    def _has_schema_catalog(provider: Any) -> bool:
+        schemas = getattr(provider, "schemas", None)
+        if not callable(schemas):
+            return False
+        try:
+            return bool(schemas())
+        except Exception:
+            return False
+
+    if _has_schema_catalog(local_provider):
+        schema_provider = local_provider
+    else:
+        schema_provider = snapshot_provider
     schema_witness_resolution: dict[str, Any] = {
         "status": "not_applicable",
         "reason": "legacy_or_unbound_artifacts",

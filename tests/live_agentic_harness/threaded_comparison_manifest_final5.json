@@ -7,15 +7,15 @@
   "entries": [
     {
       "id": "audio-tts-narration-using-indextts-2",
-      "descriptor_sha256": "4e55deceb5b3cb551aea17a49436b5749ee5a9ef0c8109239503c7297cf242ff",
+      "descriptor_sha256": "f0cc84fd762bd87b36ff8edb9e7d1203bf862435afe4b28ee4447dac2f31c79c",
       "source_workflow_sha256": "c77073490f3892e5b847588c734ae3ba2565b3e1de9326f927170496f28b7727",
-      "locked_input_sha256": "c099f40b9208579ce320a0e5bcd9c579b78265f3639f828059efee41c26fb28d"
+      "locked_input_sha256": "df9ae25a78376eb598191594c2f6308b844a97ee94478c6fdf27b29491202eed"
     },
     {
       "id": "image-image-editing-with-qwen-image",
-      "descriptor_sha256": "84fd815360181be85daa88df0078b17bf9e25791ffd71f1318458c5b6b3cb9be",
+      "descriptor_sha256": "d5115b297f0e3cdeb41517047679f1a1d4dedd50c108d7581a388c2ff44a2e46",
       "source_workflow_sha256": "e639739cd84018810243c609441cb8e8f56f7735be2682578d14fdda7c49fff2",
-      "locked_input_sha256": "dc1062c6fd00ef18395d403ce725964c1d68e354ba9ac6ed56278b835fae20f3"
+      "locked_input_sha256": "e5d22163401e4ba6abdf253cdceaddc95a23735e77b3cc58c6148a0bf1735b9c"
     },
     {
       "id": "live-graph-explanation-smoke",
@@ -25,9 +25,9 @@
     },
     {
       "id": "multi-video-based-character-replacement-using",
-      "descriptor_sha256": "f096cd3491a6d5b5c33ed81dff425360cde4b11a297c2f0c1220dde7f55291f6",
+      "descriptor_sha256": "77f83eabc294dbecaeb9044cce17f2119d470f29331ef34b8a29bac0fd9bf0cf",
       "source_workflow_sha256": "4b91ba865e85eec812ff4e57248460d6d71ac9a588e96603a66305d2b93e4c27",
-      "locked_input_sha256": "625ed91eacf070e1d531a806b69b8221bf7a02f1e5c2a42b98502b0ae48ac63d"
+      "locked_input_sha256": "851ed98dc393a40f8b78b24c962ef38cd21d519d5576f855f13b2a689f852c20"
     },
     {
       "id": "speed-distillation-research",

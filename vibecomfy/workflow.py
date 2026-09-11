@@ -777,8 +777,22 @@ class VibeWorkflow:
                     "scope_path": "",
                     "uid": uid,
                     "class_type": node.class_type,
-                    "inputs": copy.deepcopy(node.inputs),
-                    "widgets": copy.deepcopy(node.widgets),
+                    # ``unused_*`` entries are positional UI carriers, not
+                    # Python-owned semantics.  Compilation has always
+                    # removed them; excluding them here keeps the durable
+                    # semantic digest aligned with the canonical source
+                    # while the original UI remains available through node
+                    # metadata for faithful presentation reconstruction.
+                    "inputs": {
+                        str(key): copy.deepcopy(value)
+                        for key, value in node.inputs.items()
+                        if not str(key).startswith("unused_")
+                    },
+                    "widgets": {
+                        str(key): copy.deepcopy(value)
+                        for key, value in node.widgets.items()
+                        if not str(key).startswith("unused_")
+                    },
                     "mode": litegraph_to_mode(node.mode).value,
                     "metadata": self._semantic_node_metadata(node),
                     "native_input_names": copy.deepcopy(node.native_input_names),
@@ -2724,6 +2738,28 @@ class _NodeBuilder:
             output_slot = slot
         else:
             output_slot = _socket_index(_node_output_names(self.node), slot)
+            # ``vibecomfy.exec`` has two deliberately distinct output
+            # vocabularies: Comfy's fixed physical ``out_N`` slots and the
+            # authored semantic names carried by its inline ``io`` contract.
+            # Canonical emission may choose the latter for readable source,
+            # while the retained native roster must stay physical so UI
+            # regeneration remains faithful.  Resolve the semantic spelling
+            # only after the retained/native roster lookup, and only from the
+            # node-local authored declaration; never widen this to a provider
+            # or generic positional fallback.
+            if output_slot is None and self.node.class_type == "vibecomfy.exec":
+                raw_io = self.node.inputs.get("io")
+                if raw_io is None:
+                    raw_io = self.node.widgets.get("io")
+                try:
+                    from vibecomfy.comfy_nodes.exec_node import parse_io
+
+                    declared_outputs = parse_io(raw_io).get("outputs", ())
+                except Exception:
+                    declared_outputs = ()
+                output_slot = _socket_index(
+                    [name for name, _type_name in declared_outputs], slot
+                )
         if output_slot is None:
             output_names = self.node.metadata.get("output_names")
             if isinstance(output_names, (list, tuple)) and slot in output_names:

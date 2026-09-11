@@ -42,7 +42,7 @@ def build_m4_wan22_i2v_second_pass_refine_evidence(report_dir: Path) -> dict[str
     base_sampler_id = "14"
     decode_id = "15"
 
-    upscale = workflow.add_node(
+    upscale = workflow.node(
         "LatentUpscale",
         upscale_method="nearest-exact",
         width=1280,
@@ -52,7 +52,7 @@ def build_m4_wan22_i2v_second_pass_refine_evidence(report_dir: Path) -> dict[str
     # Upscale the FIRST pass's LATENT output (not a fresh empty latent).
     workflow.connect(f"{base_sampler_id}.0", f"{upscale.id}.samples")
 
-    refine = workflow.add_node(
+    refine = workflow.node(
         "KSamplerAdvanced",
         add_noise="enable",
         noise_seed=987654,

@@ -43,6 +43,7 @@ _MODEL_INPUT_SUBDIRS = {
     "unet_name": "diffusion_models",
     "upscale_model": "upscale_models",
     "vae_name": "vae",
+    "control_net_name": "controlnet",
 }
 
 _CLASS_FIELD_SUBDIRS = {
@@ -186,25 +187,31 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
     references: list[dict[str, str]] = []
     seen: set[tuple[str, str, str, str]] = set()
     for node in workflow.runtime_nodes().values():
-        for field, value in node.inputs.items():
-            subdir = _subdir_for_model_reference(node.class_type, field)
-            if subdir is None or not isinstance(value, str) or not value:
-                continue
-            if _is_none_model_value(value):
-                continue
-            key = (node.id, node.class_type, field, value)
-            if key in seen:
-                continue
-            seen.add(key)
-            references.append(
-                {
-                    "node_id": node.id,
-                    "class_type": node.class_type,
-                    "field": field,
-                    "value": value,
-                    "subdir": subdir,
-                }
-            )
+        # Most generated nodes retain model pickers in execution inputs, but
+        # patch-owned nodes may intentionally keep a named widget value until
+        # their custom-node schema is available. Both stores are canonical;
+        # inspect only recognized model fields so ordinary presentation
+        # widgets never become model references.
+        for store in (node.inputs, node.widgets):
+            for field, value in store.items():
+                subdir = _subdir_for_model_reference(node.class_type, field)
+                if subdir is None or not isinstance(value, str) or not value:
+                    continue
+                if _is_none_model_value(value):
+                    continue
+                key = (node.id, node.class_type, field, value)
+                if key in seen:
+                    continue
+                seen.add(key)
+                references.append(
+                    {
+                        "node_id": node.id,
+                        "class_type": node.class_type,
+                        "field": field,
+                        "value": value,
+                        "subdir": subdir,
+                    }
+                )
     return references
 
 

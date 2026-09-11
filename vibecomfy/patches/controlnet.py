@@ -171,11 +171,14 @@ def _apply_with_settings(workflow: VibeWorkflow, settings: ControlNetSettings) -
         return workflow
 
     # Add the new ControlNet support nodes.
-    loader = workflow.add_node("ControlNetLoader")
+    # The authoring builder retains the native socket roster.  A raw
+    # ``add_node`` is intentionally roster-neutral, which would make the
+    # newly introduced edges impossible to custody in a strict bundle.
+    loader = workflow.node("ControlNetLoader").node
     loader.widgets["control_net_name"] = settings.control_net_name
     _mark_node(loader, role="loader", sampler_id=sampler_id)
 
-    apply_pos = workflow.add_node("ControlNetApplyAdvanced")
+    apply_pos = workflow.node("ControlNetApplyAdvanced").node
     _configure_apply_node(apply_pos, settings)
     _mark_node(apply_pos, role="positive", sampler_id=sampler_id)
 
@@ -187,16 +190,26 @@ def _apply_with_settings(workflow: VibeWorkflow, settings: ControlNetSettings) -
     #   apply_pos.0         -> sampler.positive
     original_pos_from = f"{pos_edge.from_node}.{pos_edge.from_output}"
     workflow.connect(original_pos_from, f"{apply_pos.id}.positive")
+    # ControlNetApplyAdvanced declares both conditioning inputs.  The positive
+    # and negative splices are kept as separate nodes for the existing patch
+    # contract, so each node receives the untouched counterpart as well; this
+    # satisfies the native schema without dropping either conditioning branch.
+    if neg_edge is not None:
+        workflow.connect(
+            f"{neg_edge.from_node}.{neg_edge.from_output}",
+            f"{apply_pos.id}.negative",
+        )
     workflow.replace_edge(f"{sampler_id}.positive", f"{apply_pos.id}.0")
 
     # Mirror the splice on the negative chain when present.
     if neg_edge is not None:
-        apply_neg = workflow.add_node("ControlNetApplyAdvanced")
+        apply_neg = workflow.node("ControlNetApplyAdvanced").node
         _configure_apply_node(apply_neg, settings)
         _mark_node(apply_neg, role="negative", sampler_id=sampler_id)
         workflow.connect(f"{loader.id}.0", f"{apply_neg.id}.control_net")
         original_neg_from = f"{neg_edge.from_node}.{neg_edge.from_output}"
         workflow.connect(original_neg_from, f"{apply_neg.id}.negative")
+        workflow.connect(original_pos_from, f"{apply_neg.id}.positive")
         workflow.replace_edge(f"{sampler_id}.negative", f"{apply_neg.id}.0")
         if settings.image_node_id is not None:
             workflow.connect(f"{settings.image_node_id}.0", f"{apply_neg.id}.image")
@@ -255,7 +268,7 @@ def _configure_existing_splice(
     negative_id = splice.negative_id
     sampler_neg = _find_edge_into(workflow, splice.sampler_id, "negative")
     if negative_id is None and sampler_neg is not None:
-        negative = workflow.add_node("ControlNetApplyAdvanced")
+        negative = workflow.node("ControlNetApplyAdvanced").node
         negative_id = negative.id
         _configure_apply_node(negative, settings)
         _mark_node(negative, role="negative", sampler_id=splice.sampler_id)
@@ -310,12 +323,10 @@ def controlnet_patch(
     def configured_apply(workflow: VibeWorkflow) -> VibeWorkflow:
         return _apply_with_settings(workflow, settings)
 
-    suffix = control_net_name
-    if image_node_id is not None:
-        suffix = f"{suffix}:{image_node_id}"
-    if strength != 1.0:
-        suffix = f"{suffix}:{strength:g}"
-    return Patch(f"controlnet:{suffix}", applies_to, configured_apply, rationale)
+    # Configuration is carried by the closure and the node values; the patch
+    # identity remains the stable public patch name so telemetry and repeated
+    # application reconciliation do not fragment by incidental parameters.
+    return Patch("controlnet", applies_to, configured_apply, rationale)
 
 
 patch = Patch("controlnet", applies_to, apply, rationale)

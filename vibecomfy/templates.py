@@ -841,6 +841,16 @@ class InputSpec:
                 f"InputSpec.register({name!r}): field {self.field!r} not found in "
                 f"node {node_id!r} ({node.class_type}) inputs or widgets"
             )
+        if self.omit_if_schema_default:
+            if not _is_schema_default_input(node.class_type, self.field, self.default):
+                raise ValueError(
+                    f"InputSpec.register({name!r}): {node.class_type}.{self.field} "
+                    f"default {self.default!r} is not the schema default"
+                )
+            # The node may retain the default explicitly for faithful source
+            # regeneration, while the runtime is still allowed to omit the
+            # target field because Comfy supplies the same schema default.
+            allow_missing_target = value == self.default
         input_type = self.type
         if input_type is None and self.infer_type:
             input_type = _derive_input_type(node.class_type, self.field)

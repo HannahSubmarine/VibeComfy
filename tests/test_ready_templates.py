@@ -693,9 +693,14 @@ def test_ltx_runexx_first_last_frame_preserves_current_worker_roles() -> None:
     assert len(calculator_nodes) == 1
     assert calculator_nodes[0].inputs == {"expression": "((round((a * b -1) / 8)) * 8) + 1 ", "b": 24.0}
     calculator_edges = [edge for edge in workflow.edges if edge.from_node == calculator_nodes[0].id]
-    assert len(calculator_edges) == 1
-    assert calculator_edges[0].to_input == "length"
-    assert workflow.nodes[calculator_edges[0].to_node].class_type == "EmptyLTXVLatentVideo"
+    assert len(calculator_edges) == 2
+    assert {
+        (edge.to_input, workflow.nodes[edge.to_node].class_type)
+        for edge in calculator_edges
+    } == {
+        ("frames_number", "LTXVEmptyLatentAudio"),
+        ("length", "EmptyLTXVLatentVideo"),
+    }
     assert all("GGUF" not in node.class_type for node in workflow.nodes.values())
     api = workflow.compile("api")
     assert all("GGUF" not in node["class_type"] for node in api.values())

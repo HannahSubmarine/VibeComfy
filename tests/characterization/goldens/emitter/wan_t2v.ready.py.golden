@@ -28,7 +28,7 @@ PUBLIC_INPUT_METADATA = {
     'seed': InputSpec(node=ref('ksampler'), field='seed', default=DEFAULT_SEED, type='INT', infer_type=False),
     'steps': InputSpec(node=ref('ksampler'), field='steps', default=None, infer_type=False),
     'width': InputSpec(node=ref('emptyhunyuanlatentvideo'), field='width', default=DEFAULT_WIDTH, type='INT', infer_type=False),
-    'height': InputSpec(node=ref('emptyhunyuanlatentvideo'), field='height', default=DEFAULT_HEIGHT, type='INT', infer_type=False),
+    'height': InputSpec(node=ref('emptyhunyuanlatentvideo'), field='height', default=DEFAULT_HEIGHT, type='INT', allow_missing_target=True, infer_type=False),
     'frames': InputSpec(node=ref('emptyhunyuanlatentvideo'), field='length', default=DEFAULT_FRAMES, type='INT', infer_type=False),
     'fps': InputSpec(node=ref('createvideo'), field='fps', default=DEFAULT_FPS, type='FLOAT', infer_type=False),
     'negative_prompt': InputSpec(node=ref('cliptextencode_2'), field='text', default=DEFAULT_PROMPT_2, type='STRING', aliases=('negative',), media_semantics='text', infer_type=False),

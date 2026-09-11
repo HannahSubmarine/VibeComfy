@@ -39,7 +39,7 @@ def build_m4_wan22_stack_highlow_noise_lora_evidence(report_dir: Path) -> dict[s
 
     # HIGH-noise path: splice the user's LoRA into the prev_lora head feeding the
     # high-noise sampler's model chain.
-    high_lora = workflow.add_node(
+    high_lora = workflow.node(
         "WanVideoLoraSelect",
         _id=HIGH_LORA_ID,
         lora=STACK_LORA,
@@ -49,7 +49,7 @@ def build_m4_wan22_stack_highlow_noise_lora_evidence(report_dir: Path) -> dict[s
     workflow.connect(f"{high_lora.id}.0", f"{EXISTING_HIGH_LORA_HEAD}.prev_lora")
 
     # LOW-noise path: same splice, independent node, into the low-noise head.
-    low_lora = workflow.add_node(
+    low_lora = workflow.node(
         "WanVideoLoraSelect",
         _id=LOW_LORA_ID,
         lora=STACK_LORA,
