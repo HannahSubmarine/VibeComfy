@@ -1,5 +1,29 @@
 # Canonical workflow integrity + Pythonic emission — unified plan v5
 
+## Current prepared amendment — 2026-09-11
+
+Also adopt the [focused test-signal plan](test-signal-cleanup-plan.md): six Luna
+audit slices and one Astra high adjudication, integrated into existing owners.
+No broad test cleanup prerequisite, deletion quota, weakened validation or
+new review stage. Keep old coverage until replacements prove distinct defects.
+
+Preparation only; no implementation is authorized by this update. The current
+[source-cleanliness direction](canonical-source-cleanliness-direction.md) folds
+in the Luna owner/path investigations and S90 Astra simplification ruling. It
+supersedes older embedded-custody and representation details below. Use its
+ordered custody records, direct construction compatibility checks, concise
+finalizer, existing acquisition/routing owners and typed annotations. The
+[tasklist's current dispatch map](tasklist.md#current-amendment-dispatch-map)
+assigns the remaining work to existing IDs and tests. This is the same plan,
+not an additional workstream or review process.
+
+The path census adds reuse of a single admitted source for CLI analysis and
+conversion, convergence of v2 publication through the bundle owner, and targeted
+tests for output-slot fallback and differing ingress/export contexts. Proposed
+drift is tested before refactoring; UI JSON and execution API JSON remain
+legitimate separate projections. Adjacent risks are bounded checks within those
+tasks, not another repository-wide audit. All amendment acceptance is NOT RUN.
+
 Planning only. [run.yaml](./run.yaml) owns role/model bindings, stage scopes and every review/oracle ceiling. [goal.md](./goal.md) owns authority; [northstar.md](./northstar.md) remains unchanged. The current user amendment absorbs Pythonic emission into this plan and supersedes the prior exclusion. See consolidation.md for criterion/history mapping.
 
 ## First useful outcome

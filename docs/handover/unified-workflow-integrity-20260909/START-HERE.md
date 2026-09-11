@@ -1,6 +1,18 @@
-> Current authority: **delivery approved**. Execute the plan and required tests now. Earlier planning-only statements below are historical and superseded.
+> Current authority (2026-09-11): **preparation only** for the source-cleanliness
+> amendment. Do not execute. Read canonical-source-cleanliness-direction.md and
+> the prepared Megado brief linked there. Older delivery statements below are
+> historical and do not authorize this amendment's execution.
 
 # Unified workflow integrity handover
+
+Current launch preparation: [EXECUTION-READY.md](EXECUTION-READY.md).
+Use that entrypoint and its current status/configuration; older launch/counter
+prose below is historical. Preparation is complete as documentation, not a
+claim of installed browser dependencies, new review allowance or test PASS.
+
+Test-signal planning supplement: [focused cleanup plan](test-signal-cleanup-plan.md)
+and [six-slice Luna inventory](evidence/test-signal-audit-20260911/test-signal-audit-20260911.md).
+This is preparation only; no test deletion, lane suppression or new acceptance PASS.
 
 This is a portable, planning-only Megado handover for VibeComfy's canonical workflow integrity and editable Python work. It consolidates the save/export integrity plan with the absorbed Pythonic-emission contract. It does not claim implementation, tests, review PASS, merge, deployment, or generated-video success.
 

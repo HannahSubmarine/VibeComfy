@@ -1,5 +1,48 @@
 # Acceptance and evidence — planning history plus future behavior
 
+## Required final practical validation — before completion
+
+User explicitly reaffirmed actual end-of-run validation. This is required E2/T4 evidence under I1–I10, not another model-review stage. All items remain NOT RUN for the new amendment.
+
+1. **Programmatic fidelity and source shape:** validate the entire freshly generated Python and companion JSON; independently assert effective values, exact edges/output slots, public outputs, identity/native scopes/provenance, and presentation-only metadata. Include malformed/missing/mixed companion refusal, valid drafts, revision protection and injected failure/rollback tests. Matching producer-generated snapshots alone is insufficient.
+2. **Real entrypoints and editing pipeline:** ingest the same supported and malformed inputs through actual CLI, SDK and canvas paths. Perform an actual Comfy Node edit/apply/save/reload/export lifecycle through production persistence owners, with deterministic model responses only at the provider seam. Assert intended edits and unchanged unrelated graph content. Browser boot, intercepted backend routes, mocked callbacks or success exit codes alone do not satisfy this proof.
+3. **Original workflow corpus:** rerun all 20 original inputs through the canonical path; require each documented success or intentional refusal, exact diagnostics and no partial/clobbered output. Do not force twenty successes. Every unexpected defect is minimized into a regression and its original workflow is rerun after the fix.
+4. **Exact H3 rehearsal:** onboard the specified H3 source, retain freshly generated Python/JSON, edit the required controls, rebuild, save/reload/export, and compare exact intended changes plus untouched wiring/identity. Regenerate unchanged inputs deterministically. Inspect the whole Python file and a rendering from the exact exported graph; retain files, hashes, command receipts and inspection findings. No manual output cleanup or bespoke restoration may stand in for the canonical path.
+5. **Final integrated checks:** pass the configured full offline suite, complete browser smoke and required applicable Comfy/browser/parity checks on the final candidate under existing resource limits. Report actual commands, collected/selected counts, failures/errors, skips/deselections/xfails and reasons. Required unavailable boundaries remain blockers, not silent skips. No new live-model/GPU requirement is introduced. Rerun only affected checks after further changes while retaining unaffected evidence.
+
+A failed requirement triggers the existing loop: isolate → fix the owning path → rerun the failing test → affected consumers → original workflow/artifact validation. Final Astra review receives that executable evidence and the exact candidate; its opinion cannot replace these tests or waive a demonstrated failure. Do not mark handoff complete while required checks fail or required artifacts are missing.
+
+Test-signal planning supplement: [focused cleanup plan](test-signal-cleanup-plan.md)
+and [six-slice Luna inventory](evidence/test-signal-audit-20260911/test-signal-audit-20260911.md).
+This is preparation only; no test deletion, lane suppression or new acceptance PASS.
+
+Current source-cleanliness amendment (2026-09-11):
+[canonical-source-cleanliness-direction.md](canonical-source-cleanliness-direction.md)
+supersedes the embedded-custody allowance below for the new canonical output.
+I1/I2/I5 include the required v2 companion, construction-time validation and
+revision/atomicity behavior; I7/I9 include shared ingress and resolution owners;
+I8 includes whole-file cleanliness and concise finalization; I10 includes the
+actual H3 Python/JSON pair and exported graph. Existing criterion IDs, historical
+evidence and review counts are preserved. Prior green tests do not establish
+these new requirements: their implementation acceptance remains NOT RUN.
+
+S90 changes representation, not fidelity: ordered labelled custody replaces the
+map/order pair and direct compatibility validation replaces the stored structure
+hash. I1/I5 retain generation/custody/revision checks and same-custody swapped-pair
+refusal. I8 retains whole-file structural mutation checks over supported emitted
+syntax; I9 retains frozen-resolution and scoped-annotation fidelity. Selected
+integration cases replace a Cartesian test matrix; all required corpus, H3 and
+real entrypoint evidence remains. No PASS or added review stage is inferred.
+
+Path-census integration: I7/I9 require CLI analysis and conversion to refer to
+one admitted source/snapshot, with source/report identity assertions. I1/I5
+cover v2 conversion/copy/registry consumers of the existing pair boundary.
+I3/I9 require that an unresolved named output cannot silently become a slot-zero
+edge on strict/canonical public export; characterize public reachability before
+claiming the helper fallback is an end-to-end defect. Compare entrypoints with
+matching frozen authority, preserving deliberate API/UI and recovery differences.
+All new assertions remain NOT RUN; no additional approval stage is created.
+
 This existing file is retained as the single criterion source, not a new approval gate. P IDs track plan adequacy; I IDs track executable behavior and cannot inherit a planning PASS. Source baseline and current dirty-state distinction remain in goal.md. Proposed checks Q0–Q5 are preserved in tasklist.md. The consolidated E0/E1/E2 tasks add the paused Pythonic-emission contract to this run without creating a second emitter, review stage, or cap. All new completion evidence remains missing until an exact candidate is tested.
 
 ## Planning criteria: preserved IDs and user-authorized mapping

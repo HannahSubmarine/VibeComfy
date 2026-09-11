@@ -1,0 +1,1278 @@
+/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/vibecomfy/templates.py:990: UserWarning: ReadyMetadata.build requirements['models'] differs from MODELS-derived model assets
+  derived_requirements = _requirements_with_models(requirements, model_assets)
+{
+  "conversion": {
+    "mode": "scratchpad",
+    "ready_id": null,
+    "validation": {
+      "api_node_count": 11,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 6 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "6",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 7 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "7",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ModelSamplingSD3",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "shift"
+            ]
+          },
+          "message": "Node 48 (ModelSamplingSD3) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "48",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "control_after_generate",
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown kwarg 'control_after_generate'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_image",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'latent_image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 343
+          },
+          "message": "node call for 'KSampler' (node 3) would be a single line of 343 chars (>120); multi-line formatting preferred.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "images",
+            "linked": true,
+            "schema_inputs": [
+              "fps"
+            ]
+          },
+          "message": "Node 49 (CreateVideo) emits schema-unknown linked kwarg 'images'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "49",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "video",
+            "linked": true,
+            "schema_inputs": [
+              "codec",
+              "filename_prefix",
+              "format"
+            ]
+          },
+          "message": "Node 50 (SaveVideo) emits schema-unknown linked kwarg 'video'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "50",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "CLIPLoader": 1,
+        "CLIPTextEncode": 2,
+        "CreateVideo": 1,
+        "EmptyHunyuanLatentVideo": 1,
+        "KSampler": 1,
+        "ModelSamplingSD3": 1,
+        "SaveVideo": 1,
+        "UNETLoader": 1,
+        "VAEDecode": 1,
+        "VAELoader": 1
+      },
+      "emitted_model_snapshot": {
+        "37:unet_name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "38:clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "39:vae_name": "wan_2.1_vae.safetensors"
+      },
+      "emitted_output_count": 11,
+      "emitted_topology_snapshot": 10,
+      "emitted_widget_value_snapshot": 14,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "CLIPLoader": 1,
+        "CLIPTextEncode": 2,
+        "CreateVideo": 1,
+        "EmptyHunyuanLatentVideo": 1,
+        "KSampler": 1,
+        "ModelSamplingSD3": 1,
+        "SaveVideo": 1,
+        "UNETLoader": 1,
+        "VAEDecode": 1,
+        "VAELoader": 1
+      },
+      "source_model_snapshot": {
+        "37:unet_name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "38:clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "39:vae_name": "wan_2.1_vae.safetensors"
+      },
+      "source_output_count": 11,
+      "source_topology_snapshot": 10,
+      "source_widget_value_snapshot": 14,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "wan2.1_t2v_1.3B_fp16.safetensors",
+        "wan_2.1_vae.safetensors"
+      ]
+    }
+  },
+  "out": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/05_wan_t2v.py",
+  "report": {
+    "artifacts": [],
+    "asset_candidates": [
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "CLIPLoader",
+        "metadata": {
+          "input": "clip_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "node_id": "38",
+        "source": "api_prompt",
+        "subdir": "text_encoders",
+        "url": null
+      },
+      {
+        "class_type": "CLIPLoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "node_id": "38",
+        "source": "ui_properties",
+        "subdir": "text_encoders",
+        "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+      },
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "UNETLoader",
+        "metadata": {
+          "input": "unet_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "node_id": "37",
+        "source": "api_prompt",
+        "subdir": "diffusion_models",
+        "url": null
+      },
+      {
+        "class_type": "UNETLoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "node_id": "37",
+        "source": "ui_properties",
+        "subdir": "diffusion_models",
+        "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors"
+      },
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "wan_2.1_vae.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "VAELoader",
+        "metadata": {
+          "input": "vae_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "wan_2.1_vae.safetensors",
+        "node_id": "39",
+        "source": "api_prompt",
+        "subdir": "vae",
+        "url": null
+      },
+      {
+        "class_type": "VAELoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "wan_2.1_vae.safetensors",
+        "node_id": "39",
+        "source": "ui_properties",
+        "subdir": "vae",
+        "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors"
+      }
+    ],
+    "asset_checks": [],
+    "contract": {
+      "comfy_configuration": {},
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "custom_nodes": [],
+      "graph_contract": {
+        "edge_count": 11,
+        "named_output_count": 0,
+        "output_count": 1,
+        "runtime_class_types": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "CreateVideo",
+          "EmptyHunyuanLatentVideo",
+          "KSampler",
+          "ModelSamplingSD3",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "runtime_node_count": 11,
+        "schema_sources": [],
+        "unresolved_positional_outputs": [],
+        "unresolved_widgets": []
+      },
+      "inputs": [
+        "model",
+        "prompt",
+        "seed",
+        "steps"
+      ],
+      "metadata": {
+        "capability": null,
+        "coverage_tier": null,
+        "ready_template": null
+      },
+      "model_assets": [
+        {
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+        },
+        {
+          "name": "wan2.1_t2v_1.3B_fp16.safetensors"
+        },
+        {
+          "name": "wan_2.1_vae.safetensors"
+        }
+      ],
+      "outputs": [
+        {
+          "node_id": "50",
+          "output_type": "SaveVideo"
+        }
+      ],
+      "public_inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "unet_name",
+          "media_semantics": null,
+          "name": "model",
+          "node_id": "37",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "unet_name",
+            "node_id": "37"
+          },
+          "type": null,
+          "value": "wan2.1_t2v_1.3B_fp16.safetensors"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "text",
+          "media_semantics": null,
+          "name": "prompt",
+          "node_id": "7",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "text",
+            "node_id": "7"
+          },
+          "type": null,
+          "value": "\u8272\u8c03\u8273\u4e3d\uff0c\u8fc7\u66dd\uff0c\u9759\u6001\uff0c\u7ec6\u8282\u6a21\u7cca\u4e0d\u6e05\uff0c\u5b57\u5e55\uff0c\u98ce\u683c\uff0c\u4f5c\u54c1\uff0c\u753b\u4f5c\uff0c\u753b\u9762\uff0c\u9759\u6b62\uff0c\u6574\u4f53\u53d1\u7070\uff0c\u6700\u5dee\u8d28\u91cf\uff0c\u4f4e\u8d28\u91cf\uff0cJPEG\u538b\u7f29\u6b8b\u7559\uff0c\u4e11\u964b\u7684\uff0c\u6b8b\u7f3a\u7684\uff0c\u591a\u4f59\u7684\u624b\u6307\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u624b\u90e8\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u8138\u90e8\uff0c\u7578\u5f62\u7684\uff0c\u6bc1\u5bb9\u7684\uff0c\u5f62\u6001\u7578\u5f62\u7684\u80a2\u4f53\uff0c\u624b\u6307\u878d\u5408\uff0c\u9759\u6b62\u4e0d\u52a8\u7684\u753b\u9762\uff0c\u6742\u4e71\u7684\u80cc\u666f\uff0c\u4e09\u6761\u817f\uff0c\u80cc\u666f\u4eba\u5f88\u591a\uff0c\u5012\u7740\u8d70"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "seed",
+          "media_semantics": null,
+          "name": "seed",
+          "node_id": "3",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "seed",
+            "node_id": "3"
+          },
+          "type": null,
+          "value": 82628696717253
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "steps",
+          "media_semantics": null,
+          "name": "steps",
+          "node_id": "3",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "steps",
+            "node_id": "3"
+          },
+          "type": null,
+          "value": 30
+        }
+      ],
+      "public_outputs": [
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "50",
+          "output_type": "SaveVideo"
+        }
+      ],
+      "readiness_level": "unknown",
+      "runtime_class_types": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "CreateVideo",
+        "EmptyHunyuanLatentVideo",
+        "KSampler",
+        "ModelSamplingSD3",
+        "SaveVideo",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "runtime_nodes": [
+        "3",
+        "37",
+        "38",
+        "39",
+        "40",
+        "48",
+        "49",
+        "50",
+        "6",
+        "7",
+        "8"
+      ],
+      "runtime_packages": [],
+      "source": {
+        "id": "wan_t2v",
+        "path": "ready_templates/sources/official/video/wan_t2v.json",
+        "provenance": {},
+        "source_type": "api"
+      },
+      "version": 1,
+      "workflow_id": "wan_t2v"
+    },
+    "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+    "diagnostics": [
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'umt5_xxl_fp8_e4m3fn_scaled.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "CLIPLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "clip_name",
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "text_encoders"
+        },
+        "message": "Model asset candidate 'umt5_xxl_fp8_e4m3fn_scaled.safetensors' has no source URL.",
+        "node_id": "38",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'wan2.1_t2v_1.3B_fp16.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "UNETLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "unet_name",
+          "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "diffusion_models"
+        },
+        "message": "Model asset candidate 'wan2.1_t2v_1.3B_fp16.safetensors' has no source URL.",
+        "node_id": "37",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "wan_2.1_vae.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'wan_2.1_vae.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "VAELoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "vae_name",
+          "name": "wan_2.1_vae.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "vae"
+        },
+        "message": "Model asset candidate 'wan_2.1_vae.safetensors' has no source URL.",
+        "node_id": "39",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      }
+    ],
+    "graph_contract": {
+      "edge_count": 11,
+      "named_output_count": 0,
+      "output_count": 1,
+      "runtime_class_types": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "CreateVideo",
+        "EmptyHunyuanLatentVideo",
+        "KSampler",
+        "ModelSamplingSD3",
+        "SaveVideo",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "runtime_node_count": 11,
+      "schema_sources": [],
+      "unresolved_positional_outputs": [],
+      "unresolved_widgets": []
+    },
+    "metadata": {
+      "contract": {
+        "comfy_configuration": {},
+        "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+        "custom_nodes": [],
+        "graph_contract": {
+          "edge_count": 11,
+          "named_output_count": 0,
+          "output_count": 1,
+          "runtime_class_types": [
+            "CLIPLoader",
+            "CLIPTextEncode",
+            "CreateVideo",
+            "EmptyHunyuanLatentVideo",
+            "KSampler",
+            "ModelSamplingSD3",
+            "SaveVideo",
+            "UNETLoader",
+            "VAEDecode",
+            "VAELoader"
+          ],
+          "runtime_node_count": 11,
+          "schema_sources": [],
+          "unresolved_positional_outputs": [],
+          "unresolved_widgets": []
+        },
+        "inputs": [
+          "model",
+          "prompt",
+          "seed",
+          "steps"
+        ],
+        "metadata": {
+          "capability": null,
+          "coverage_tier": null,
+          "ready_template": null
+        },
+        "model_assets": [
+          {
+            "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+          },
+          {
+            "name": "wan2.1_t2v_1.3B_fp16.safetensors"
+          },
+          {
+            "name": "wan_2.1_vae.safetensors"
+          }
+        ],
+        "outputs": [
+          {
+            "node_id": "50",
+            "output_type": "SaveVideo"
+          }
+        ],
+        "public_inputs": [
+          {
+            "aliases": [],
+            "default": null,
+            "field": "unet_name",
+            "media_semantics": null,
+            "name": "model",
+            "node_id": "37",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "unet_name",
+              "node_id": "37"
+            },
+            "type": null,
+            "value": "wan2.1_t2v_1.3B_fp16.safetensors"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "text",
+            "media_semantics": null,
+            "name": "prompt",
+            "node_id": "7",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "text",
+              "node_id": "7"
+            },
+            "type": null,
+            "value": "\u8272\u8c03\u8273\u4e3d\uff0c\u8fc7\u66dd\uff0c\u9759\u6001\uff0c\u7ec6\u8282\u6a21\u7cca\u4e0d\u6e05\uff0c\u5b57\u5e55\uff0c\u98ce\u683c\uff0c\u4f5c\u54c1\uff0c\u753b\u4f5c\uff0c\u753b\u9762\uff0c\u9759\u6b62\uff0c\u6574\u4f53\u53d1\u7070\uff0c\u6700\u5dee\u8d28\u91cf\uff0c\u4f4e\u8d28\u91cf\uff0cJPEG\u538b\u7f29\u6b8b\u7559\uff0c\u4e11\u964b\u7684\uff0c\u6b8b\u7f3a\u7684\uff0c\u591a\u4f59\u7684\u624b\u6307\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u624b\u90e8\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u8138\u90e8\uff0c\u7578\u5f62\u7684\uff0c\u6bc1\u5bb9\u7684\uff0c\u5f62\u6001\u7578\u5f62\u7684\u80a2\u4f53\uff0c\u624b\u6307\u878d\u5408\uff0c\u9759\u6b62\u4e0d\u52a8\u7684\u753b\u9762\uff0c\u6742\u4e71\u7684\u80cc\u666f\uff0c\u4e09\u6761\u817f\uff0c\u80cc\u666f\u4eba\u5f88\u591a\uff0c\u5012\u7740\u8d70"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "seed",
+            "media_semantics": null,
+            "name": "seed",
+            "node_id": "3",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "seed",
+              "node_id": "3"
+            },
+            "type": null,
+            "value": 82628696717253
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "steps",
+            "media_semantics": null,
+            "name": "steps",
+            "node_id": "3",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "steps",
+              "node_id": "3"
+            },
+            "type": null,
+            "value": 30
+          }
+        ],
+        "public_outputs": [
+          {
+            "artifact_kind": null,
+            "expected_cardinality": null,
+            "filename_prefix": null,
+            "mime_type": null,
+            "name": null,
+            "node_id": "50",
+            "output_type": "SaveVideo"
+          }
+        ],
+        "readiness_level": "unknown",
+        "runtime_class_types": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "CreateVideo",
+          "EmptyHunyuanLatentVideo",
+          "KSampler",
+          "ModelSamplingSD3",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "runtime_nodes": [
+          "3",
+          "37",
+          "38",
+          "39",
+          "40",
+          "48",
+          "49",
+          "50",
+          "6",
+          "7",
+          "8"
+        ],
+        "runtime_packages": [],
+        "source": {
+          "id": "wan_t2v",
+          "path": "ready_templates/sources/official/video/wan_t2v.json",
+          "provenance": {},
+          "source_type": "api"
+        },
+        "version": 1,
+        "workflow_id": "wan_t2v"
+      },
+      "custom_node_analysis": {
+        "diagnostics": [],
+        "helper_class_types_excluded": [],
+        "missing_runtime_class_types": [],
+        "runtime_class_types": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "CreateVideo",
+          "EmptyHunyuanLatentVideo",
+          "KSampler",
+          "ModelSamplingSD3",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "status": "analyzed",
+        "suggestions": [],
+        "unresolved_runtime_class_types": []
+      },
+      "runtime_class_types": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "CreateVideo",
+        "EmptyHunyuanLatentVideo",
+        "KSampler",
+        "ModelSamplingSD3",
+        "SaveVideo",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "schema_source": {
+        "object_info_cache": "out/cache/object_info.comfy-core.0.25.0.json",
+        "provider": "ConversionSchemaProvider",
+        "runtime_enabled": false,
+        "server_url": null
+      },
+      "schema_validation": {
+        "issue_count": 0,
+        "ok": true,
+        "schema_provider": true
+      },
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/official/video/wan_t2v.json",
+      "widget_analysis": {
+        "missing_compiled_widget_inputs": [],
+        "suggestions": [],
+        "unresolved_widget_aliases": []
+      }
+    },
+    "node_counts": {
+      "CLIPLoader": 1,
+      "CLIPTextEncode": 2,
+      "CreateVideo": 1,
+      "EmptyHunyuanLatentVideo": 1,
+      "KSampler": 1,
+      "ModelSamplingSD3": 1,
+      "SaveVideo": 1,
+      "UNETLoader": 1,
+      "VAEDecode": 1,
+      "VAELoader": 1
+    },
+    "node_pack_suggestions": [],
+    "ok": true,
+    "output_mode": "analysis",
+    "provenance": {
+      "indexed_id": null,
+      "raw_workflow_shape": "ui",
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/official/video/wan_t2v.json",
+      "source_ref": "ready_templates/sources/official/video/wan_t2v.json",
+      "workflow_source_id": "wan_t2v",
+      "workflow_source_type": "api"
+    },
+    "public_inputs": [
+      {
+        "aliases": [],
+        "default": null,
+        "field": "unet_name",
+        "media_semantics": null,
+        "name": "model",
+        "node_id": "37",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "unet_name",
+          "node_id": "37"
+        },
+        "type": null,
+        "value": "wan2.1_t2v_1.3B_fp16.safetensors"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "text",
+        "media_semantics": null,
+        "name": "prompt",
+        "node_id": "7",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "text",
+          "node_id": "7"
+        },
+        "type": null,
+        "value": "\u8272\u8c03\u8273\u4e3d\uff0c\u8fc7\u66dd\uff0c\u9759\u6001\uff0c\u7ec6\u8282\u6a21\u7cca\u4e0d\u6e05\uff0c\u5b57\u5e55\uff0c\u98ce\u683c\uff0c\u4f5c\u54c1\uff0c\u753b\u4f5c\uff0c\u753b\u9762\uff0c\u9759\u6b62\uff0c\u6574\u4f53\u53d1\u7070\uff0c\u6700\u5dee\u8d28\u91cf\uff0c\u4f4e\u8d28\u91cf\uff0cJPEG\u538b\u7f29\u6b8b\u7559\uff0c\u4e11\u964b\u7684\uff0c\u6b8b\u7f3a\u7684\uff0c\u591a\u4f59\u7684\u624b\u6307\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u624b\u90e8\uff0c\u753b\u5f97\u4e0d\u597d\u7684\u8138\u90e8\uff0c\u7578\u5f62\u7684\uff0c\u6bc1\u5bb9\u7684\uff0c\u5f62\u6001\u7578\u5f62\u7684\u80a2\u4f53\uff0c\u624b\u6307\u878d\u5408\uff0c\u9759\u6b62\u4e0d\u52a8\u7684\u753b\u9762\uff0c\u6742\u4e71\u7684\u80cc\u666f\uff0c\u4e09\u6761\u817f\uff0c\u80cc\u666f\u4eba\u5f88\u591a\uff0c\u5012\u7740\u8d70"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "seed",
+        "media_semantics": null,
+        "name": "seed",
+        "node_id": "3",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "seed",
+          "node_id": "3"
+        },
+        "type": null,
+        "value": 82628696717253
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "steps",
+        "media_semantics": null,
+        "name": "steps",
+        "node_id": "3",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "steps",
+          "node_id": "3"
+        },
+        "type": null,
+        "value": 30
+      }
+    ],
+    "public_outputs": [
+      {
+        "artifact_kind": null,
+        "expected_cardinality": null,
+        "filename_prefix": null,
+        "mime_type": null,
+        "name": null,
+        "node_id": "50",
+        "output_type": "SaveVideo"
+      }
+    ],
+    "recommendations": [
+      "Run `vibecomfy validate ready_templates/sources/official/video/wan_t2v.json` after port fixes.",
+      "Run `vibecomfy nodes install-plan ready_templates/sources/official/video/wan_t2v.json` before installing custom nodes.",
+      "Use `vibecomfy port convert ready_templates/sources/official/video/wan_t2v.json --out out/scratchpads/<name>.py` for Python scratchpad materialization.",
+      "Review model assets before RunPod validation; use `vibecomfy fetch ready_templates/sources/official/video/wan_t2v.json --dry-run` for URL-backed assets."
+    ],
+    "source": "ready_templates/sources/official/video/wan_t2v.json",
+    "source_hash": "sha256:6cfcb2bcc842926d462667f1858651a7a73d698591013e4d0370bdc2984a6fea",
+    "workflow_id": "wan_t2v",
+    "workflow_shape": {
+      "edges": 11,
+      "helper_nodes": 0,
+      "inputs": 4,
+      "nodes": 11,
+      "outputs": 1,
+      "runtime_nodes": 11
+    }
+  },
+  "status": "ok",
+  "strict_ready_diagnostics": [],
+  "strict_ready_ok": null,
+  "write": {
+    "diff": null,
+    "diff_forced_dry_run": false,
+    "diff_requested": false,
+    "dry_run": false,
+    "target": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/05_wan_t2v.py",
+    "target_exists": false,
+    "validation": {
+      "api_node_count": 11,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 6 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "6",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 7 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "7",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ModelSamplingSD3",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "shift"
+            ]
+          },
+          "message": "Node 48 (ModelSamplingSD3) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "48",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "control_after_generate",
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown kwarg 'control_after_generate'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_image",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'latent_image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 343
+          },
+          "message": "node call for 'KSampler' (node 3) would be a single line of 343 chars (>120); multi-line formatting preferred.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "images",
+            "linked": true,
+            "schema_inputs": [
+              "fps"
+            ]
+          },
+          "message": "Node 49 (CreateVideo) emits schema-unknown linked kwarg 'images'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "49",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "video",
+            "linked": true,
+            "schema_inputs": [
+              "codec",
+              "filename_prefix",
+              "format"
+            ]
+          },
+          "message": "Node 50 (SaveVideo) emits schema-unknown linked kwarg 'video'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "50",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "CLIPLoader": 1,
+        "CLIPTextEncode": 2,
+        "CreateVideo": 1,
+        "EmptyHunyuanLatentVideo": 1,
+        "KSampler": 1,
+        "ModelSamplingSD3": 1,
+        "SaveVideo": 1,
+        "UNETLoader": 1,
+        "VAEDecode": 1,
+        "VAELoader": 1
+      },
+      "emitted_model_snapshot": {
+        "37:unet_name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "38:clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "39:vae_name": "wan_2.1_vae.safetensors"
+      },
+      "emitted_output_count": 11,
+      "emitted_topology_snapshot": 10,
+      "emitted_widget_value_snapshot": 14,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "CLIPLoader": 1,
+        "CLIPTextEncode": 2,
+        "CreateVideo": 1,
+        "EmptyHunyuanLatentVideo": 1,
+        "KSampler": 1,
+        "ModelSamplingSD3": 1,
+        "SaveVideo": 1,
+        "UNETLoader": 1,
+        "VAEDecode": 1,
+        "VAELoader": 1
+      },
+      "source_model_snapshot": {
+        "37:unet_name": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "38:clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "39:vae_name": "wan_2.1_vae.safetensors"
+      },
+      "source_output_count": 11,
+      "source_topology_snapshot": 10,
+      "source_widget_value_snapshot": 14,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "wan2.1_t2v_1.3B_fp16.safetensors",
+        "wan_2.1_vae.safetensors"
+      ]
+    },
+    "written": true
+  }
+}

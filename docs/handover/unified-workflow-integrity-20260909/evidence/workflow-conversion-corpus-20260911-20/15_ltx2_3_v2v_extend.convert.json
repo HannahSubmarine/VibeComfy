@@ -1,0 +1,23 @@
+{
+  "message": "port convert stopped at the native recursive-boundary import barrier.",
+  "report": {
+    "candidate_status": "not_materialized",
+    "code": "unsupported_boundary_encoding",
+    "diagnostics": [
+      {
+        "code": "unsupported_boundary_encoding",
+        "message": "unsupported_boundary_encoding: UI source contains native inputNode/outputNode markers that were not consumed; use an explicit Python-owned boundary mapping",
+        "severity": "error"
+      }
+    ],
+    "message": "unsupported_boundary_encoding: UI source contains native inputNode/outputNode markers that were not consumed; use an explicit Python-owned boundary mapping",
+    "recovery": {
+      "inspect_source": "Open the graph in ComfyUI and export it with recursive component boundaries resolved, or author explicit Python-owned interfaces and boundary_ports.",
+      "materialize_after_resolution": "vibecomfy port convert ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Extend_Any_Video.json --out out/scratchpads/<name>.py --json",
+      "port_after_resolution": "vibecomfy port check ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Extend_Any_Video.json --json",
+      "validate_candidate": "vibecomfy validate out/scratchpads/<name>.py"
+    },
+    "source": "ready_templates/sources/custom_nodes/ltxvideo/runexx/LTX-2.3_V2V_Extend_Any_Video.json"
+  },
+  "status": "blocked"
+}

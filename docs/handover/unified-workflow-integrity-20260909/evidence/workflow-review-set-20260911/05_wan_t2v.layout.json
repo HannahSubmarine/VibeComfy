@@ -1,0 +1,260 @@
+{
+  "store_version": 2,
+  "vibecomfy_version": "2.8.0",
+  "schema_hash": "4e171992d8e27611",
+  "entries": {
+    "38": {
+      "pos": [
+        -120,
+        170
+      ],
+      "size": [
+        390,
+        106
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPLoader",
+        "models": [
+          {
+            "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors?download=true",
+            "directory": "text_encoders"
+          }
+        ]
+      }
+    },
+    "39": {
+      "pos": [
+        -120,
+        320
+      ],
+      "size": [
+        390,
+        60
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "wan_2.1_vae.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors?download=true",
+            "directory": "vae"
+          }
+        ]
+      }
+    },
+    "7": {
+      "pos": [
+        310,
+        250
+      ],
+      "size": [
+        425,
+        181
+      ],
+      "flags": {},
+      "color": "#322",
+      "bgcolor": "#533",
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      }
+    },
+    "6": {
+      "pos": [
+        310,
+        40
+      ],
+      "size": [
+        423,
+        164
+      ],
+      "flags": {},
+      "color": "#232",
+      "bgcolor": "#353",
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      }
+    },
+    "37": {
+      "pos": [
+        -120,
+        40
+      ],
+      "size": [
+        390,
+        82
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "UNETLoader",
+        "models": [
+          {
+            "name": "wan2.1_t2v_1.3B_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors?download=true",
+            "directory": "diffusion_models"
+          }
+        ]
+      }
+    },
+    "40": {
+      "pos": [
+        -80,
+        490
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "EmptyHunyuanLatentVideo"
+      }
+    },
+    "8": {
+      "pos": [
+        1100,
+        40
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    "49": {
+      "pos": [
+        1110,
+        140
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      }
+    },
+    "3": {
+      "pos": [
+        770,
+        160
+      ],
+      "size": [
+        315,
+        262
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "KSampler"
+      }
+    },
+    "50": {
+      "pos": [
+        1110,
+        270
+      ],
+      "size": [
+        480,
+        440
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      }
+    },
+    "48": {
+      "pos": [
+        770,
+        40
+      ],
+      "size": [
+        210,
+        58
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "ModelSamplingSD3"
+      }
+    }
+  },
+  "groups": [
+    {
+      "id": 1,
+      "title": "Step 3 - Prompt",
+      "bounding": [
+        300,
+        -30,
+        445.27801513671875,
+        474.2060852050781
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "Step1 - Load models",
+      "bounding": [
+        -130,
+        -30,
+        410,
+        423.6000061035156
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "Step2 - Video size",
+      "bounding": [
+        -130,
+        410,
+        410,
+        220
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "extra": {},
+  "lastRerouteId": null,
+  "definitions": {},
+  "virtual_wires": {}
+}

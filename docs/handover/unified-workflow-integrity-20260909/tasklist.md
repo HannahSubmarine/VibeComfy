@@ -1,6 +1,66 @@
 # Tasklist v5 — integrity plus consolidated Pythonic emission delivery
 
+Current amendment (2026-09-11): use
+[canonical-source-cleanliness-direction.md](canonical-source-cleanliness-direction.md)
+for the pending external-custody, concise-finalizer, widget-resolution and
+annotation work. Its implementation seams and validation matrix refine the
+existing E0/E1/T1/T2/T3/E2/T4 scopes; they do not add review stages or reset
+historical evidence. The older embedded-custody wording below describes the
+preceding implementation. New amendment acceptance remains NOT RUN.
+
+S90 refinement: use one ordered labelled custody sequence per scope and direct
+construction compatibility checks, without a stored structure digest. Keep
+generation/custody/revision guarantees. Reuse bounded acquisition before frozen
+conversion, supported emitted binding patterns and minimal typed annotations.
+Use fixtures per invariant and selected integration combinations, retaining the
+full corpus/H3/entrypoint validation. See the direction's S90 section for exact
+boundaries. No future assignments are dispatched in preparation-only mode.
+
 Future work only. Model/reasoning resolution comes from run.yaml; the E1 route resolves through the configured worker_xhard slot. Coordinator owns dispatch/counters, reviewers inspect independently, oracle adjudicates consequential uncertainty. NS references mean principles in northstar.md; I references mean implementation criteria in acceptance-ledger.md.
+
+## Current amendment dispatch map
+
+User reaffirmed [mandatory end-of-run practical validation](acceptance-ledger.md#required-final-practical-validation--before-completion).
+E2/T4 must produce actual pipeline/corpus/H3 evidence and passing integrated
+checks before final review/completion; failures feed the existing correction
+loop. Two additional final Astra medium calls are explicitly approved in the
+current run.yaml, preserving all historical charges. No execution starts now.
+
+The [adopted test-signal supplement](test-signal-cleanup-plan.md) adds bounded
+assertion/fixture improvements to these same owners: E0/T3 characterization
+and replacement mappings; T1/E1 pair/source contracts; T3 precise edit and
+identity oracles; T2 real ingress/Comfy Node persistence; E2/T4 original
+corpus/H3 validation and final full configured checks. No new task family,
+cleanup prerequisite or review stage; optional unrelated hygiene is deferred.
+
+This table is the pending amendment's dispatch map; the v5 table below records
+the inherited scopes. All rows are prepared, not dispatched. Ordinary work
+routes through worker_normal (Luna medium); the original coupled E1 hard kernel
+retains its existing assignment only if needed, with no automatic rerun.
+
+| Existing task | Outcome / dependency | Acceptance proof |
+| --- | --- | --- |
+| E0/T3 | Characterize double source admission, output-slot fallback, provider context, exact outputs and Python/typed parity before changes. Trace Cases 01/16/17/18. | Same-source identity and independent value/edge/port expectations; classify actual failures versus intentional refusals. |
+| T1 | Ordered custody, direct binding compatibility, deterministic generation/custody/revision checks and explicit staged load context. Depends on relevant baselines. | Missing/malformed/swapped companion refusal, same-custody different-generation mismatch, valid edits with unchanged custody, scope coverage, exception cleanup and rollback. |
+| E1/T1 | Clean shared emitter/finalizer; reuse one admitted source for CLI analysis/conversion; bring v2 converter, registry and copying consumers through the existing bundle boundary. Serialize shared files; depends on bundle and output baselines. | No hidden custody/replay or duplicate runtime authority; exact explicit output semantics; one admission with matching report/source identity; complete pair publication/copy and unchanged destinations on failure. |
+| T1/T2/T3 | Integrate existing pinned acquisition before frozen conversion, minimal annotations and Cases 12/19/20 corrections. | Frozen name/channel mapping independent of ambient provider changes; exact note text/scope; switch values, model strings/arity and audio-edge preservation. |
+| T2/T3 | Compare actual CLI/SDK/canvas ingress and CLI/bundle UI export under matching authority. Characterize unknown-output fallback at public strict/canonical boundaries; fix only reproduced drift. | Supported draft and malformed input through real entrypoints; no silent slot-zero rewiring; preserve explicit recovery, optional legacy layout and API/UI representation differences. |
+| E2/T4 | Exact H3 edits/save/reload/export/inspection and all 20 justified corpus outcomes, deterministic regeneration, docs/help and final configured offline suite. Depends on required fixes and focused evidence. | Inspectable Python/JSON/exported graph identities, independent fidelity comparisons, recorded visual inspection, all required tests passing with skips/deselections explained. |
+
+Bounded adjacent checks from the direction document's smell triage are covered
+by these rows. A passing focused characterization closes that question; it does
+not trigger a new cleanup project. No new task IDs or review gates are added.
+
+## Inherited v5 scope
+
+Adjacent investigation is now recorded in the direction's outcomes section.
+T1/T3 owns same-context failed-build recovery and the frozen same-class carrier
+test; T2/T3 owns actual non-strict unknown-output fallback and malformed-schema
+characterization; E1/T1/T3 owns edited-model requirement consistency. Preserve
+existing preview/materialization copy protections and optional v1 sidecars.
+Live analysis-node returns and aliasing within detached dry-run results are
+deferred without demonstrated caller breakage. These are source-inspected
+findings, not executed reproductions; product acceptance remains NOT RUN.
 
 | ID | Outcome / scope | Real dependency and synchronization | Role/class | Acceptance / NS |
 |---|---|---|---|---|

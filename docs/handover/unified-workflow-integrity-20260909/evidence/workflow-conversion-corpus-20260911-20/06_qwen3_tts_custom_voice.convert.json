@@ -1,0 +1,464 @@
+{
+  "conversion": {
+    "mode": "scratchpad",
+    "ready_id": null,
+    "validation": {
+      "api_node_count": 2,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "AILab_Qwen3TTSCustomVoice",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 216
+          },
+          "message": "node call for 'AILab_Qwen3TTSCustomVoice' (node 1) would be a single line of 216 chars (>120); multi-line formatting preferred.",
+          "node_id": "1",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "audio",
+            "linked": true,
+            "schema_inputs": [
+              "filename_prefix",
+              "quality"
+            ]
+          },
+          "message": "Node 2 (SaveAudioMP3) emits schema-unknown linked kwarg 'audio'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "2",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 139
+          },
+          "message": "node call for 'SaveAudioMP3' (node 2) would be a single line of 139 chars (>120); multi-line formatting preferred.",
+          "node_id": "2",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "AILab_Qwen3TTSCustomVoice": 1,
+        "SaveAudioMP3": 1
+      },
+      "emitted_model_snapshot": {},
+      "emitted_output_count": 2,
+      "emitted_topology_snapshot": 1,
+      "emitted_widget_value_snapshot": 6,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "AILab_Qwen3TTSCustomVoice": 1,
+        "SaveAudioMP3": 1
+      },
+      "source_model_snapshot": {},
+      "source_output_count": 2,
+      "source_topology_snapshot": 1,
+      "source_widget_value_snapshot": 6,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": []
+    }
+  },
+  "out": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/06_qwen3_tts_custom_voice.py",
+  "report": {
+    "artifacts": [],
+    "asset_candidates": [],
+    "asset_checks": [],
+    "contract": {
+      "comfy_configuration": {},
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "custom_nodes": [],
+      "graph_contract": {
+        "edge_count": 1,
+        "named_output_count": 0,
+        "output_count": 1,
+        "runtime_class_types": [
+          "AILab_Qwen3TTSCustomVoice",
+          "SaveAudioMP3"
+        ],
+        "runtime_node_count": 2,
+        "schema_sources": [],
+        "unresolved_positional_outputs": [],
+        "unresolved_widgets": []
+      },
+      "inputs": [
+        "seed"
+      ],
+      "metadata": {
+        "capability": null,
+        "coverage_tier": null,
+        "ready_template": null
+      },
+      "model_assets": [],
+      "outputs": [
+        {
+          "node_id": "2",
+          "output_type": "SaveAudioMP3"
+        }
+      ],
+      "public_inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "seed",
+          "media_semantics": null,
+          "name": "seed",
+          "node_id": "1",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "seed",
+            "node_id": "1"
+          },
+          "type": null,
+          "value": 123
+        }
+      ],
+      "public_outputs": [
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "2",
+          "output_type": "SaveAudioMP3"
+        }
+      ],
+      "readiness_level": "unknown",
+      "runtime_class_types": [
+        "AILab_Qwen3TTSCustomVoice",
+        "SaveAudioMP3"
+      ],
+      "runtime_nodes": [
+        "1",
+        "2"
+      ],
+      "runtime_packages": [],
+      "source": {
+        "id": "qwen3_tts_custom_voice",
+        "path": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+        "provenance": {},
+        "source_type": "api"
+      },
+      "version": 1,
+      "workflow_id": "qwen3_tts_custom_voice"
+    },
+    "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+    "diagnostics": [],
+    "graph_contract": {
+      "edge_count": 1,
+      "named_output_count": 0,
+      "output_count": 1,
+      "runtime_class_types": [
+        "AILab_Qwen3TTSCustomVoice",
+        "SaveAudioMP3"
+      ],
+      "runtime_node_count": 2,
+      "schema_sources": [],
+      "unresolved_positional_outputs": [],
+      "unresolved_widgets": []
+    },
+    "metadata": {
+      "contract": {
+        "comfy_configuration": {},
+        "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+        "custom_nodes": [],
+        "graph_contract": {
+          "edge_count": 1,
+          "named_output_count": 0,
+          "output_count": 1,
+          "runtime_class_types": [
+            "AILab_Qwen3TTSCustomVoice",
+            "SaveAudioMP3"
+          ],
+          "runtime_node_count": 2,
+          "schema_sources": [],
+          "unresolved_positional_outputs": [],
+          "unresolved_widgets": []
+        },
+        "inputs": [
+          "seed"
+        ],
+        "metadata": {
+          "capability": null,
+          "coverage_tier": null,
+          "ready_template": null
+        },
+        "model_assets": [],
+        "outputs": [
+          {
+            "node_id": "2",
+            "output_type": "SaveAudioMP3"
+          }
+        ],
+        "public_inputs": [
+          {
+            "aliases": [],
+            "default": null,
+            "field": "seed",
+            "media_semantics": null,
+            "name": "seed",
+            "node_id": "1",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "seed",
+              "node_id": "1"
+            },
+            "type": null,
+            "value": 123
+          }
+        ],
+        "public_outputs": [
+          {
+            "artifact_kind": null,
+            "expected_cardinality": null,
+            "filename_prefix": null,
+            "mime_type": null,
+            "name": null,
+            "node_id": "2",
+            "output_type": "SaveAudioMP3"
+          }
+        ],
+        "readiness_level": "unknown",
+        "runtime_class_types": [
+          "AILab_Qwen3TTSCustomVoice",
+          "SaveAudioMP3"
+        ],
+        "runtime_nodes": [
+          "1",
+          "2"
+        ],
+        "runtime_packages": [],
+        "source": {
+          "id": "qwen3_tts_custom_voice",
+          "path": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+          "provenance": {},
+          "source_type": "api"
+        },
+        "version": 1,
+        "workflow_id": "qwen3_tts_custom_voice"
+      },
+      "custom_node_analysis": {
+        "diagnostics": [],
+        "helper_class_types_excluded": [],
+        "missing_runtime_class_types": [],
+        "runtime_class_types": [
+          "AILab_Qwen3TTSCustomVoice",
+          "SaveAudioMP3"
+        ],
+        "status": "analyzed",
+        "suggestions": [],
+        "unresolved_runtime_class_types": []
+      },
+      "runtime_class_types": [
+        "AILab_Qwen3TTSCustomVoice",
+        "SaveAudioMP3"
+      ],
+      "schema_source": {
+        "object_info_cache": "out/cache/object_info.comfy-core.0.25.0.json",
+        "provider": "ConversionSchemaProvider",
+        "runtime_enabled": false,
+        "server_url": null
+      },
+      "schema_validation": {
+        "issue_count": 0,
+        "ok": true,
+        "schema_provider": true
+      },
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+      "widget_analysis": {
+        "missing_compiled_widget_inputs": [],
+        "suggestions": [],
+        "unresolved_widget_aliases": []
+      }
+    },
+    "node_counts": {
+      "AILab_Qwen3TTSCustomVoice": 1,
+      "SaveAudioMP3": 1
+    },
+    "node_pack_suggestions": [],
+    "ok": true,
+    "output_mode": "analysis",
+    "provenance": {
+      "indexed_id": null,
+      "raw_workflow_shape": "api",
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+      "source_ref": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+      "workflow_source_id": "qwen3_tts_custom_voice",
+      "workflow_source_type": "api"
+    },
+    "public_inputs": [
+      {
+        "aliases": [],
+        "default": null,
+        "field": "seed",
+        "media_semantics": null,
+        "name": "seed",
+        "node_id": "1",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "seed",
+          "node_id": "1"
+        },
+        "type": null,
+        "value": 123
+      }
+    ],
+    "public_outputs": [
+      {
+        "artifact_kind": null,
+        "expected_cardinality": null,
+        "filename_prefix": null,
+        "mime_type": null,
+        "name": null,
+        "node_id": "2",
+        "output_type": "SaveAudioMP3"
+      }
+    ],
+    "recommendations": [
+      "Run `vibecomfy validate ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json` after port fixes.",
+      "Run `vibecomfy nodes install-plan ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json` before installing custom nodes.",
+      "Use `vibecomfy port convert ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json --out out/scratchpads/<name>.py` for Python scratchpad materialization."
+    ],
+    "source": "ready_templates/sources/custom_nodes/qwen_tts/1038lab/qwen3_tts_custom_voice.json",
+    "source_hash": "sha256:c6aed8da86a51e4590ae97497301e7d2cb30cbb4a8123f273ec25956c0243053",
+    "workflow_id": "qwen3_tts_custom_voice",
+    "workflow_shape": {
+      "edges": 1,
+      "helper_nodes": 0,
+      "inputs": 1,
+      "nodes": 2,
+      "outputs": 1,
+      "runtime_nodes": 2
+    }
+  },
+  "status": "ok",
+  "strict_ready_diagnostics": [],
+  "strict_ready_ok": null,
+  "write": {
+    "diff": null,
+    "diff_forced_dry_run": false,
+    "diff_requested": false,
+    "dry_run": false,
+    "target": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/06_qwen3_tts_custom_voice.py",
+    "target_exists": false,
+    "validation": {
+      "api_node_count": 2,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "AILab_Qwen3TTSCustomVoice",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 216
+          },
+          "message": "node call for 'AILab_Qwen3TTSCustomVoice' (node 1) would be a single line of 216 chars (>120); multi-line formatting preferred.",
+          "node_id": "1",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "audio",
+            "linked": true,
+            "schema_inputs": [
+              "filename_prefix",
+              "quality"
+            ]
+          },
+          "message": "Node 2 (SaveAudioMP3) emits schema-unknown linked kwarg 'audio'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "2",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 139
+          },
+          "message": "node call for 'SaveAudioMP3' (node 2) would be a single line of 139 chars (>120); multi-line formatting preferred.",
+          "node_id": "2",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "AILab_Qwen3TTSCustomVoice": 1,
+        "SaveAudioMP3": 1
+      },
+      "emitted_model_snapshot": {},
+      "emitted_output_count": 2,
+      "emitted_topology_snapshot": 1,
+      "emitted_widget_value_snapshot": 6,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "AILab_Qwen3TTSCustomVoice": 1,
+        "SaveAudioMP3": 1
+      },
+      "source_model_snapshot": {},
+      "source_output_count": 2,
+      "source_topology_snapshot": 1,
+      "source_widget_value_snapshot": 6,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": []
+    },
+    "written": true
+  }
+}
