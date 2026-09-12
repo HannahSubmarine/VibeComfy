@@ -953,9 +953,16 @@ def test_emit_bundle_rejects_semantic_digest_drift_before_replacement(
     baseline = emit_bundle(workflow, destination, {"operation": "authored"})
     real_load_scratchpad = load_scratchpad
 
+    load_calls = 0
+
     def load_with_diagnostic_drift(*args, **kwargs):
+        nonlocal load_calls
         loaded = real_load_scratchpad(*args, **kwargs)
-        loaded.nodes["1"].inputs["value"] = 8
+        load_calls += 1
+        # Pair canonicalization performs one private staged load.  Drift on
+        # the later visible publication preflight must still abort atomically.
+        if load_calls >= 2:
+            loaded.nodes["1"].inputs["value"] = 8
         return loaded
 
     monkeypatch.setattr(
@@ -1236,6 +1243,16 @@ def _assert_clean_v2_source(source: str) -> None:
         for target in node.targets
         if isinstance(target, ast.Name)
     }
+    graph_names.update(
+        item.optional_vars.id
+        for node in ast.walk(build)
+        if isinstance(node, ast.With)
+        for item in node.items
+        if isinstance(item.optional_vars, ast.Name)
+        and isinstance(item.context_expr, ast.Call)
+        and isinstance(item.context_expr.func, ast.Name)
+        and item.context_expr.func.id == "new_workflow"
+    )
     assert graph_names
     assert not any(
         isinstance(node, ast.Call)
@@ -1289,9 +1306,9 @@ def test_v2_source_contract_rejects_whole_file_integrity_mutations(tmp_path: Pat
     emit_bundle(_nonempty_workflow("source-contract"), path, {"operation": "authored"})
     source = path.read_text(encoding="utf-8")
     _assert_clean_v2_source(source)
-    anchor = "    wf = wf.finalize({}, outputs=[] )"
+    anchor = "        wf = wf.finalize({}, outputs=[] )"
     if anchor not in source:
-        anchor = "    wf = wf.finalize({}, outputs=[])"
+        anchor = "        wf = wf.finalize({}, outputs=[])"
     assert anchor in source
 
     mutations = {
@@ -1302,17 +1319,17 @@ def test_v2_source_contract_rejects_whole_file_integrity_mutations(tmp_path: Pat
         ),
         "replay topology": source.replace(
             anchor,
-            "    wf.connect('integer-node.0', 'integer-node.value')\n" + anchor,
+                "        wf.connect('integer-node.0', 'integer-node.value')\n" + anchor,
             1,
         ),
         "renamed graph topology": source.replace(
             anchor,
-            "    graph.connect('integer-node.0', 'integer-node.value')\n" + anchor,
+                "        graph.connect('integer-node.0', 'integer-node.value')\n" + anchor,
             1,
         ),
         "duplicate runtime value": source.replace(
             anchor,
-            "    wf.nodes['replay'] = object()\n" + anchor,
+                "        wf.nodes['replay'] = object()\n" + anchor,
             1,
         ),
         "bloated finalizer": source.replace(
@@ -1560,7 +1577,7 @@ def test_canonical_roundtrip_preserves_explicit_none_input_default(tmp_path: Pat
     assert reloaded.revision_id == bundle.revision_id
 
 
-def test_native_port_rosters_are_semantic_not_execution_data() -> None:
+def test_native_port_rosters_are_semantic_not_execution_data(tmp_path: Path) -> None:
     from vibecomfy.porting.emit.entrypoints import emit_scratchpad_python
 
     workflow = _connected_workflow()
@@ -1571,13 +1588,14 @@ def test_native_port_rosters_are_semantic_not_execution_data() -> None:
     assert workflow.compile("api") == api_before
 
     source = emit_scratchpad_python(workflow)
-    assert "'native_input_names':" in source
-    assert "'native_output_names':" in source
+    assert "'native_input_names':" not in source
+    assert "'native_output_names':" not in source
+    path = tmp_path / "generated.py"
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
     assert "_native_ports=" not in source
     assert "_ui=" not in source
-    namespace: dict[str, object] = {"__file__": "generated.py"}
-    exec(source, namespace)
-    loaded = namespace["build"]()
+    loaded = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert loaded.nodes["a"].native_output_names == ["changed"]
     assert loaded.nodes["b"].native_input_names == ["in"]
     restored = VibeWorkflow.from_envelope(workflow.to_envelope())

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
 import vibecomfy.templates as templates
-from vibecomfy.templates import InputSpec, ModelAsset, ReadyMetadata, SymbolicNodeRef, _current_workflow_or_raise, _derive_output_kind, finalize, finalize_ready, new_workflow, node
+from vibecomfy.templates import InputSpec, ModelAsset, ReadyMetadata, SymbolicNodeRef, _current_workflow_or_raise, _derive_output_kind, finalize, finalize_ready, new_workflow, node, recursive_definition_scope
 from vibecomfy.workflow import VibeInput, VibeWorkflow, WorkflowSource
 
 
@@ -270,6 +271,37 @@ def test_exception_in_workflow_context_unbinds() -> None:
         wf._workflow_context_token = None
 
 
+def test_recursive_definition_scope_cleans_failed_build_and_allows_reuse() -> None:
+    """Recursive temporary nodes never leak into the caller or the next build."""
+    from vibecomfy.workflow_context import active_workflow
+
+    wf = new_workflow({"ready_template": "image/recursive-scope-recovery"})
+    # Exercise the post-finalize shape used by generated recursive helpers:
+    # the root workflow is no longer bound when the helper executes.
+    wf.__exit__(None, None, None)
+    try:
+        assert active_workflow() is None
+        with pytest.raises(RuntimeError, match="recursive boom"):
+            with recursive_definition_scope(wf):
+                node("TemporaryRecursiveNode", value=1, pass_raw=True)
+                assert active_workflow() is wf
+                raise RuntimeError("recursive boom")
+
+        assert wf.nodes == {}
+        assert wf.edges == []
+        assert active_workflow() is None
+
+        with recursive_definition_scope(wf):
+            node("TemporaryRecursiveNode", value=2, pass_raw=True)
+            assert active_workflow() is wf
+
+        assert wf.nodes == {}
+        assert wf.edges == []
+        assert active_workflow() is None
+    finally:
+        wf.__exit__(None, None, None)
+
+
 def test_finalize_ready_unbinds_between_repeated_calls() -> None:
     from vibecomfy.workflow_context import active_workflow
 
@@ -520,7 +552,10 @@ def test_finalize_preserves_source_requirements_and_image_output_contract() -> N
     assert wf.inputs["prompt"].default == "default prompt"
     assert wf.inputs["seed"].value == 999
     assert wf.inputs["seed"].default == 123
-    assert "model.safetensors" in wf.requirements.models
+    assert any(
+        (item.get("name") if isinstance(item, Mapping) else item) == "model.safetensors"
+        for item in wf.requirements.models
+    )
     assert "ExamplePack" in wf.requirements.custom_nodes
     output = next(item for item in wf.outputs if item.node_id == "3")
     assert output.output_type == "SaveImage"
@@ -615,7 +650,10 @@ def test_finalize_derives_model_requirements_from_metadata_when_requirements_emp
 
     finalize(wf, inputs, metadata, output_node="2", output_type="SaveImage", requirements={})
 
-    assert "model.safetensors" in wf.requirements.models
+    assert any(
+        (item.get("name") if isinstance(item, Mapping) else item) == "model.safetensors"
+        for item in wf.requirements.models
+    )
 
 
 def test_finalize_preserves_edit_style_image_input_defaults() -> None:

@@ -4,7 +4,7 @@
 """Auto-generated ready_template — use python -m vibecomfy.cli copy-to-recipe <id> for hand-editing."""
 from __future__ import annotations
 
-from vibecomfy.templates import InputSpec, ReadyMetadata, new_workflow, ref
+from vibecomfy.templates import InputSpec, OutputSpec, ReadyMetadata, new_workflow, ref
 from vibecomfy.workflow import VibeWorkflow
 from vibecomfy.nodes.core import CFGGuider, CLIPLoader, CLIPTextEncode, ConditioningZeroOut, EmptyFlux2LatentImage, Flux2Scheduler, GetImageSize, ImageScaleToTotalPixels, KSamplerSelect, LoadImage, RandomNoise, ReferenceLatent, SamplerCustomAdvanced, SaveImage, UNETLoader, VAEDecode, VAEEncode, VAELoader
 
@@ -29,755 +29,6 @@ PUBLIC_INPUT_METADATA = {
     'image': InputSpec(node=ref('loadimage'), field='image', default='', type='IMAGE', required=True, aliases=('input_image',), media_semantics='image', infer_type=False),
 }
 
-CANONICAL_CUSTODY = {'ksamplerselect_2': {'id': '1',
-                      'uid': 'n3',
-                      'class_type': 'KSamplerSelect',
-                      'native_ports': {'native_input_names': ['sampler_name'],
-                                       'native_output_names': ['SAMPLER'],
-                                       'native_input_types': ['COMBO'],
-                                       'native_output_types': ['SAMPLER'],
-                                       'native_input_optional': [False],
-                                       'native_input_asset_kinds': None,
-                                       'native_output_slots': None},
-                      'metadata': {'provenance': 'agent_authored',
-                                   'output_names': ['SAMPLER'],
-                                   'keep_defaults': ['sampler_name']},
-                      'widget_channels': {},
-                      'none_input_fields': [],
-                      'none_widget_fields': [],
-                      'output_slot_names': {}},
- 'unetloader_2': {'id': '2',
-                  'uid': 'n4',
-                  'class_type': 'UNETLoader',
-                  'native_ports': {'native_input_names': ['unet_name', 'weight_dtype'],
-                                   'native_output_names': ['MODEL'],
-                                   'native_input_types': ['CHOICE', 'CHOICE'],
-                                   'native_output_types': ['MODEL'],
-                                   'native_input_optional': [False, False],
-                                   'native_input_asset_kinds': None,
-                                   'native_output_slots': None},
-                  'metadata': {'provenance': 'agent_authored',
-                               'output_names': ['MODEL'],
-                               'keep_defaults': ['unet_name']},
-                  'widget_channels': {},
-                  'none_input_fields': [],
-                  'none_widget_fields': [],
-                  'output_slot_names': {}},
- 'cliploader_2': {'id': '3',
-                  'uid': 'n5',
-                  'class_type': 'CLIPLoader',
-                  'native_ports': {'native_input_names': ['clip_name', 'type', 'device'],
-                                   'native_output_names': ['CLIP'],
-                                   'native_input_types': ['CHOICE', 'CHOICE', 'CHOICE'],
-                                   'native_output_types': ['CLIP'],
-                                   'native_input_optional': [False, False, True],
-                                   'native_input_asset_kinds': None,
-                                   'native_output_slots': None},
-                  'metadata': {'provenance': 'agent_authored',
-                               'output_names': ['CLIP'],
-                               'keep_defaults': ['clip_name', 'type']},
-                  'widget_channels': {},
-                  'none_input_fields': [],
-                  'none_widget_fields': [],
-                  'output_slot_names': {}},
- 'vaeloader_2': {'id': '4',
-                 'uid': 'n6',
-                 'class_type': 'VAELoader',
-                 'native_ports': {'native_input_names': ['vae_name'],
-                                  'native_output_names': ['VAE'],
-                                  'native_input_types': ['CHOICE'],
-                                  'native_output_types': ['VAE'],
-                                  'native_input_optional': [False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['VAE'],
-                              'keep_defaults': ['vae_name']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'randomnoise_2': {'id': '5',
-                   'uid': 'n7',
-                   'class_type': 'RandomNoise',
-                   'native_ports': {'native_input_names': ['noise_seed', 'control_after_generate'],
-                                    'native_output_names': ['NOISE'],
-                                    'native_input_types': ['INT', None],
-                                    'native_output_types': ['NOISE'],
-                                    'native_input_optional': None,
-                                    'native_input_asset_kinds': None,
-                                    'native_output_slots': None},
-                   'metadata': {'provenance': 'agent_authored',
-                                'output_names': ['NOISE'],
-                                'keep_defaults': ['control_after_generate', 'noise_seed']},
-                   'widget_channels': {},
-                   'none_input_fields': [],
-                   'none_widget_fields': [],
-                   'output_slot_names': {}},
- 'ksamplerselect': {'id': '19',
-                    'uid': 'n21',
-                    'class_type': 'KSamplerSelect',
-                    'native_ports': {'native_input_names': ['sampler_name'],
-                                     'native_output_names': ['SAMPLER'],
-                                     'native_input_types': ['COMBO'],
-                                     'native_output_types': ['SAMPLER'],
-                                     'native_input_optional': [False],
-                                     'native_input_asset_kinds': None,
-                                     'native_output_slots': None},
-                    'metadata': {'provenance': 'agent_authored',
-                                 'output_names': ['SAMPLER'],
-                                 'keep_defaults': ['sampler_name']},
-                    'widget_channels': {},
-                    'none_input_fields': [],
-                    'none_widget_fields': [],
-                    'output_slot_names': {}},
- 'randomnoise': {'id': '20',
-                 'uid': 'n22',
-                 'class_type': 'RandomNoise',
-                 'native_ports': {'native_input_names': ['noise_seed', 'control_after_generate'],
-                                  'native_output_names': ['NOISE'],
-                                  'native_input_types': ['INT', None],
-                                  'native_output_types': ['NOISE'],
-                                  'native_input_optional': None,
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['NOISE'],
-                              'keep_defaults': ['control_after_generate', 'noise_seed']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'unetloader': {'id': '21',
-                'uid': 'n23',
-                'class_type': 'UNETLoader',
-                'native_ports': {'native_input_names': ['unet_name', 'weight_dtype'],
-                                 'native_output_names': ['MODEL'],
-                                 'native_input_types': ['CHOICE', 'CHOICE'],
-                                 'native_output_types': ['MODEL'],
-                                 'native_input_optional': [False, False],
-                                 'native_input_asset_kinds': None,
-                                 'native_output_slots': None},
-                'metadata': {'provenance': 'agent_authored',
-                             'output_names': ['MODEL'],
-                             'keep_defaults': ['unet_name']},
-                'widget_channels': {},
-                'none_input_fields': [],
-                'none_widget_fields': [],
-                'output_slot_names': {}},
- 'cliploader': {'id': '22',
-                'uid': 'n24',
-                'class_type': 'CLIPLoader',
-                'native_ports': {'native_input_names': ['clip_name', 'type', 'device'],
-                                 'native_output_names': ['CLIP'],
-                                 'native_input_types': ['CHOICE', 'CHOICE', 'CHOICE'],
-                                 'native_output_types': ['CLIP'],
-                                 'native_input_optional': [False, False, True],
-                                 'native_input_asset_kinds': None,
-                                 'native_output_slots': None},
-                'metadata': {'provenance': 'agent_authored',
-                             'output_names': ['CLIP'],
-                             'keep_defaults': ['clip_name', 'type']},
-                'widget_channels': {},
-                'none_input_fields': [],
-                'none_widget_fields': [],
-                'output_slot_names': {}},
- 'vaeloader': {'id': '23',
-               'uid': 'n25',
-               'class_type': 'VAELoader',
-               'native_ports': {'native_input_names': ['vae_name'],
-                                'native_output_names': ['VAE'],
-                                'native_input_types': ['CHOICE'],
-                                'native_output_types': ['VAE'],
-                                'native_input_optional': [False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['VAE'],
-                            'keep_defaults': ['vae_name']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'loadimage': {'id': '76',
-               'uid': 'n1',
-               'class_type': 'LoadImage',
-               'native_ports': {'native_input_names': ['image'],
-                                'native_output_names': ['IMAGE', 'MASK'],
-                                'native_input_types': ['CHOICE'],
-                                'native_output_types': ['IMAGE', 'MASK'],
-                                'native_input_optional': [False],
-                                'native_input_asset_kinds': ['image'],
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['IMAGE', 'MASK'],
-                            'keep_defaults': ['image']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'loadimage_2': {'id': '81',
-                 'uid': 'n2',
-                 'class_type': 'LoadImage',
-                 'native_ports': {'native_input_names': ['image'],
-                                  'native_output_names': ['IMAGE', 'MASK'],
-                                  'native_input_types': ['CHOICE'],
-                                  'native_output_types': ['IMAGE', 'MASK'],
-                                  'native_input_optional': [False],
-                                  'native_input_asset_kinds': ['image'],
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['IMAGE', 'MASK'],
-                              'keep_defaults': ['image']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'imagescaletototalpixels_3': {'id': '6',
-                               'uid': 'n8',
-                               'class_type': 'ImageScaleToTotalPixels',
-                               'native_ports': {'native_input_names': ['upscale_method',
-                                                                       'megapixels',
-                                                                       'resolution_steps',
-                                                                       'image'],
-                                                'native_output_names': ['IMAGE'],
-                                                'native_input_types': ['COMBO', 'FLOAT', 'INT', 'IMAGE'],
-                                                'native_output_types': ['IMAGE'],
-                                                'native_input_optional': [False, False, True, False],
-                                                'native_input_asset_kinds': None,
-                                                'native_output_slots': None},
-                               'metadata': {'provenance': 'agent_authored',
-                                            'output_names': ['IMAGE'],
-                                            'keep_defaults': ['image', 'upscale_method']},
-                               'widget_channels': {},
-                               'none_input_fields': [],
-                               'none_widget_fields': [],
-                               'output_slot_names': {}},
- 'cliptextencode_2': {'id': '7',
-                      'uid': 'n9',
-                      'class_type': 'CLIPTextEncode',
-                      'native_ports': {'native_input_names': ['text', 'clip'],
-                                       'native_output_names': ['CONDITIONING'],
-                                       'native_input_types': ['STRING', 'CLIP'],
-                                       'native_output_types': ['CONDITIONING'],
-                                       'native_input_optional': [False, False],
-                                       'native_input_asset_kinds': None,
-                                       'native_output_slots': None},
-                      'metadata': {'provenance': 'agent_authored',
-                                   'output_names': ['CONDITIONING'],
-                                   'keep_defaults': ['clip', 'text']},
-                      'widget_channels': {},
-                      'none_input_fields': [],
-                      'none_widget_fields': [],
-                      'output_slot_names': {}},
- 'imagescaletototalpixels': {'id': '18',
-                             'uid': 'n20',
-                             'class_type': 'ImageScaleToTotalPixels',
-                             'native_ports': {'native_input_names': ['upscale_method',
-                                                                     'megapixels',
-                                                                     'resolution_steps',
-                                                                     'image'],
-                                              'native_output_names': ['IMAGE'],
-                                              'native_input_types': ['COMBO', 'FLOAT', 'INT', 'IMAGE'],
-                                              'native_output_types': ['IMAGE'],
-                                              'native_input_optional': [False, False, True, False],
-                                              'native_input_asset_kinds': None,
-                                              'native_output_slots': None},
-                             'metadata': {'provenance': 'agent_authored',
-                                          'output_names': ['IMAGE'],
-                                          'keep_defaults': ['image', 'upscale_method']},
-                             'widget_channels': {},
-                             'none_input_fields': [],
-                             'none_widget_fields': [],
-                             'output_slot_names': {}},
- 'imagescaletototalpixels_2': {'id': '24',
-                               'uid': 'n26',
-                               'class_type': 'ImageScaleToTotalPixels',
-                               'native_ports': {'native_input_names': ['upscale_method',
-                                                                       'megapixels',
-                                                                       'resolution_steps',
-                                                                       'image'],
-                                                'native_output_names': ['IMAGE'],
-                                                'native_input_types': ['COMBO', 'FLOAT', 'INT', 'IMAGE'],
-                                                'native_output_types': ['IMAGE'],
-                                                'native_input_optional': [False, False, True, False],
-                                                'native_input_asset_kinds': None,
-                                                'native_output_slots': None},
-                               'metadata': {'provenance': 'agent_authored',
-                                            'output_names': ['IMAGE'],
-                                            'keep_defaults': ['image', 'upscale_method']},
-                               'widget_channels': {},
-                               'none_input_fields': [],
-                               'none_widget_fields': [],
-                               'output_slot_names': {}},
- 'cliptextencode': {'id': '25',
-                    'uid': 'n27',
-                    'class_type': 'CLIPTextEncode',
-                    'native_ports': {'native_input_names': ['text', 'clip'],
-                                     'native_output_names': ['CONDITIONING'],
-                                     'native_input_types': ['STRING', 'CLIP'],
-                                     'native_output_types': ['CONDITIONING'],
-                                     'native_input_optional': [False, False],
-                                     'native_input_asset_kinds': None,
-                                     'native_output_slots': None},
-                    'metadata': {'provenance': 'agent_authored',
-                                 'output_names': ['CONDITIONING'],
-                                 'keep_defaults': ['clip', 'text']},
-                    'widget_channels': {},
-                    'none_input_fields': [],
-                    'none_widget_fields': [],
-                    'output_slot_names': {}},
- 'getimagesize': {'id': '8',
-                  'uid': 'n10',
-                  'class_type': 'GetImageSize',
-                  'native_ports': {'native_input_names': ['unique_id', 'image'],
-                                   'native_output_names': ['WIDTH', 'HEIGHT', 'BATCH_SIZE'],
-                                   'native_input_types': ['UNIQUE_ID', 'IMAGE'],
-                                   'native_output_types': ['INT', 'INT', 'INT'],
-                                   'native_input_optional': [True, False],
-                                   'native_input_asset_kinds': None,
-                                   'native_output_slots': None},
-                  'metadata': {'provenance': 'agent_authored',
-                               'output_names': ['WIDTH', 'HEIGHT', 'BATCH_SIZE'],
-                               'keep_defaults': ['image']},
-                  'widget_channels': {},
-                  'none_input_fields': [],
-                  'none_widget_fields': [],
-                  'output_slot_names': {}},
- 'conditioningzeroout': {'id': '12',
-                         'uid': 'n14',
-                         'class_type': 'ConditioningZeroOut',
-                         'native_ports': {'native_input_names': ['conditioning'],
-                                          'native_output_names': ['CONDITIONING'],
-                                          'native_input_types': ['CONDITIONING'],
-                                          'native_output_types': ['CONDITIONING'],
-                                          'native_input_optional': [False],
-                                          'native_input_asset_kinds': None,
-                                          'native_output_slots': None},
-                         'metadata': {'provenance': 'agent_authored',
-                                      'output_names': ['CONDITIONING'],
-                                      'keep_defaults': ['conditioning']},
-                         'widget_channels': {},
-                         'none_input_fields': [],
-                         'none_widget_fields': [],
-                         'output_slot_names': {}},
- 'getimagesize_2': {'id': '26',
-                    'uid': 'n28',
-                    'class_type': 'GetImageSize',
-                    'native_ports': {'native_input_names': ['unique_id', 'image'],
-                                     'native_output_names': ['WIDTH', 'HEIGHT', 'BATCH_SIZE'],
-                                     'native_input_types': ['UNIQUE_ID', 'IMAGE'],
-                                     'native_output_types': ['INT', 'INT', 'INT'],
-                                     'native_input_optional': [True, False],
-                                     'native_input_asset_kinds': None,
-                                     'native_output_slots': None},
-                    'metadata': {'provenance': 'agent_authored',
-                                 'output_names': ['WIDTH', 'HEIGHT', 'BATCH_SIZE'],
-                                 'keep_defaults': ['image']},
-                    'widget_channels': {},
-                    'none_input_fields': [],
-                    'none_widget_fields': [],
-                    'output_slot_names': {}},
- 'conditioningzeroout_2': {'id': '27',
-                           'uid': 'n29',
-                           'class_type': 'ConditioningZeroOut',
-                           'native_ports': {'native_input_names': ['conditioning'],
-                                            'native_output_names': ['CONDITIONING'],
-                                            'native_input_types': ['CONDITIONING'],
-                                            'native_output_types': ['CONDITIONING'],
-                                            'native_input_optional': [False],
-                                            'native_input_asset_kinds': None,
-                                            'native_output_slots': None},
-                           'metadata': {'provenance': 'agent_authored',
-                                        'output_names': ['CONDITIONING'],
-                                        'keep_defaults': ['conditioning']},
-                           'widget_channels': {},
-                           'none_input_fields': [],
-                           'none_widget_fields': [],
-                           'output_slot_names': {}},
- 'vaeencode_2': {'id': '30',
-                 'uid': 'n32',
-                 'class_type': 'VAEEncode',
-                 'native_ports': {'native_input_names': ['pixels', 'vae'],
-                                  'native_output_names': ['LATENT'],
-                                  'native_input_types': ['IMAGE', 'VAE'],
-                                  'native_output_types': ['LATENT'],
-                                  'native_input_optional': [False, False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['LATENT'],
-                              'keep_defaults': ['pixels', 'vae']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'vaeencode_3': {'id': '33',
-                 'uid': 'n35',
-                 'class_type': 'VAEEncode',
-                 'native_ports': {'native_input_names': ['pixels', 'vae'],
-                                  'native_output_names': ['LATENT'],
-                                  'native_input_types': ['IMAGE', 'VAE'],
-                                  'native_output_types': ['LATENT'],
-                                  'native_input_optional': [False, False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['LATENT'],
-                              'keep_defaults': ['pixels', 'vae']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'vaeencode': {'id': '40',
-               'uid': 'n11',
-               'class_type': 'VAEEncode',
-               'native_ports': {'native_input_names': ['pixels', 'vae'],
-                                'native_output_names': ['LATENT'],
-                                'native_input_types': ['IMAGE', 'VAE'],
-                                'native_output_types': ['LATENT'],
-                                'native_input_optional': [False, False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['LATENT'],
-                            'keep_defaults': ['pixels', 'vae']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'flux2scheduler': {'id': '10',
-                    'uid': 'n12',
-                    'class_type': 'Flux2Scheduler',
-                    'native_ports': {'native_input_names': ['steps', 'width', 'height'],
-                                     'native_output_names': ['SIGMAS'],
-                                     'native_input_types': ['INT', 'INT', 'INT'],
-                                     'native_output_types': ['SIGMAS'],
-                                     'native_input_optional': [False, False, False],
-                                     'native_input_asset_kinds': None,
-                                     'native_output_slots': None},
-                    'metadata': {'provenance': 'agent_authored',
-                                 'output_names': ['SIGMAS'],
-                                 'keep_defaults': ['height', 'steps', 'width']},
-                    'widget_channels': {},
-                    'none_input_fields': [],
-                    'none_widget_fields': [],
-                    'output_slot_names': {}},
- 'emptyflux2latentimage': {'id': '11',
-                           'uid': 'n13',
-                           'class_type': 'EmptyFlux2LatentImage',
-                           'native_ports': {'native_input_names': ['width', 'height', 'batch_size'],
-                                            'native_output_names': ['LATENT'],
-                                            'native_input_types': ['INT', 'INT', 'INT'],
-                                            'native_output_types': ['LATENT'],
-                                            'native_input_optional': [False, False, False],
-                                            'native_input_asset_kinds': None,
-                                            'native_output_slots': None},
-                           'metadata': {'provenance': 'agent_authored',
-                                        'output_names': ['LATENT'],
-                                        'keep_defaults': ['height', 'width']},
-                           'widget_channels': {},
-                           'none_input_fields': [],
-                           'none_widget_fields': [],
-                           'output_slot_names': {}},
- 'referencelatent': {'id': '13',
-                     'uid': 'n15',
-                     'class_type': 'ReferenceLatent',
-                     'native_ports': {'native_input_names': ['latent', 'conditioning'],
-                                      'native_output_names': ['CONDITIONING'],
-                                      'native_input_types': ['LATENT', 'CONDITIONING'],
-                                      'native_output_types': ['CONDITIONING'],
-                                      'native_input_optional': [True, False],
-                                      'native_input_asset_kinds': None,
-                                      'native_output_slots': None},
-                     'metadata': {'provenance': 'agent_authored',
-                                  'output_names': ['CONDITIONING'],
-                                  'keep_defaults': ['conditioning', 'latent']},
-                     'widget_channels': {},
-                     'none_input_fields': [],
-                     'none_widget_fields': [],
-                     'output_slot_names': {}},
- 'referencelatent_2': {'id': '14',
-                       'uid': 'n16',
-                       'class_type': 'ReferenceLatent',
-                       'native_ports': {'native_input_names': ['latent', 'conditioning'],
-                                        'native_output_names': ['CONDITIONING'],
-                                        'native_input_types': ['LATENT', 'CONDITIONING'],
-                                        'native_output_types': ['CONDITIONING'],
-                                        'native_input_optional': [True, False],
-                                        'native_input_asset_kinds': None,
-                                        'native_output_slots': None},
-                       'metadata': {'provenance': 'agent_authored',
-                                    'output_names': ['CONDITIONING'],
-                                    'keep_defaults': ['conditioning', 'latent']},
-                       'widget_channels': {},
-                       'none_input_fields': [],
-                       'none_widget_fields': [],
-                       'output_slot_names': {}},
- 'flux2scheduler_2': {'id': '28',
-                      'uid': 'n30',
-                      'class_type': 'Flux2Scheduler',
-                      'native_ports': {'native_input_names': ['steps', 'width', 'height'],
-                                       'native_output_names': ['SIGMAS'],
-                                       'native_input_types': ['INT', 'INT', 'INT'],
-                                       'native_output_types': ['SIGMAS'],
-                                       'native_input_optional': [False, False, False],
-                                       'native_input_asset_kinds': None,
-                                       'native_output_slots': None},
-                      'metadata': {'provenance': 'agent_authored',
-                                   'output_names': ['SIGMAS'],
-                                   'keep_defaults': ['height', 'steps', 'width']},
-                      'widget_channels': {},
-                      'none_input_fields': [],
-                      'none_widget_fields': [],
-                      'output_slot_names': {}},
- 'emptyflux2latentimage_2': {'id': '29',
-                             'uid': 'n31',
-                             'class_type': 'EmptyFlux2LatentImage',
-                             'native_ports': {'native_input_names': ['width', 'height', 'batch_size'],
-                                              'native_output_names': ['LATENT'],
-                                              'native_input_types': ['INT', 'INT', 'INT'],
-                                              'native_output_types': ['LATENT'],
-                                              'native_input_optional': [False, False, False],
-                                              'native_input_asset_kinds': None,
-                                              'native_output_slots': None},
-                             'metadata': {'provenance': 'agent_authored',
-                                          'output_names': ['LATENT'],
-                                          'keep_defaults': ['height', 'width']},
-                             'widget_channels': {},
-                             'none_input_fields': [],
-                             'none_widget_fields': [],
-                             'output_slot_names': {}},
- 'referencelatent_3': {'id': '31',
-                       'uid': 'n33',
-                       'class_type': 'ReferenceLatent',
-                       'native_ports': {'native_input_names': ['latent', 'conditioning'],
-                                        'native_output_names': ['CONDITIONING'],
-                                        'native_input_types': ['LATENT', 'CONDITIONING'],
-                                        'native_output_types': ['CONDITIONING'],
-                                        'native_input_optional': [True, False],
-                                        'native_input_asset_kinds': None,
-                                        'native_output_slots': None},
-                       'metadata': {'provenance': 'agent_authored',
-                                    'output_names': ['CONDITIONING'],
-                                    'keep_defaults': ['conditioning', 'latent']},
-                       'widget_channels': {},
-                       'none_input_fields': [],
-                       'none_widget_fields': [],
-                       'output_slot_names': {}},
- 'referencelatent_4': {'id': '32',
-                       'uid': 'n34',
-                       'class_type': 'ReferenceLatent',
-                       'native_ports': {'native_input_names': ['latent', 'conditioning'],
-                                        'native_output_names': ['CONDITIONING'],
-                                        'native_input_types': ['LATENT', 'CONDITIONING'],
-                                        'native_output_types': ['CONDITIONING'],
-                                        'native_input_optional': [True, False],
-                                        'native_input_asset_kinds': None,
-                                        'native_output_slots': None},
-                       'metadata': {'provenance': 'agent_authored',
-                                    'output_names': ['CONDITIONING'],
-                                    'keep_defaults': ['conditioning', 'latent']},
-                       'widget_channels': {},
-                       'none_input_fields': [],
-                       'none_widget_fields': [],
-                       'output_slot_names': {}},
- 'cfgguider': {'id': '15',
-               'uid': 'n17',
-               'class_type': 'CFGGuider',
-               'native_ports': {'native_input_names': ['cfg', 'model', 'negative', 'positive'],
-                                'native_output_names': ['GUIDER'],
-                                'native_input_types': ['FLOAT', 'MODEL', 'CONDITIONING', 'CONDITIONING'],
-                                'native_output_types': ['GUIDER'],
-                                'native_input_optional': [False, False, False, False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['GUIDER'],
-                            'keep_defaults': ['cfg', 'model', 'negative', 'positive']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'referencelatent_5': {'id': '34',
-                       'uid': 'n36',
-                       'class_type': 'ReferenceLatent',
-                       'native_ports': {'native_input_names': ['latent', 'conditioning'],
-                                        'native_output_names': ['CONDITIONING'],
-                                        'native_input_types': ['LATENT', 'CONDITIONING'],
-                                        'native_output_types': ['CONDITIONING'],
-                                        'native_input_optional': [True, False],
-                                        'native_input_asset_kinds': None,
-                                        'native_output_slots': None},
-                       'metadata': {'provenance': 'agent_authored',
-                                    'output_names': ['CONDITIONING'],
-                                    'keep_defaults': ['conditioning', 'latent']},
-                       'widget_channels': {},
-                       'none_input_fields': [],
-                       'none_widget_fields': [],
-                       'output_slot_names': {}},
- 'referencelatent_6': {'id': '35',
-                       'uid': 'n37',
-                       'class_type': 'ReferenceLatent',
-                       'native_ports': {'native_input_names': ['latent', 'conditioning'],
-                                        'native_output_names': ['CONDITIONING'],
-                                        'native_input_types': ['LATENT', 'CONDITIONING'],
-                                        'native_output_types': ['CONDITIONING'],
-                                        'native_input_optional': [True, False],
-                                        'native_input_asset_kinds': None,
-                                        'native_output_slots': None},
-                       'metadata': {'provenance': 'agent_authored',
-                                    'output_names': ['CONDITIONING'],
-                                    'keep_defaults': ['conditioning', 'latent']},
-                       'widget_channels': {},
-                       'none_input_fields': [],
-                       'none_widget_fields': [],
-                       'output_slot_names': {}},
- 'samplercustomadvanced': {'id': '16',
-                           'uid': 'n18',
-                           'class_type': 'SamplerCustomAdvanced',
-                           'native_ports': {'native_input_names': ['noise',
-                                                                   'guider',
-                                                                   'sampler',
-                                                                   'sigmas',
-                                                                   'latent_image'],
-                                            'native_output_names': ['OUTPUT', 'DENOISED_OUTPUT'],
-                                            'native_input_types': ['NOISE',
-                                                                   'GUIDER',
-                                                                   'SAMPLER',
-                                                                   'SIGMAS',
-                                                                   'LATENT'],
-                                            'native_output_types': ['LATENT', 'LATENT'],
-                                            'native_input_optional': [False, False, False, False, False],
-                                            'native_input_asset_kinds': None,
-                                            'native_output_slots': None},
-                           'metadata': {'provenance': 'agent_authored',
-                                        'output_names': ['OUTPUT', 'DENOISED_OUTPUT'],
-                                        'keep_defaults': ['guider',
-                                                          'latent_image',
-                                                          'noise',
-                                                          'sampler',
-                                                          'sigmas']},
-                           'widget_channels': {},
-                           'none_input_fields': [],
-                           'none_widget_fields': [],
-                           'output_slot_names': {}},
- 'cfgguider_2': {'id': '36',
-                 'uid': 'n38',
-                 'class_type': 'CFGGuider',
-                 'native_ports': {'native_input_names': ['cfg', 'model', 'negative', 'positive'],
-                                  'native_output_names': ['GUIDER'],
-                                  'native_input_types': ['FLOAT', 'MODEL', 'CONDITIONING', 'CONDITIONING'],
-                                  'native_output_types': ['GUIDER'],
-                                  'native_input_optional': [False, False, False, False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['GUIDER'],
-                              'keep_defaults': ['cfg', 'model', 'negative', 'positive']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'vaedecode': {'id': '17',
-               'uid': 'n19',
-               'class_type': 'VAEDecode',
-               'native_ports': {'native_input_names': ['samples', 'vae'],
-                                'native_output_names': ['IMAGE'],
-                                'native_input_types': ['LATENT', 'VAE'],
-                                'native_output_types': ['IMAGE'],
-                                'native_input_optional': [False, False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['IMAGE'],
-                            'keep_defaults': ['samples', 'vae']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'samplercustomadvanced_2': {'id': '37',
-                             'uid': 'n39',
-                             'class_type': 'SamplerCustomAdvanced',
-                             'native_ports': {'native_input_names': ['noise',
-                                                                     'guider',
-                                                                     'sampler',
-                                                                     'sigmas',
-                                                                     'latent_image'],
-                                              'native_output_names': ['OUTPUT', 'DENOISED_OUTPUT'],
-                                              'native_input_types': ['NOISE',
-                                                                     'GUIDER',
-                                                                     'SAMPLER',
-                                                                     'SIGMAS',
-                                                                     'LATENT'],
-                                              'native_output_types': ['LATENT', 'LATENT'],
-                                              'native_input_optional': [False, False, False, False, False],
-                                              'native_input_asset_kinds': None,
-                                              'native_output_slots': None},
-                             'metadata': {'provenance': 'agent_authored',
-                                          'output_names': ['OUTPUT', 'DENOISED_OUTPUT'],
-                                          'keep_defaults': ['guider',
-                                                            'latent_image',
-                                                            'noise',
-                                                            'sampler',
-                                                            'sigmas']},
-                             'widget_channels': {},
-                             'none_input_fields': [],
-                             'none_widget_fields': [],
-                             'output_slot_names': {}},
- 'saveimage': {'id': '9',
-               'uid': 'n41',
-               'class_type': 'SaveImage',
-               'native_ports': {'native_input_names': ['filename_prefix',
-                                                       'extra_pnginfo',
-                                                       'prompt',
-                                                       'images'],
-                                'native_output_names': None,
-                                'native_input_types': ['STRING', 'EXTRA_PNGINFO', 'PROMPT', 'IMAGE'],
-                                'native_output_types': None,
-                                'native_input_optional': [False, True, True, False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored', 'keep_defaults': ['filename_prefix', 'images']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'vaedecode_2': {'id': '38',
-                 'uid': 'n40',
-                 'class_type': 'VAEDecode',
-                 'native_ports': {'native_input_names': ['samples', 'vae'],
-                                  'native_output_names': ['IMAGE'],
-                                  'native_input_types': ['LATENT', 'VAE'],
-                                  'native_output_types': ['IMAGE'],
-                                  'native_input_optional': [False, False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['IMAGE'],
-                              'keep_defaults': ['samples', 'vae']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'saveimage_2': {'id': '94',
-                 'uid': 'n42',
-                 'class_type': 'SaveImage',
-                 'native_ports': {'native_input_names': ['filename_prefix',
-                                                         'extra_pnginfo',
-                                                         'prompt',
-                                                         'images'],
-                                  'native_output_names': None,
-                                  'native_input_types': ['STRING', 'EXTRA_PNGINFO', 'PROMPT', 'IMAGE'],
-                                  'native_output_types': None,
-                                  'native_input_optional': [False, True, True, False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored', 'keep_defaults': ['filename_prefix', 'images']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}}}
 
 READY_METADATA = ReadyMetadata.build(
     capability='image',
@@ -796,187 +47,197 @@ READY_METADATA = ReadyMetadata.build(
 
 def build() -> VibeWorkflow:
     """Build the workflow (auto-generated)."""
-    wf = new_workflow(READY_METADATA, source_path=__file__, canonical_custody=CANONICAL_CUSTODY)
+    with new_workflow(READY_METADATA, source_path=__file__) as wf:
 
-    # Sampling
-    ksamplerselect_2 = KSamplerSelect(sampler_name=EULER)
+        # Sampling
+        ksamplerselect_2 = KSamplerSelect(sampler_name=EULER)
 
-    # Loaders
-    unetloader_2 = UNETLoader(unet_name=UNET_NAME)
-    cliploader_2 = CLIPLoader(clip_name=CLIP_NAME, type=FLUX2)
-    vaeloader_2 = VAELoader(vae_name=VAE_NAME)
+        # Loaders
+        unetloader_2 = UNETLoader(unet_name=UNET_NAME)
+        cliploader_2 = CLIPLoader(clip_name=CLIP_NAME, type=FLUX2)
+        vaeloader_2 = VAELoader(vae_name=VAE_NAME)
 
-    randomnoise_2 = RandomNoise(
-        noise_seed=DEFAULT_SEED,
-        control_after_generate=RANDOMIZE,
-    )
+        randomnoise_2 = RandomNoise(
+            noise_seed=DEFAULT_SEED,
+            control_after_generate=RANDOMIZE,
+        )
 
-    ksamplerselect = KSamplerSelect(sampler_name=EULER)
+        ksamplerselect = KSamplerSelect(sampler_name=EULER)
 
-    randomnoise = RandomNoise(
-        noise_seed=DEFAULT_SEED_2,
-        control_after_generate=RANDOMIZE,
-    )
+        randomnoise = RandomNoise(
+            noise_seed=DEFAULT_SEED_2,
+            control_after_generate=RANDOMIZE,
+        )
 
-    unetloader = UNETLoader(unet_name=UNET_NAME)
-    cliploader = CLIPLoader(clip_name=CLIP_NAME, type=FLUX2)
-    vaeloader = VAELoader(vae_name=VAE_NAME)
+        unetloader = UNETLoader(unet_name=UNET_NAME)
+        cliploader = CLIPLoader(clip_name=CLIP_NAME, type=FLUX2)
+        vaeloader = VAELoader(vae_name=VAE_NAME)
 
-    # Inputs
-    loadimage = LoadImage(image='handbag_white.png')
-    loadimage_2 = LoadImage(image='comfy_logo_blue.png')
+        # Inputs
+        loadimage = LoadImage(image='handbag_white.png')
+        loadimage_2 = LoadImage(image='comfy_logo_blue.png')
 
-    imagescaletototalpixels_3 = ImageScaleToTotalPixels(
-        upscale_method=NEAREST_EXACT,
-        image=loadimage.out('IMAGE'),
-    )
+        imagescaletototalpixels_3 = ImageScaleToTotalPixels(
+            upscale_method=NEAREST_EXACT,
+            image=loadimage.out('IMAGE'),
+        )
 
-    # Conditioning
-    cliptextencode_2 = CLIPTextEncode(
-        text='Change the bag color to blue.',
-        clip=cliploader_2.out('CLIP'),
-    )
+        # Conditioning
+        cliptextencode_2 = CLIPTextEncode(
+            text='Change the bag color to blue.',
+            clip=cliploader_2.out('CLIP'),
+        )
 
-    imagescaletototalpixels = ImageScaleToTotalPixels(
-        upscale_method=NEAREST_EXACT,
-        image=loadimage_2.out('IMAGE'),
-    )
+        imagescaletototalpixels = ImageScaleToTotalPixels(
+            upscale_method=NEAREST_EXACT,
+            image=loadimage_2.out('IMAGE'),
+        )
 
-    imagescaletototalpixels_2 = ImageScaleToTotalPixels(
-        upscale_method=NEAREST_EXACT,
-        image=loadimage.out('IMAGE'),
-    )
+        imagescaletototalpixels_2 = ImageScaleToTotalPixels(
+            upscale_method=NEAREST_EXACT,
+            image=loadimage.out('IMAGE'),
+        )
 
-    cliptextencode = CLIPTextEncode(text=DEFAULT_PROMPT, clip=cliploader.out('CLIP'))
-    getimagesize = GetImageSize(image=imagescaletototalpixels_3.out('IMAGE'))
+        cliptextencode = CLIPTextEncode(
+            text=DEFAULT_PROMPT,
+            clip=cliploader.out('CLIP'),
+        )
 
-    conditioningzeroout = ConditioningZeroOut(
-        conditioning=cliptextencode_2.out('CONDITIONING'),
-    )
+        getimagesize = GetImageSize(image=imagescaletototalpixels_3.out('IMAGE'))
 
-    getimagesize_2 = GetImageSize(image=imagescaletototalpixels_2.out('IMAGE'))
+        conditioningzeroout = ConditioningZeroOut(
+            conditioning=cliptextencode_2.out('CONDITIONING'),
+        )
 
-    conditioningzeroout_2 = ConditioningZeroOut(
-        conditioning=cliptextencode.out('CONDITIONING'),
-    )
+        getimagesize_2 = GetImageSize(image=imagescaletototalpixels_2.out('IMAGE'))
 
-    vaeencode_2 = VAEEncode(
-        pixels=imagescaletototalpixels_2.out('IMAGE'),
-        vae=vaeloader.out('VAE'),
-    )
+        conditioningzeroout_2 = ConditioningZeroOut(
+            conditioning=cliptextencode.out('CONDITIONING'),
+        )
 
-    vaeencode_3 = VAEEncode(
-        pixels=imagescaletototalpixels.out('IMAGE'),
-        vae=vaeloader.out('VAE'),
-    )
+        vaeencode_2 = VAEEncode(
+            pixels=imagescaletototalpixels_2.out('IMAGE'),
+            vae=vaeloader.out('VAE'),
+        )
 
-    vaeencode = VAEEncode(
-        pixels=imagescaletototalpixels_3.out('IMAGE'),
-        vae=vaeloader_2.out('VAE'),
-    )
+        vaeencode_3 = VAEEncode(
+            pixels=imagescaletototalpixels.out('IMAGE'),
+            vae=vaeloader.out('VAE'),
+        )
 
-    flux2scheduler = Flux2Scheduler(
-        steps=4,
-        width=getimagesize.out('WIDTH'),
-        height=getimagesize.out('HEIGHT'),
-    )
+        vaeencode = VAEEncode(
+            pixels=imagescaletototalpixels_3.out('IMAGE'),
+            vae=vaeloader_2.out('VAE'),
+        )
 
-    emptyflux2latentimage = EmptyFlux2LatentImage(
-        width=getimagesize.out('WIDTH'),
-        height=getimagesize.out('HEIGHT'),
-    )
+        flux2scheduler = Flux2Scheduler(
+            steps=4,
+            width=getimagesize.out('WIDTH'),
+            height=getimagesize.out('HEIGHT'),
+        )
 
-    referencelatent = ReferenceLatent(
-        conditioning=cliptextencode_2.out('CONDITIONING'),
-        latent=vaeencode.out('LATENT'),
-    )
+        emptyflux2latentimage = EmptyFlux2LatentImage(
+            width=getimagesize.out('WIDTH'),
+            height=getimagesize.out('HEIGHT'),
+        )
 
-    referencelatent_2 = ReferenceLatent(
-        conditioning=conditioningzeroout.out('CONDITIONING'),
-        latent=vaeencode.out('LATENT'),
-    )
+        referencelatent = ReferenceLatent(
+            conditioning=cliptextencode_2.out('CONDITIONING'),
+            latent=vaeencode.out('LATENT'),
+        )
 
-    flux2scheduler_2 = Flux2Scheduler(
-        steps=4,
-        width=getimagesize_2.out('WIDTH'),
-        height=getimagesize_2.out('HEIGHT'),
-    )
+        referencelatent_2 = ReferenceLatent(
+            conditioning=conditioningzeroout.out('CONDITIONING'),
+            latent=vaeencode.out('LATENT'),
+        )
 
-    emptyflux2latentimage_2 = EmptyFlux2LatentImage(
-        width=getimagesize_2.out('WIDTH'),
-        height=getimagesize_2.out('HEIGHT'),
-    )
+        flux2scheduler_2 = Flux2Scheduler(
+            steps=4,
+            width=getimagesize_2.out('WIDTH'),
+            height=getimagesize_2.out('HEIGHT'),
+        )
 
-    referencelatent_3 = ReferenceLatent(
-        conditioning=conditioningzeroout_2.out('CONDITIONING'),
-        latent=vaeencode_2.out('LATENT'),
-    )
+        emptyflux2latentimage_2 = EmptyFlux2LatentImage(
+            width=getimagesize_2.out('WIDTH'),
+            height=getimagesize_2.out('HEIGHT'),
+        )
 
-    referencelatent_4 = ReferenceLatent(
-        conditioning=cliptextencode.out('CONDITIONING'),
-        latent=vaeencode_2.out('LATENT'),
-    )
+        referencelatent_3 = ReferenceLatent(
+            conditioning=conditioningzeroout_2.out('CONDITIONING'),
+            latent=vaeencode_2.out('LATENT'),
+        )
 
-    cfgguider = CFGGuider(
-        cfg=GUIDE_STRENGTH,
-        model=unetloader_2.out('MODEL'),
-        negative=referencelatent_2.out('CONDITIONING'),
-        positive=referencelatent.out('CONDITIONING'),
-    )
+        referencelatent_4 = ReferenceLatent(
+            conditioning=cliptextencode.out('CONDITIONING'),
+            latent=vaeencode_2.out('LATENT'),
+        )
 
-    referencelatent_5 = ReferenceLatent(
-        conditioning=referencelatent_3.out('CONDITIONING'),
-        latent=vaeencode_3.out('LATENT'),
-    )
+        cfgguider = CFGGuider(
+            cfg=GUIDE_STRENGTH,
+            model=unetloader_2.out('MODEL'),
+            negative=referencelatent_2.out('CONDITIONING'),
+            positive=referencelatent.out('CONDITIONING'),
+        )
 
-    referencelatent_6 = ReferenceLatent(
-        conditioning=referencelatent_4.out('CONDITIONING'),
-        latent=vaeencode_3.out('LATENT'),
-    )
+        referencelatent_5 = ReferenceLatent(
+            conditioning=referencelatent_3.out('CONDITIONING'),
+            latent=vaeencode_3.out('LATENT'),
+        )
 
-    samplercustomadvanced = SamplerCustomAdvanced(
-        guider=cfgguider.out('GUIDER'),
-        latent_image=emptyflux2latentimage.out('LATENT'),
-        noise=randomnoise_2.out('NOISE'),
-        sampler=ksamplerselect_2.out('SAMPLER'),
-        sigmas=flux2scheduler.out('SIGMAS'),
-    )
+        referencelatent_6 = ReferenceLatent(
+            conditioning=referencelatent_4.out('CONDITIONING'),
+            latent=vaeencode_3.out('LATENT'),
+        )
 
-    cfgguider_2 = CFGGuider(
-        cfg=GUIDE_STRENGTH,
-        model=unetloader.out('MODEL'),
-        negative=referencelatent_5.out('CONDITIONING'),
-        positive=referencelatent_6.out('CONDITIONING'),
-    )
+        samplercustomadvanced = SamplerCustomAdvanced(
+            guider=cfgguider.out('GUIDER'),
+            latent_image=emptyflux2latentimage.out('LATENT'),
+            noise=randomnoise_2.out('NOISE'),
+            sampler=ksamplerselect_2.out('SAMPLER'),
+            sigmas=flux2scheduler.out('SIGMAS'),
+        )
 
-    # Decode
-    vaedecode = VAEDecode(
-        samples=samplercustomadvanced.out('OUTPUT'),
-        vae=vaeloader_2.out('VAE'),
-    )
+        cfgguider_2 = CFGGuider(
+            cfg=GUIDE_STRENGTH,
+            model=unetloader.out('MODEL'),
+            negative=referencelatent_5.out('CONDITIONING'),
+            positive=referencelatent_6.out('CONDITIONING'),
+        )
 
-    samplercustomadvanced_2 = SamplerCustomAdvanced(
-        guider=cfgguider_2.out('GUIDER'),
-        latent_image=emptyflux2latentimage_2.out('LATENT'),
-        noise=randomnoise.out('NOISE'),
-        sampler=ksamplerselect.out('SAMPLER'),
-        sigmas=flux2scheduler_2.out('SIGMAS'),
-    )
+        # Decode
+        vaedecode = VAEDecode(
+            samples=samplercustomadvanced.out('OUTPUT'),
+            vae=vaeloader_2.out('VAE'),
+        )
 
-    # Outputs
-    saveimage = SaveImage(filename_prefix='Flux2-Klein', images=vaedecode.out('IMAGE'))
+        samplercustomadvanced_2 = SamplerCustomAdvanced(
+            guider=cfgguider_2.out('GUIDER'),
+            latent_image=emptyflux2latentimage_2.out('LATENT'),
+            noise=randomnoise.out('NOISE'),
+            sampler=ksamplerselect.out('SAMPLER'),
+            sigmas=flux2scheduler_2.out('SIGMAS'),
+        )
 
-    vaedecode_2 = VAEDecode(
-        samples=samplercustomadvanced_2.out('OUTPUT'),
-        vae=vaeloader.out('VAE'),
-    )
+        # Outputs
+        saveimage = SaveImage(
+            filename_prefix='Flux2-Klein',
+            images=vaedecode.out('IMAGE'),
+        )
 
-    saveimage_2 = SaveImage(
-        filename_prefix='Flux2-Klein',
-        images=vaedecode_2.out('IMAGE'),
-    )
+        vaedecode_2 = VAEDecode(
+            samples=samplercustomadvanced_2.out('OUTPUT'),
+            vae=vaeloader.out('VAE'),
+        )
 
-    wf = wf.finalize(PUBLIC_INPUT_METADATA, canonical_outputs=[{'node': saveimage, 'output_type': 'SaveImage', 'name': 'image', 'artifact_kind': 'image', 'mime_type': 'image/png', 'filename_prefix': 'Flux2-Klein', 'expected_cardinality': 'one'}, {'node': saveimage_2, 'output_type': 'SaveImage', 'name': None, 'artifact_kind': None, 'mime_type': None, 'filename_prefix': None, 'expected_cardinality': None}], canonical_requirements={'models': ['flux-2-klein-4b-fp8.safetensors', 'flux2-vae.safetensors', 'qwen_3_4b.safetensors'], 'custom_nodes': [], 'missing_models': [], 'missing_nodes': [], 'unsupported': []}, canonical_custody=CANONICAL_CUSTODY, canonical_bindings={'ksamplerselect_2': ksamplerselect_2, 'unetloader_2': unetloader_2, 'cliploader_2': cliploader_2, 'vaeloader_2': vaeloader_2, 'randomnoise_2': randomnoise_2, 'ksamplerselect': ksamplerselect, 'randomnoise': randomnoise, 'unetloader': unetloader, 'cliploader': cliploader, 'vaeloader': vaeloader, 'loadimage': loadimage, 'loadimage_2': loadimage_2, 'imagescaletototalpixels_3': imagescaletototalpixels_3, 'cliptextencode_2': cliptextencode_2, 'imagescaletototalpixels': imagescaletototalpixels, 'imagescaletototalpixels_2': imagescaletototalpixels_2, 'cliptextencode': cliptextencode, 'getimagesize': getimagesize, 'conditioningzeroout': conditioningzeroout, 'getimagesize_2': getimagesize_2, 'conditioningzeroout_2': conditioningzeroout_2, 'vaeencode_2': vaeencode_2, 'vaeencode_3': vaeencode_3, 'vaeencode': vaeencode, 'flux2scheduler': flux2scheduler, 'emptyflux2latentimage': emptyflux2latentimage, 'referencelatent': referencelatent, 'referencelatent_2': referencelatent_2, 'flux2scheduler_2': flux2scheduler_2, 'emptyflux2latentimage_2': emptyflux2latentimage_2, 'referencelatent_3': referencelatent_3, 'referencelatent_4': referencelatent_4, 'cfgguider': cfgguider, 'referencelatent_5': referencelatent_5, 'referencelatent_6': referencelatent_6, 'samplercustomadvanced': samplercustomadvanced, 'cfgguider_2': cfgguider_2, 'vaedecode': vaedecode, 'samplercustomadvanced_2': samplercustomadvanced_2, 'saveimage': saveimage, 'vaedecode_2': vaedecode_2, 'saveimage_2': saveimage_2})
-    wf.strict_types = False
-    return wf
+        saveimage_2 = SaveImage(
+            filename_prefix='Flux2-Klein',
+            images=vaedecode_2.out('IMAGE'),
+        )
+
+        wf = wf.finalize(PUBLIC_INPUT_METADATA, outputs=[
+        OutputSpec(node=saveimage, output_type='SaveImage', name='image', artifact_kind='image', mime_type='image/png', filename_prefix='Flux2-Klein', expected_cardinality='one'),
+        OutputSpec(node=saveimage_2, output_type='SaveImage'),
+    ])
+        wf.strict_types = False
+        return wf
 

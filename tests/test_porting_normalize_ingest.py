@@ -359,7 +359,7 @@ def test_t06_ui_links_are_exact_and_capture_set_get_before_projection() -> None:
     workflow = from_ui(raw, use_comfy_converter=False)
     assert workflow.virtual_wires["BUS"]["legs"] == [{
         "scope_path": "", "leg_index": 0, "occurrence_index": 0,
-        "from_node": "1", "from_output": "0", "to_node": "4", "to_input": "value",
+        "from_node": "1", "from_output": "out", "to_node": "4", "to_input": "value",
     }]
     malformed = {**raw, "links": [[1, 1, 0, 2, 0]]}
     with pytest.raises(ValueError, match="exact six-field"):
@@ -1791,15 +1791,17 @@ def test_ingest_workflow_and_ui_accepts_api_prompt_dict() -> None:
     assert normalized["links"], "API edges must become canonical UI links"
 
 
-def test_ir_door_rejects_subgraph_fixture_native_boundary_payloads() -> None:
+def test_ir_door_expands_supported_subgraph_fixture_native_boundary_payloads() -> None:
     path = Path(__file__).parent / "fixtures/agent_edit/subgraphed_wan_i2v.json"
     raw = json.loads(path.read_bytes())
-    with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-        from_ui(raw, source_path=str(path), use_comfy_converter=False)
+    workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
+    assert workflow.nodes
+    assert any("::" in node_id for node_id in workflow.nodes)
+    assert not any(node.class_type == raw["definitions"]["subgraphs"][0]["id"] for node in workflow.nodes.values())
 
 
 def test_ir_door_exact_json_equality_across_the_spike_corpus() -> None:
-    """Law 1: exact ``json.dumps`` equality for the three spike corpus files."""
+    """Law 1: exact equality for ordinary sources; native graphs materialize."""
     import warnings as _warnings
 
     from vibecomfy.porting.emit.ui import emit_ui_json as _emit
@@ -1826,8 +1828,16 @@ def test_ir_door_exact_json_equality_across_the_spike_corpus() -> None:
             emitted = from_envelope(raw).to_envelope()
         else:
             if path.name == "subgraphed_wan_i2v.json":
-                with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-                    from_ui(raw, source_path=str(path), use_comfy_converter=False)
+                workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
+                with _warnings.catch_warnings():
+                    _warnings.simplefilter("ignore")
+                    emitted = _emit(workflow)
+                assert emitted["nodes"]
+                assert "definitions" not in emitted
+                assert not any(
+                    str(link[1]) in {"-10", "-20"} or str(link[3]) in {"-10", "-20"}
+                    for link in emitted["links"]
+                )
                 continue
             workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
             with _warnings.catch_warnings():

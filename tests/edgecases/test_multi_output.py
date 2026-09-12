@@ -33,8 +33,8 @@ def test_multi_output_node_edges_preserved() -> None:
     # canonical source has no post-build replay tail or graph API calls.
     text = result.text
     assert "wf.connect(" not in text
-    assert "images=loadimage.out('image')" in text
-    assert "images=loadimage.out('mask')" in text
+    assert "images=loadimage.out('IMAGE')" in text
+    assert "images=loadimage.out('MASK')" in text
 
 
 def test_single_output_node_no_edge_ambiguity() -> None:

@@ -114,6 +114,26 @@ comparisons. Cover:
   rehearsal, without treating mocked providers or browser boot as lifecycle
   proof.
 
+### Astra follow-up: admission is not lifecycle closure
+
+The source-contract regressions are only the first rung: an admitted workflow
+is not successful until its independently expected values, fanout, output slots,
+public outputs, identity, recursive structure, notes and presentation survive
+Python/companion generation, rebuild, a meaningful edit, save/reload, UI export
+and deterministic regeneration. Replay each original positive after its
+minimized fix. The depth-two fixture must exercise repeated instances,
+local/global lookup, absent versus explicit `""`/`0`/`false` overrides, sibling
+isolation, unused definitions and nonzero outputs through that lifecycle.
+
+Also extend the existing owners' tests for frozen schema/registry/copy-to-recipe
+consumers, control-after-generate, aliases, model-string edits, helper/reroute
+and note preservation, wrong-value/wrong-target/omitted-fanout/cross-sibling
+counterexamples, and full-file cleanliness. These are deterministic test
+oracles, not extra model-oracle calls. The selected Python 3.11.16 environment
+is authoritative; the worktree Python 3.9 environment is invalid. Case 14's
+skipped frontend experiment is an evidence blocker, not an accepted refusal;
+the prior `MISSING_COMFYUI` lifecycle receipt likewise cannot close T2/E2.
+
 Retain the existing full offline suite, focused source-shape/semantic/identity
 checks, H3 inspection and configured review contract. A required unavailable
 boundary remains an evidence gap. The acceptance target is behavior and

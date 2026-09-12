@@ -205,7 +205,7 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
         outer_values = door_get_widgets_values(original, [])
         if not isinstance(outer_values, list):
             _fail("outer instance has malformed widgets_values")
-        widget_boundary_indices: list[int] = []
+        widget_boundaries: list[tuple[str, list[tuple[dict[str, Any], int]]]] = []
         boundary_targets: dict[int, tuple[str, int]] = {}
         boundary_names: dict[Any, str] = {}
         for entry in boundary_inputs:
@@ -214,6 +214,8 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             edges = [native_by_id.get(lid) for lid in entry["linkIds"]]
             if any(edge is None or edge[1] != "-10" for edge in edges):
                 _fail(f"input {entry.get('name')!r} is not backed by -10")
+            if len({edge[2] for edge in edges if edge is not None}) != 1:
+                _fail(f"ambiguous native input mapping for {entry.get('name')!r}")
             for lid in entry["linkIds"]:
                 boundary_names[lid] = str(entry["name"])
             widgets: list[tuple[dict[str, Any], int]] = []
@@ -229,19 +231,67 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
                     assert info is not None
                     widgets.append(info)
             if widgets:
-                if len(edges) > 1:
-                    _fail(f"ambiguous widget boundary for {entry.get('name')!r}")
-                widget_boundary_indices.append(len(widget_boundary_indices))
+                # A public input can fan out to multiple widget and ordinary
+                # sockets (for example a model filename feeding three
+                # loaders, or a prompt feeding a concatenator and a bypass
+                # switch).  The common native origin slot check above proves
+                # that these are one public value with fan-out, not competing
+                # boundary meanings.
+                widget_boundaries.append((str(entry["name"]), widgets))
                 name = str(entry["name"])
                 outer = outer_inputs.get(name)
                 source_link = outer.get("link") if outer is not None else None
-                if source_link is None:
-                    if len(widget_boundary_indices) - 1 >= len(outer_values):
-                        _fail(f"missing instance widget for {name!r}")
-                    for target_node, target_pos in widgets:
-                        door_setdefault_widgets_values(target_node, [])[target_pos] = deepcopy(outer_values[len(widget_boundary_indices) - 1])
-                elif source_link not in root_by_id:
+                if source_link is not None and source_link not in root_by_id:
                     _fail(f"outer link {source_link!r} is missing")
+        # Older native serializations carry effective proxy values on the
+        # instance.  Newer ones omit that redundant list and retain the
+        # authored values on the inner widget nodes.  Consume the instance
+        # roster only when it is complete and therefore positionally
+        # authoritative; an absent roster is an explicit "use inner values"
+        # case, not a missing-widget error.
+        if outer_values:
+            proxy_widgets = (
+                original.get("properties", {}).get("proxyWidgets")
+                if isinstance(original.get("properties"), Mapping)
+                else None
+            )
+            proxy_positions: dict[str, int] = {}
+            if isinstance(proxy_widgets, list):
+                proxy_positions = {
+                    str(item[1]): index
+                    for index, item in enumerate(proxy_widgets)
+                    if isinstance(item, (list, tuple))
+                    and len(item) >= 2
+                    and str(item[0]) == "-1"
+                    and isinstance(item[1], str)
+                }
+                if len(proxy_positions) != sum(
+                    1
+                    for item in proxy_widgets
+                    if isinstance(item, (list, tuple))
+                    and len(item) >= 2
+                    and str(item[0]) == "-1"
+                    and isinstance(item[1], str)
+                ):
+                    _fail("ambiguous native proxy widget roster")
+            if proxy_positions:
+                if len(outer_values) <= max(proxy_positions.values()):
+                    _fail("ambiguous native widget value roster")
+                assignments = [
+                    (outer_values[proxy_positions[name]], widgets)
+                    for name, widgets in widget_boundaries
+                    if name in proxy_positions
+                ]
+                if len(assignments) != len(widget_boundaries):
+                    _fail("native widget value has no declared proxy identity")
+            else:
+                if len(outer_values) != len(widget_boundaries):
+                    _fail("ambiguous native widget value roster")
+                assignments = list(zip(outer_values, (widgets for _name, widgets in widget_boundaries)))
+            for value, widgets in assignments:
+                for target_node, target_pos in widgets:
+                    target_values = door_setdefault_widgets_values(target_node, [])
+                    target_values[target_pos] = deepcopy(value)
         # Rewrite all ordinary inner links and boundary inputs.
         for edge in native:
             if edge[3] != "-20":
@@ -276,10 +326,17 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             rebuilt_links.append((source_link, source[1], source[2], renamed[target_id], target_slot, source[5]))
         # Replace output boundary links at their existing root consumer(s).
         for output_index, entry in enumerate(boundary_outputs):
-            if not isinstance(entry, Mapping) or not isinstance(entry.get("linkIds"), list) or len(entry["linkIds"]) > 1:
+            if not isinstance(entry, Mapping) or not isinstance(entry.get("linkIds"), list):
                 _fail("ambiguous or malformed native output mapping")
             if not entry["linkIds"]:
                 continue
+            # Some ComfyUI frontend versions serialize one boundary output's
+            # link id once per presentation occurrence.  Exact repetition is
+            # still one semantic link record and is safe to canonicalize;
+            # distinct ids would represent competing sources and remain a
+            # fail-closed ambiguity.
+            if len(set(entry["linkIds"])) != 1:
+                _fail("ambiguous or malformed native output mapping")
             lid = entry["linkIds"][0]
             edge = native_by_id.get(lid)
             if edge is None or edge[3] != "-20":
@@ -319,6 +376,8 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
     final_links = []
     for edge in rebuilt_links:
         if edge[0] in seen:
+            while next_link in seen:
+                next_link += 1
             edge = (next_link, *edge[1:]); next_link += 1
         seen.add(edge[0]); final_links.append(edge)
     node_map = {_id(n.get("id")): n for n in rebuilt_nodes}

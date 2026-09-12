@@ -4,6 +4,7 @@ import warnings
 import json
 import re
 import tomllib
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import lru_cache
@@ -45,6 +46,43 @@ def _record_recursive_definition_capture(
     if captured is None:
         return
     captured.append((str(scope_path), tuple(getattr(item, "node", item) for item in nodes)))
+
+
+@contextmanager
+def recursive_definition_scope(workflow: VibeWorkflow):
+    """Temporarily collect recursive constructor products on one workflow.
+
+    The generated source uses this small public context boundary so failed
+    recursive builds restore the caller's capture state without embedding
+    general-purpose exception machinery in the readable Python surface.
+    """
+    previous = getattr(workflow, "_recursive_definition_captures", None)
+    original_nodes = dict(workflow.nodes)
+    original_edges = list(workflow.edges)
+    original_inputs = dict(workflow.inputs)
+    original_outputs = list(workflow.outputs)
+    original_id_map = dict(workflow._id_map)
+    original_uid_counter = workflow._uid_counter
+    rebound = workflow._workflow_context_token is None
+    if rebound:
+        workflow.__enter__()
+    workflow._recursive_definition_captures = []
+    try:
+        yield
+    finally:
+        # Recursive constructors execute through the normal node kernel, which
+        # necessarily appends their temporary products to the active workflow.
+        # Keep those objects available to materialization, then restore the
+        # caller's root IR so nested nodes cannot masquerade as root nodes.
+        workflow.nodes = original_nodes
+        workflow.edges = original_edges
+        workflow.inputs = original_inputs
+        workflow.outputs = original_outputs
+        workflow._id_map = original_id_map
+        workflow._uid_counter = original_uid_counter
+        workflow._recursive_definition_captures = previous
+        if rebound:
+            workflow.__exit__(None, None, None)
 
 
 def materialize_recursive_definitions(
@@ -1295,6 +1333,15 @@ def _finalize_impl(
     if (canonical_custody is None) != (canonical_bindings is None):
         raise ValueError("canonical custody and bindings must be supplied together")
     requirements = bind_kwargs.pop("requirements", None)
+    if requirements is None:
+        # READY_METADATA is the compact JSON-shaped authority for a generated
+        # source.  Preserve its complete requirement witness on a standalone
+        # build as well as on a v2 pair; otherwise a direct SDK round-trip can
+        # silently drop missing-node or explicit-empty declarations before the
+        # companion writer ever gets a chance to retain them.
+        metadata_requirements = metadata.get("requirements")
+        if isinstance(metadata_requirements, Mapping):
+            requirements = metadata_requirements
     if external_custody is not None and requirements is None:
         # v2 keeps the compact requirements declaration in READY_METADATA;
         # use it as the source-side requirement witness without reintroducing
@@ -1367,6 +1414,19 @@ def _finalize_impl(
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
             apply_ready_template_policy(wf, metadata, source_path=str(source_path), requirements=requirements)
+
+    if external_custody is None and isinstance(requirements, Mapping):
+        # A standalone generated source has no companion to restore the
+        # non-runtime requirement fields after ``finalize_metadata`` infers
+        # its local view.  Reapply only fields explicitly present in the
+        # compact READY_METADATA witness; absent fields remain inferred.
+        for key in ("models", "custom_nodes", "missing_models", "missing_nodes", "unsupported"):
+            if key not in requirements:
+                continue
+            value = requirements[key]
+            if not isinstance(value, (list, tuple)):
+                raise TypeError(f"requirements {key!r} must be a sequence")
+            setattr(wf.requirements, key, deepcopy(list(value)))
 
     if canonical_custody is not None:
         # Canonical source carries the complete retained public interface.

@@ -112,7 +112,11 @@ class WorkflowSource:
 
 @dataclass(slots=True)
 class WorkflowRequirements:
-    models: list[str] = field(default_factory=list)
+    # Model assets may retain their source-backed mapping (name/subdir plus
+    # optional provenance) while crossing the ready-template boundary.  The
+    # ordinary inferred path still stores strings; the richer form is needed
+    # when a generated pair must preserve deterministic local targets.
+    models: list[str | Mapping[str, Any]] = field(default_factory=list)
     custom_nodes: list[str] = field(default_factory=list)
     missing_models: list[str] = field(default_factory=list)
     missing_nodes: list[str] = field(default_factory=list)
@@ -4010,7 +4014,24 @@ def _execution_projection(
     projected_nodes = copy.deepcopy(nodes)
     projected_edges = copy.deepcopy(edges)
     existing_edges = {(e.from_node, e.from_output, e.to_node, e.to_input) for e in projected_edges}
-    for virtual_edge in _virtual_wire_edges(projected_nodes, virtual_wires):
+    virtual_edges = _virtual_wire_edges(projected_nodes, virtual_wires)
+    virtual_targets = {(str(edge.to_node), str(edge.to_input)) for edge in virtual_edges}
+    if virtual_targets:
+        # Imported Set/Get capture preserves the helper furniture in the
+        # authored graph but promotes each proven leg to one semantic runtime
+        # edge.  Remove only helper-originated edges into those exact targets
+        # from the execution projection; unrelated helper fan-out remains
+        # available to the normal broadcast resolver.
+        projected_edges = [
+            edge
+            for edge in projected_edges
+            if (str(edge.to_node), str(edge.to_input)) not in virtual_targets
+            or projected_nodes.get(str(edge.from_node)) is None
+            or projected_nodes[str(edge.from_node)].class_type
+            not in {"SetNode", "GetNode", "Reroute", "PrimitiveNode"}
+        ]
+        existing_edges = {(e.from_node, e.from_output, e.to_node, e.to_input) for e in projected_edges}
+    for virtual_edge in virtual_edges:
         key = (virtual_edge.from_node, virtual_edge.from_output, virtual_edge.to_node, virtual_edge.to_input)
         if key not in existing_edges:
             projected_edges.append(virtual_edge)
@@ -4075,6 +4096,7 @@ def _compile_resolved_edge_inputs(
         if not _is_compile_stripped_node(node) and str(node_id) not in dropped_ids
     }
     target_edges: dict[tuple[str, str], list[int]] = {}
+    resolved_edge_sources: dict[tuple[str, str], tuple[list[Any], bool]] = {}
     for edge_index, edge in enumerate(edges):
         target_node_id = str(edge.to_node)
         target_node = nodes.get(target_node_id)
@@ -4116,6 +4138,22 @@ def _compile_resolved_edge_inputs(
         target_key = (target_node_id, str(edge.to_input))
         prior_edge_indices = target_edges.setdefault(target_key, [])
         if prior_edge_indices:
+            prior_source, prior_was_broadcast_helper = resolved_edge_sources[target_key]
+            current_source_node = nodes.get(str(edge.from_node))
+            current_is_broadcast_helper = bool(
+                current_source_node is not None
+                and current_source_node.class_type in {"SetNode", "GetNode"}
+            )
+            # Imported Set/Get capture retains the authored helper edge for
+            # display and also records its proven real endpoint as a semantic
+            # virtual-wire edge.  Those two edges are the same executable
+            # connection after resolution and must not trip single-input
+            # cardinality.  Ordinary duplicate authored edges still fail
+            # closed below.
+            if prior_source == edge_source and (
+                prior_was_broadcast_helper or current_is_broadcast_helper
+            ):
+                continue
             prior_edge_indices.append(edge_index)
             raise WorkflowCompileError(
                 "target_input_cardinality",
@@ -4132,6 +4170,11 @@ def _compile_resolved_edge_inputs(
                 next_action="Disconnect the extra edge or target a distinct input socket before compiling.",
             )
         prior_edge_indices.append(edge_index)
+        source_node = nodes.get(str(edge.from_node))
+        resolved_edge_sources[target_key] = (
+            edge_source,
+            bool(source_node is not None and source_node.class_type in {"SetNode", "GetNode"}),
+        )
         resolved.setdefault(target_node_id, {})[edge.to_input] = edge_source
     return resolved
 

@@ -51,6 +51,15 @@ identity oracles; T2 real ingress/Comfy Node persistence; E2/T4 original
 corpus/H3 validation and final full configured checks. No new task family,
 cleanup prerequisite or review stage; optional unrelated hygiene is deferred.
 
+Astra's final completeness pass adds three explicit checks within these same
+owners: P0 source-UID/provenance-to-companion-to-exported-graph pair integrity
+with missing/swapped/stale-companion and byte-preserving rollback controls; P0
+recursive repeated-build, exception-cleanup, caller-context and sibling
+isolation coverage; and P1 independent corruption counterexamples for values,
+fanout destinations, nonzero output slots and sibling-scope crossings. Do not
+accept digest agreement or build success alone as proof. Case 14 remains
+conditional on the matching frontend load/export experiment.
+
 This table is the amendment's dispatch map; the v5 table below records the
 inherited scopes. The rows were dispatched through the configured roles and
 their evidence is retained in the active run. Ordinary work
@@ -83,6 +92,18 @@ The acceptance target is at least 16 positive original workflows, plus 10/16/17
 as justified refusals, or 17 positives if case 14 is source-proven recoverable.
 No importer-vs-importer agreement, success exit code or mocked runtime seam can
 substitute for source-backed semantic, identity and lifecycle evidence.
+
+The source-contract tests are not completion proof by themselves. E0/T3 and
+E2/T4 must extend them through generated Python/companion rebuild, meaningful
+edit, save/reload, UI export and deterministic regeneration for every positive
+case, with independent expected values/edges/slots/identity/presentation. The
+new depth-two fixture must exercise repeated instances, local/global lookup,
+absent versus explicit `""`/`0`/`false`, sibling isolation, unused definitions
+and nonzero outputs. Add the existing-owner registry/schema/copy-to-recipe,
+helper/reroute, notes, aliases, control-after-generate and counterexample
+oracles without creating a new test framework or review stage. Case 14's
+frontend experiment and actual Comfy Node lifecycle remain evidence blockers
+until established; prior skips do not count as refusals or PASS.
 
 ## Inherited v5 scope
 

@@ -11,6 +11,7 @@ via explicit re-exports so that existing callers are unaffected.
 from __future__ import annotations
 
 import keyword
+import copy
 import re
 import unicodedata
 from collections.abc import Mapping, Sequence
@@ -286,7 +287,13 @@ def _node_output_names(node: Any) -> list[str]:
     The per-slot safety decision for `.out('name')` is made separately by
     `_safe_output_name` during incoming edge formatting.
     """
-    output_names = getattr(node, "metadata", {}).get("output_names")
+    # The node's frozen native roster is source/socket authority.  Provider
+    # metadata may expose a localized display label (for example ``Audio VAE``)
+    # while the authored link names the actual socket ``VAE``.  Prefer the
+    # native roster so registry enrichment cannot make a valid link ambiguous.
+    output_names = getattr(node, "native_output_names", None)
+    if not isinstance(output_names, (list, tuple)):
+        output_names = getattr(node, "metadata", {}).get("output_names")
     if not isinstance(output_names, (list, tuple)):
         return []
     result: list[str] = []
@@ -298,15 +305,28 @@ def _node_output_names(node: Any) -> list[str]:
     return result
 
 
-def _validate_named_output_schema(node: Any, names: list[str]) -> None:
+def _native_output_roster_is_sparse(node: Any) -> bool:
+    roster = getattr(node, "native_output_names", None)
+    return isinstance(roster, (list, tuple)) and any(
+        not isinstance(name, str) or not name.strip() for name in roster
+    )
+
+
+def _validate_named_output_schema(
+    node: Any,
+    names: list[str],
+    *,
+    allow_sparse: bool = False,
+) -> None:
     """Reject ambiguous named output schemas before any ordinal fallback."""
     if not names:
         return
-    if any(not isinstance(name, str) or not name.strip() for name in names):
+    if any(not isinstance(name, str) or not name.strip() for name in names) and not allow_sparse:
         raise ValueError(
             f"malformed_named_output_schema: {node.class_type} contains a blank or non-string output name"
         )
-    if len(set(names)) != len(names):
+    comparable_names = [name for name in names if name.strip()]
+    if len(set(comparable_names)) != len(comparable_names):
         raise ValueError(
             f"malformed_named_output_schema: {node.class_type} contains duplicate output names"
         )
@@ -344,7 +364,11 @@ def _schema_output_names_for_unpack(node: Any) -> list[str]:
     ui_names = _declared_ui_output_names(node)
     metadata_names = _node_output_names(node)
     _validate_named_output_schema(node, ui_names)
-    _validate_named_output_schema(node, metadata_names)
+    _validate_named_output_schema(
+        node,
+        metadata_names,
+        allow_sparse=_native_output_roster_is_sparse(node),
+    )
     cache_names: list[str] = []
     try:
         cache_names = [str(name) for name in _node_local_output_names(node) if str(name)]
@@ -370,7 +394,11 @@ def _declared_output_names_for_call_metadata(node: Any) -> list[str]:
     ui_names = _declared_ui_output_names(node)
     metadata_names = _node_output_names(node)
     _validate_named_output_schema(node, ui_names)
-    _validate_named_output_schema(node, metadata_names)
+    _validate_named_output_schema(
+        node,
+        metadata_names,
+        allow_sparse=_native_output_roster_is_sparse(node),
+    )
     if ui_names and metadata_names and len(ui_names) != len(metadata_names):
         _warn_metadata_ui_output_arity_disagreement(node, metadata_names, ui_names)
     ui_output_count = len(ui_names) if ui_names else None
@@ -602,8 +630,8 @@ def _safe_output_name(
     src_node = workflow_nodes.get(from_node)
     if src_node is None:
         return None
-    output_names = getattr(src_node, "metadata", {}).get("output_names")
-    if not isinstance(output_names, (list, tuple)):
+    output_names = _node_output_names(src_node)
+    if not output_names:
         return None
     if from_slot < 0 or from_slot >= len(output_names):
         raise ValueError(
@@ -625,6 +653,36 @@ def _safe_output_name(
         raise ValueError(
             f"malformed_named_output_schema: {src_node.class_type} marks output {name!r} conflicted"
         )
+    # A generated typed wrapper may use a registry display name while the
+    # authored UI graph carries the node's physical socket name (for example
+    # ``Audio VAE`` versus ``VAE``).  The companion restores the retained
+    # native roster at finalize time, but the constructor must first build
+    # without asking the wrapper to resolve a name it does not declare.  In
+    # that bounded disagreement, preserve the slot and emit ``out(index)``.
+    try:
+        from vibecomfy.porting.emitter import _wrapper_module_for_class
+        if _wrapper_module_for_class(str(src_node.class_type)) is not None:
+            from vibecomfy.templates import _normalized_output_names
+
+            wrapper_names = _normalized_output_names(str(src_node.class_type))
+            normalized_name = name.strip().replace(" ", "_").upper()
+            if wrapper_names and (
+                from_slot >= len(wrapper_names)
+                or normalized_name != wrapper_names[from_slot]
+            ):
+                return None
+            if wrapper_names:
+                # Wrapper schemas use the constructor's normalized socket
+                # spelling (spaces become underscores, with stable casing).
+                # Use that spelling when it denotes the same retained slot so
+                # ``Audio Latent`` remains readable and actually resolvable
+                # as ``AUDIO_LATENT`` in generated Python.
+                return wrapper_names[from_slot]
+    except Exception:
+        # Wrapper lookup is a readability enhancement.  The retained source
+        # roster remains authoritative when the optional static catalog is
+        # unavailable.
+        pass
     return name
 
 
@@ -807,7 +865,10 @@ def _translate_power_lora_loader_widget(key: str, value: Any) -> str | None:
     if index is None:
         return key
     if not _is_power_lora_config(value):
-        return None
+        # An explicit empty slot is authored state, not decorative absence.
+        # Keep it as a positional kwarg so source->Python parity and a later
+        # sidecar-backed rebuild do not silently erase a valid draft.
+        return key if value == "" else None
     return f"lora_{max(1, index - 3)}"
 
 
@@ -994,6 +1055,7 @@ def _node_kwargs(
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
     resolve_graph_strings: bool = True,
     skip_widget_fields: set[str] | None = None,
+    emit_native_ports: bool = False,
 ) -> list[tuple[str, str]]:
     # Lazy imports to avoid circular dependency
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
@@ -1138,12 +1200,25 @@ def _node_kwargs(
 
     out: list[tuple[str, str]] = []
     extras: list[tuple[str, str]] = []
+    if emit_native_ports:
+        native_ports = {
+            key: copy.deepcopy(getattr(node, key, None))
+            for key in (
+                "native_input_names",
+                "native_output_names",
+                "native_input_types",
+                "native_output_types",
+                "native_input_optional",
+                "native_input_asset_kinds",
+                "native_output_slots",
+            )
+        }
+        if any(value is not None for value in native_ports.values()):
+            out.append(("_native_ports", _format_value(native_ports)))
     output_names = _declared_output_names_for_call_metadata(node)
     native_output_names = getattr(node, "native_output_names", None)
-    if (
-        output_names
-        and native_output_names is None
-        and not (omit_single_output_metadata and _is_schema_confirmed_single_output(cls, output_names))
+    if output_names and not (
+        omit_single_output_metadata and _is_schema_confirmed_single_output(cls, output_names)
     ):
         out.append(("_outputs", _format_value(tuple(output_names))))
     for key in ordered_static_keys:

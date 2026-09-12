@@ -133,3 +133,31 @@ Use a malformed authority/boundary case, not a missing model: draft persistence 
 Extend the existing depth-two/repeated-instance subgraph fixture with a real edit to a constructor/default in the emitted nested definition, then reload and re-emit the edited file. Assert the expected effective change, retained per-instance overrides, untouched sibling/scoped UIDs, interface and boundary bindings, fanout and output slots, and API/GraphBuilder parity. Apply the whole-file clean-source/custody checks inside generated definition helpers as well as build(). Keep malformed-boundary refusal coverage. Public-argument overrides alone do not satisfy this source-edit case.
 
 The nested-definition fixture is an optional strong test choice within existing I8/I9, not an additional blocker; other adequate evidence can satisfy the existing contract. E2 produces the required I10 presentation and inspection evidence.
+
+## Astra final repair-completeness adjudication — 2026-09-12
+
+The amended plan is sufficient in scope; Astra identified three explicit
+regression requirements to add within the existing task owners. These are
+completion requirements, not a new framework, task family, review stage or
+budget:
+
+1. **Identity and pair integrity (P0):** prove source UID/provenance →
+   companion → rebuild → exported-graph mappings, including positions and
+   scoped identities; refuse missing, swapped and stale companions; and prove
+   failed publication preserves an existing pair byte-for-byte. A matching
+   regenerated digest alone is insufficient.
+2. **Recursive context recovery (P0):** prove repeated builds, exception
+   cleanup, caller-context restoration and sibling-instance isolation through
+   the existing recursive kernel. Investigate semantic digest differences
+   field-by-field; never weaken these checks to build-success assertions.
+3. **Independent corruption counterexamples (P1):** for each repaired
+   behavior, retain a negative control that changes a value, removes a fanout
+   destination, swaps a nonzero output slot or crosses sibling scope. The
+   virtual-wire contract must continue rejecting distinct competing producers.
+
+The current execution adds these checks under E1/T1/T3 and the existing
+workflow-context, bundle, recursive, output-slot and virtual-wire suites.
+Case 14 remains conditional on the bounded matching-frontend load/export
+experiment; conversion success alone does not establish recovery. Stop on
+identity loss, unexplained semantic drift, leaked context, fabricated or
+dropped endpoints, partial publication or missing lifecycle evidence.

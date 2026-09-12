@@ -37,6 +37,7 @@ _ALLOWED_IMPORTS: dict[str, frozenset[str] | None] = {
             "finalize",
             "new_workflow",
             "node",
+            "recursive_definition_scope",
             "ref",
         }
     ),

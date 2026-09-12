@@ -216,6 +216,7 @@ def port_convert_workflow(
     raw_workflow: dict[str, Any] | None = None,
     keep_virtual_wires: bool = False,
     prune_dead_branches: bool = True,
+    preserve_node_ids: bool = False,
 ) -> PortConvertResult:
     # Keep conversion as an import/emission surface. Helper semantics are
     # lowered only by the shared detached execution projection.
@@ -320,6 +321,7 @@ def port_convert_workflow(
             # separate conversion-time resolver.
             keep_virtual_wires=keep_virtual_wires,
             prune_dead_branches=prune_dead_branches,
+            preserve_node_ids=preserve_node_ids,
         )
         mode: PortConvertMode = "scratchpad"
     else:
@@ -341,6 +343,7 @@ def port_convert_workflow(
             registered_inputs=registered_inputs,
             diagnostics=emission_diagnostics,
             raw_workflow=raw_workflow,
+            preserve_node_ids=preserve_node_ids,
         )
         mode = "ready_template"
 

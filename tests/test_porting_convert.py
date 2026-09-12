@@ -155,7 +155,7 @@ def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
 
     result = port_convert_workflow(wf, validate=False)
     assert wf == before
-    assert "canonical_requirements={'models': ['repeated.safetensors', 'repeated.safetensors', 'second.safetensors']" in result.text
+    assert "canonical_requirements" not in result.text
 
     from vibecomfy.porting.convert import _build_emitted_workflow_from_text
     from vibecomfy.security.provenance import Provenance
@@ -179,7 +179,7 @@ def test_scratchpad_pair_preserves_explicit_empty_model_requirements(tmp_path) -
     wf.requirements.models = []
 
     result = port_convert_workflow(wf, validate=False)
-    assert "canonical_requirements={'models': []" in result.text
+    assert "canonical_requirements" not in result.text
 
     from vibecomfy.porting.convert import _build_emitted_workflow_from_text
     from vibecomfy.security.provenance import Provenance

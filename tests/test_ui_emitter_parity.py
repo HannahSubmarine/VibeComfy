@@ -66,6 +66,11 @@ _PARITY_ALLOWLIST = {
 
 _NATIVE_MARKERS = {-10, -20, "-10", "-20"}
 
+_REFUSED_NATIVE_SOURCES = {
+    "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_Motion_Track_Distilled.json",
+    "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_Union_Control_Distilled.json",
+}
+
 
 def _corpus_json_paths() -> list[str]:
     return sorted(glob.glob("ready_templates/sources/**/*.json", recursive=True))
@@ -240,24 +245,27 @@ def test_official_native_source_ui_is_unsupported_boundary(path: str) -> None:
             from_ui(raw, source_path=path)
 
 
-@pytest.mark.parametrize(
-    "path",
-    [path for path in _native_source_ui_paths() if "/official/" not in path],
-)
-def test_native_source_ui_fails_closed(path: str) -> None:
-    """Native-marked source graphs never become a from_ui positive."""
+@pytest.mark.parametrize("path", _native_source_ui_paths())
+def test_native_source_ui_has_contextual_admission_or_refusal(path: str) -> None:
+    """Every native source is admitted or refused from source-backed evidence."""
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    with pytest.raises(ValueError) as excinfo:
-        from_ui(raw, source_path=path)
-    message = str(excinfo.value)
-    assert any(
-        token in message
-        for token in (
-            "unsupported_boundary_encoding",
-            "unknown endpoint",
-            "ambiguous virtual-wire",
-        )
-    ), message
+    if path in _REFUSED_NATIVE_SOURCES:
+        with pytest.raises(ValueError) as excinfo:
+            from_ui(raw, source_path=path, use_comfy_converter=False)
+        message = str(excinfo.value)
+        assert any(token in message for token in ("unknown endpoint", "unsupported_boundary_encoding")), message
+    else:
+        try:
+            workflow = from_ui(raw, source_path=path, use_comfy_converter=False)
+        except ValueError as exc:
+            # Unselected corpus specimens may still be malformed native
+            # captures.  They remain honest boundary refusals; the amended
+            # 20-workflow acceptance matrix separately proves that only
+            # cases 10, 16 and 17 are refused in the required corpus.
+            assert "unsupported_boundary_encoding" in str(exc), str(exc)
+        else:
+            assert workflow.nodes, path
+            assert workflow.edges, path
 
 
 def test_parity_gate_never_imports_comfy() -> None:

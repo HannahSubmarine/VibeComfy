@@ -1093,12 +1093,17 @@ def _normalize_model_path(value: Any) -> Any:
     return value
 
 
-def _requirements_expr_for_emit(requirements: Mapping[str, Any], *, has_models: bool) -> str | None:
+def _requirements_expr_for_emit(
+    requirements: Mapping[str, Any],
+    *,
+    has_models: bool,
+    preserve_empty_models: bool = False,
+) -> str | None:
     retained: dict[str, Any] = {}
     for key, value in dict(requirements).items():
         if key == "models" and has_models:
             continue
-        if value:
+        if value or (key == "models" and preserve_empty_models and value == []):
             retained[str(key)] = value
     if not retained:
         return None

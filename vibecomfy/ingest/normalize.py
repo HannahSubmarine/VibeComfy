@@ -93,6 +93,34 @@ def canonical_node_widgets_values(node: Mapping[str, Any], default: Any = None) 
     return node.get("widgets_values", default)
 
 
+def canonical_ui_node_identities(candidate: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Extract durable captured-node identities at the LiteGraph ingest door.
+
+    The bundle boundary consumes this normalized witness rather than reading
+    raw ``nodes`` structure itself.  Explicit ``properties.vibecomfy_uid``
+    wins; otherwise the captured LiteGraph id is the durable local identity.
+    """
+    raw_nodes = door_get_nodes(candidate)
+    if not isinstance(raw_nodes, list):
+        return ()
+    identities: list[tuple[str, str]] = []
+    seen_uids: set[str] = set()
+    for raw_node in raw_nodes:
+        if not isinstance(raw_node, Mapping):
+            continue
+        raw_id = raw_node.get("id")
+        if raw_id is None or isinstance(raw_id, bool):
+            continue
+        properties = raw_node.get("properties")
+        explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
+        uid = explicit_uid if isinstance(explicit_uid, str) and explicit_uid.strip() else str(raw_id)
+        if uid in seen_uids:
+            raise ValueError(f"captured UI contains duplicate durable node UID {uid!r}")
+        seen_uids.add(uid)
+        identities.append((str(raw_id), uid))
+    return tuple(identities)
+
+
 import warnings
 
 from vibecomfy._compile._graph import is_canonical_api_link
@@ -1128,6 +1156,30 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
     def capture(nodes: Mapping[str, Any], edges: list[VibeEdge], scope: str) -> dict[str, Any]:
         helper_types = {"SetNode", "GetNode", "Reroute", "PrimitiveNode"}
         by_id = {str(key): value for key, value in nodes.items()}
+
+        def named_output(node: Any, value: Any, wire_name: str) -> str:
+            """Translate an authored numeric output slot using its roster.
+
+            LiteGraph edges serialize slots numerically, while the canonical
+            virtual-wire contract intentionally requires named ports.  Use the
+            source node's own output roster as the only authority; never turn a
+            numeric-looking value into a guessed name or relax the compiler's
+            strict roster checks.
+            """
+            if not isinstance(value, str) or not value.strip().isdigit():
+                return str(value)
+            index = int(value.strip())
+            roster = getattr(node, "native_output_names", None)
+            if isinstance(roster, (list, tuple)) and 0 <= index < len(roster):
+                name = roster[index]
+                if isinstance(name, str) and name.strip():
+                    return name
+            # Preserve the authored numeric slot when no roster exists.  The
+            # canonical resolver will then reject it at the execution boundary
+            # with its existing fail-closed unknown-port error.  Capture must
+            # not invent a name merely because a helper channel was present.
+            return str(value)
+
         incoming: dict[str, list[VibeEdge]] = {key: [] for key in by_id}
         outgoing: dict[str, list[VibeEdge]] = {key: [] for key in by_id}
         for edge in edges:
@@ -1135,6 +1187,33 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
                 raise ValueError(f"virtual wire {scope!r} has an unknown edge endpoint")
             incoming[str(edge.to_node)].append(edge)
             outgoing[str(edge.from_node)].append(edge)
+
+        def terminal_targets(node_id: str, input_name: str, seen: frozenset[str] = frozenset()) -> list[tuple[str, str]]:
+            """Resolve a consumer through transparent route fan-out.
+
+            A Reroute/PrimitiveNode can legitimately fan out to several real
+            consumers.  The previous single-successor check treated that
+            presentation topology as ambiguity and blocked otherwise valid
+            captures.  Branch each evidenced successor independently while
+            retaining cycle protection; source-side traversal remains
+            single-inbound because it identifies one producer path.
+            """
+            node = by_id.get(str(node_id))
+            if node is None:
+                raise ValueError(f"virtual wire {scope!r} has an unknown target endpoint")
+            if node.class_type not in {"Reroute", "PrimitiveNode"}:
+                return [(str(node_id), str(input_name))]
+            if str(node_id) in seen:
+                raise ValueError(f"ambiguous virtual-wire target path at {node_id!r}")
+            following = [edge for edge in outgoing[str(node_id)] if edge.to_input != "widget_0"]
+            if not following:
+                raise ValueError(f"ambiguous virtual-wire target path at {node_id!r}")
+            terminals: list[tuple[str, str]] = []
+            next_seen = seen | {str(node_id)}
+            for edge in following:
+                terminals.extend(terminal_targets(str(edge.to_node), edge.to_input, next_seen))
+            return terminals
+
         sets: dict[str, list[tuple[str, VibeEdge]]] = {}
         gets: dict[str, list[str]] = {}
         for node_id, node in by_id.items():
@@ -1168,7 +1247,6 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
                         continue
                     for consumer in consumers:
                         source_id, source_output = str(producer_edge.from_node), producer_edge.from_output
-                        target_id, target_input = str(consumer.to_node), consumer.to_input
                         # Traverse only evidenced helper passthroughs. This is
                         # capture, not lowering: authored nodes/edges remain.
                         seen: set[str] = set()
@@ -1178,18 +1256,13 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
                             seen.add(source_id)
                             prior = incoming[source_id][0]
                             source_id, source_output = str(prior.from_node), prior.from_output
-                        seen.clear()
-                        while by_id[target_id].class_type in {"Reroute", "PrimitiveNode"}:
-                            if target_id in seen or len(outgoing[target_id]) != 1:
-                                raise ValueError(f"ambiguous virtual-wire target path at {target_id!r}")
-                            seen.add(target_id)
-                            following = outgoing[target_id][0]
-                            target_id, target_input = str(following.to_node), following.to_input
-                        if by_id[source_id].class_type in helper_types or by_id[target_id].class_type in helper_types:
-                            raise ValueError(f"virtual-wire {name!r} has no real producer/consumer")
-                        legs.append({"scope_path": scope, "leg_index": len(legs), "occurrence_index": 0,
-                                     "from_node": source_id, "from_output": source_output,
-                                     "to_node": target_id, "to_input": target_input})
+                        for target_id, target_input in terminal_targets(str(consumer.to_node), consumer.to_input):
+                            if by_id[source_id].class_type in helper_types or by_id[target_id].class_type in helper_types:
+                                raise ValueError(f"virtual-wire {name!r} has no real producer/consumer")
+                            resolved_output = named_output(by_id[source_id], source_output, name)
+                            legs.append({"scope_path": scope, "leg_index": len(legs), "occurrence_index": 0,
+                                         "from_node": source_id, "from_output": resolved_output,
+                                         "to_node": target_id, "to_input": target_input})
             if legs:
                 wires[name] = {"legs": legs}
         return wires

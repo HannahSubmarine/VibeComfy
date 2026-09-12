@@ -117,6 +117,10 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             registered_inputs=registered_inputs,
             schema_provider=conversion_schema_provider,
             keep_virtual_wires=bool(getattr(args, "keep_virtual_wires", False)),
+            # The bundle writer rebuilds the diagnostic source before it joins
+            # captured UI nodes. Carry IDs only in this internal preflight;
+            # emit_bundle_with_candidate renders the final clean source again.
+            preserve_node_ids=True,
         )
     except Exception as exc:
         recovery = native_boundary_recovery(exc, args.workflow)

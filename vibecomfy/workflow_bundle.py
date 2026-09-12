@@ -1270,6 +1270,97 @@ def _presentation_payload(
     } | {"annotations": _validate_annotations(annotations, workflow)}
 
 
+def _canonicalize_for_v2_pair(
+    workflow: VibeWorkflow,
+    candidate: Mapping[str, Any] | None,
+    *,
+    path: Path,
+    provenance: Any,
+    operation: str,
+    parent_revision: str,
+) -> tuple[VibeWorkflow, Mapping[str, Any] | None]:
+    """Materialize the clean Python identity before publishing its companion.
+
+    Importers may retain native node ids and socket rosters so a captured UI
+    candidate can be reconciled.  The public source intentionally does not
+    carry that bookkeeping in every constructor call: the v2 companion owns
+    it.  A short in-memory staged build applies that companion once, yielding
+    the exact canonical workflow whose digest the final pair will publish.
+    """
+    if candidate is not None and candidate.get("format_version") == 2:
+        return workflow, candidate
+
+    provisional = _build_v2_sidecar(
+        workflow,
+        candidate,
+        provenance=provenance,
+        operation=operation,
+        parent_revision=parent_revision,
+    )
+    from vibecomfy.porting.emit import emit_scratchpad_python
+    from vibecomfy.scratchpad_loader import load_scratchpad
+
+    logical_path = path.resolve()
+    emitted_workflow = workflow.copy()
+    emitted_workflow.metadata["source_bundle"] = _v2_marker(provisional)
+    provenance_payload = dict(provenance) if isinstance(provenance, Mapping) else {}
+    source = emit_scratchpad_python(
+        emitted_workflow,
+        workflow_id=workflow.id,
+        source_path=str(logical_path),
+        provenance=provenance_payload,
+    )
+    with tempfile.TemporaryDirectory(prefix="vibecomfy-v2-canonicalize-") as temp_dir:
+        staged_path = Path(temp_dir) / path.name
+        staged_path.write_text(source, encoding="utf-8")
+        with _staged_companion_context(logical_path, provisional):
+            normalized = load_scratchpad(
+                staged_path,
+                provenance_override=Provenance.USER_CONFIRMED,
+                logical_path=logical_path,
+            )
+    return normalized, candidate
+
+
+def _apply_candidate_node_identity(
+    workflow: VibeWorkflow,
+    candidate: Mapping[str, Any] | None,
+) -> VibeWorkflow:
+    """Carry durable UI node identity into the canonical pair before staging.
+
+    A generated Python candidate intentionally uses compact local construction
+    identities while it is being built.  When that candidate came from a
+    LiteGraph capture, the captured node id (or its explicit
+    ``properties.vibecomfy_uid``) is the source-backed identity witness for
+    layout, edits, and export.  Adopt it on a detached workflow copy before
+    the v2 custody digest is made; otherwise the companion would faithfully
+    preserve a newly minted ``n1`` identity and lose the original UI mapping.
+    """
+    if candidate is None or candidate.get("format_version") == 2:
+        return workflow
+    from vibecomfy.ingest.normalize import canonical_ui_node_identities
+
+    try:
+        captured_identities = canonical_ui_node_identities(candidate)
+    except ValueError as exc:
+        raise WorkflowBundleError(str(exc)) from exc
+    by_source_id = dict(captured_identities)
+
+    if not by_source_id:
+        return workflow
+    detached = workflow.copy()
+    assigned: set[str] = set()
+    for node_id, node in detached.nodes.items():
+        uid = by_source_id.get(str(node_id))
+        if uid is None:
+            continue
+        if uid in assigned:
+            raise WorkflowBundleError(f"captured UI identity maps multiple workflow nodes to {uid!r}")
+        node.uid = uid
+        assigned.add(uid)
+    return detached
+
+
 def _build_v2_sidecar(
     workflow: VibeWorkflow,
     candidate: Mapping[str, Any] | None,
@@ -1847,9 +1938,19 @@ def _approval_preconditions(workflow: VibeWorkflow, schema_provider: Any) -> Non
         if declared_models is None:
             declared_models = ()
         for value in declared_models:
-            if not isinstance(value, str):
+            if isinstance(value, Mapping):
+                # ReadyMetadata may carry a source-backed model asset rather
+                # than flattening it to a filename.  Reconcile the same
+                # deterministic (name, subdir) witness used by model_assets;
+                # optional URL/hash fields remain metadata, not approval input.
+                add_reference(
+                    value.get("name"),
+                    value.get("subdir", value.get("directory", "")),
+                )
+            elif isinstance(value, str):
+                add_reference(value)
+            else:
                 raise WorkflowBundleError("workflow requirements.models contains a malformed entry")
-            add_reference(value)
         if not references:
             return
         registry = load_registry()
@@ -2331,6 +2432,14 @@ def emit_bundle(
     # Preserve an already-present strict presentation candidate when replacing
     # the Python source.  A legacy .layout.json is deliberately not consulted.
     existing_sidecar = _read_sidecar(path)
+    workflow, existing_sidecar = _canonicalize_for_v2_pair(
+        workflow,
+        existing_sidecar,
+        path=path,
+        provenance=provenance,
+        operation="authored",
+        parent_revision=parent_revision,
+    )
     sidecar = _build_v2_sidecar(
         workflow,
         existing_sidecar,
@@ -2545,12 +2654,25 @@ def emit_bundle_with_candidate(
 ) -> WorkflowBundle:
     """Internal shared writer for emit/capture candidate bundles."""
     path = _destination_path(destination, workflow)
+    # A UI candidate is the only source-backed witness available to bridge the
+    # temporary generated-Python ids back to the captured graph.  Perform the
+    # bridge before projecting the candidate into presentation storage so the
+    # same durable ids feed custody, layout, and export.
+    workflow = _apply_candidate_node_identity(workflow, candidate)
     existing_candidate = (
         _ui_candidate_sidecar(workflow, candidate)
         if candidate is not None and candidate.get("format_version") != 2
         else candidate
         if candidate is not None
         else _read_sidecar(path)
+    )
+    workflow, existing_candidate = _canonicalize_for_v2_pair(
+        workflow,
+        existing_candidate,
+        path=path,
+        provenance=provenance,
+        operation=operation,
+        parent_revision=parent_revision,
     )
     sidecar = _build_v2_sidecar(
         workflow,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import json
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,15 @@ SNAPSHOT_IDS = (
     "video/ltx2_3_t2v",
     "video/ltx2_3_i2v",
 )
+
+
+def _model_names(models: object) -> set[str]:
+    return {
+        str(item.get("name")) if isinstance(item, Mapping) else str(item)
+        for item in (models if isinstance(models, (list, tuple)) else ())
+        if (isinstance(item, Mapping) and isinstance(item.get("name"), str))
+        or isinstance(item, str)
+    }
 
 PROFILE_SMOKE_TEMPLATE_IDS = (
     "video/wanvideo_wrapper_22_5b_i2v",
@@ -590,7 +600,7 @@ def build():
     assert workflow.metadata["python_policy_applied"] is True
     expected = {"qwen_3_4b.safetensors", "ae.safetensors", "z_image_bf16.safetensors"}
     assert {asset["name"] for asset in workflow.metadata["model_assets"]} == expected
-    assert expected <= set(workflow.requirements.models)
+    assert expected <= _model_names(workflow.requirements.models)
 
 
 def test_ready_templates_contract_doctor_matches_runtime_capabilities() -> None:
@@ -774,8 +784,9 @@ def test_wan_animate_template_declares_pose_preprocess_pack_and_models() -> None
     workflow = workflow_from_ready("video/wanvideo_wrapper_22_wan_animate_preprocess_kijai")
 
     assert "ComfyUI-WanAnimatePreprocess" in workflow.requirements.custom_nodes
-    assert "yolov10m.onnx" in workflow.requirements.models
-    assert "vitpose-l-wholebody.onnx" in workflow.requirements.models
+    model_names = _model_names(workflow.requirements.models)
+    assert "yolov10m.onnx" in model_names
+    assert "vitpose-l-wholebody.onnx" in model_names
     assert any(
         asset.get("name") == "yolov10m.onnx" and asset.get("subdir") == "detection"
         for asset in workflow.metadata.get("model_assets", [])

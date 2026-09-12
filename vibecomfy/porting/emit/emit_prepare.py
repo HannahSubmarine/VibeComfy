@@ -163,7 +163,13 @@ def _prepare_workflow_for_emit(
         # that documents the authored graph. In explicit keep mode, Reroute is
         # authored virtual-wire furniture too; Primitive lowering remains
         # projection-owned in every mode.
-        restored_helper_types = {"SetNode", "GetNode"}
+        # Flat conversion deliberately lowers broadcast furniture to the
+        # projected runtime edges.  Restoring Set/Get here would reintroduce
+        # an orphaned helper pair after a value primitive has been folded (the
+        # source primitive is intentionally absent from canonical Python).
+        # Explicit keep mode is the presentation-preserving spelling and may
+        # retain the authored helper furniture for a later UI round-trip.
+        restored_helper_types = {"SetNode", "GetNode"} if keep_virtual_wires else set()
         if keep_virtual_wires:
             restored_helper_types.add("Reroute")
         broadcast_ids = {

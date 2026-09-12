@@ -4,7 +4,7 @@
 """Auto-generated ready_template — use python -m vibecomfy.cli copy-to-recipe <id> for hand-editing."""
 from __future__ import annotations
 
-from vibecomfy.templates import InputSpec, ReadyMetadata, new_workflow, ref
+from vibecomfy.templates import InputSpec, OutputSpec, ReadyMetadata, new_workflow, ref
 from vibecomfy.workflow import VibeWorkflow
 from vibecomfy.nodes.core import CLIPLoader, CLIPTextEncode, CreateVideo, EmptyHunyuanLatentVideo, KSampler, ModelSamplingSD3, SaveVideo, UNETLoader, VAEDecode, VAELoader
 
@@ -34,239 +34,6 @@ PUBLIC_INPUT_METADATA = {
     'negative_prompt': InputSpec(node=ref('cliptextencode_2'), field='text', default=DEFAULT_PROMPT_2, type='STRING', aliases=('negative',), media_semantics='text', infer_type=False),
 }
 
-CANONICAL_CUSTODY = {'unetloader': {'id': '37',
-                'uid': 'n1',
-                'class_type': 'UNETLoader',
-                'native_ports': {'native_input_names': ['unet_name', 'weight_dtype'],
-                                 'native_output_names': ['MODEL'],
-                                 'native_input_types': ['CHOICE', 'CHOICE'],
-                                 'native_output_types': ['MODEL'],
-                                 'native_input_optional': [False, False],
-                                 'native_input_asset_kinds': None,
-                                 'native_output_slots': None},
-                'metadata': {'provenance': 'agent_authored',
-                             'output_names': ['MODEL'],
-                             'keep_defaults': ['unet_name', 'weight_dtype']},
-                'widget_channels': {},
-                'none_input_fields': [],
-                'none_widget_fields': [],
-                'output_slot_names': {}},
- 'cliploader': {'id': '38',
-                'uid': 'n2',
-                'class_type': 'CLIPLoader',
-                'native_ports': {'native_input_names': ['clip_name', 'type', 'device'],
-                                 'native_output_names': ['CLIP'],
-                                 'native_input_types': ['CHOICE', 'CHOICE', 'CHOICE'],
-                                 'native_output_types': ['CLIP'],
-                                 'native_input_optional': [False, False, True],
-                                 'native_input_asset_kinds': None,
-                                 'native_output_slots': None},
-                'metadata': {'provenance': 'agent_authored',
-                             'output_names': ['CLIP'],
-                             'keep_defaults': ['clip_name', 'type']},
-                'widget_channels': {},
-                'none_input_fields': [],
-                'none_widget_fields': [],
-                'output_slot_names': {}},
- 'vaeloader': {'id': '39',
-               'uid': 'n3',
-               'class_type': 'VAELoader',
-               'native_ports': {'native_input_names': ['vae_name'],
-                                'native_output_names': ['VAE'],
-                                'native_input_types': ['CHOICE'],
-                                'native_output_types': ['VAE'],
-                                'native_input_optional': [False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['VAE'],
-                            'keep_defaults': ['vae_name']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'emptyhunyuanlatentvideo': {'id': '40',
-                             'uid': 'n4',
-                             'class_type': 'EmptyHunyuanLatentVideo',
-                             'native_ports': {'native_input_names': ['width',
-                                                                     'height',
-                                                                     'length',
-                                                                     'batch_size'],
-                                              'native_output_names': ['LATENT'],
-                                              'native_input_types': ['INT', 'INT', 'INT', 'INT'],
-                                              'native_output_types': ['LATENT'],
-                                              'native_input_optional': [False, False, False, False],
-                                              'native_input_asset_kinds': None,
-                                              'native_output_slots': None},
-                             'metadata': {'provenance': 'agent_authored',
-                                          'output_names': ['LATENT'],
-                                          'keep_defaults': ['batch_size', 'height', 'length', 'width']},
-                             'widget_channels': {},
-                             'none_input_fields': [],
-                             'none_widget_fields': [],
-                             'output_slot_names': {}},
- 'cliptextencode': {'id': '6',
-                    'uid': 'n5',
-                    'class_type': 'CLIPTextEncode',
-                    'native_ports': {'native_input_names': ['text', 'clip'],
-                                     'native_output_names': ['CONDITIONING'],
-                                     'native_input_types': ['STRING', 'CLIP'],
-                                     'native_output_types': ['CONDITIONING'],
-                                     'native_input_optional': [False, False],
-                                     'native_input_asset_kinds': None,
-                                     'native_output_slots': None},
-                    'metadata': {'provenance': 'agent_authored',
-                                 'output_names': ['CONDITIONING'],
-                                 'keep_defaults': ['clip', 'text']},
-                    'widget_channels': {},
-                    'none_input_fields': [],
-                    'none_widget_fields': [],
-                    'output_slot_names': {}},
- 'cliptextencode_2': {'id': '7',
-                      'uid': 'n6',
-                      'class_type': 'CLIPTextEncode',
-                      'native_ports': {'native_input_names': ['text', 'clip'],
-                                       'native_output_names': ['CONDITIONING'],
-                                       'native_input_types': ['STRING', 'CLIP'],
-                                       'native_output_types': ['CONDITIONING'],
-                                       'native_input_optional': [False, False],
-                                       'native_input_asset_kinds': None,
-                                       'native_output_slots': None},
-                      'metadata': {'provenance': 'agent_authored',
-                                   'output_names': ['CONDITIONING'],
-                                   'keep_defaults': ['clip', 'text']},
-                      'widget_channels': {},
-                      'none_input_fields': [],
-                      'none_widget_fields': [],
-                      'output_slot_names': {}},
- 'modelsamplingsd3': {'id': '48',
-                      'uid': 'n7',
-                      'class_type': 'ModelSamplingSD3',
-                      'native_ports': {'native_input_names': ['shift', 'model'],
-                                       'native_output_names': ['MODEL'],
-                                       'native_input_types': ['FLOAT', 'MODEL'],
-                                       'native_output_types': ['MODEL'],
-                                       'native_input_optional': [False, False],
-                                       'native_input_asset_kinds': None,
-                                       'native_output_slots': None},
-                      'metadata': {'provenance': 'agent_authored',
-                                   'output_names': ['MODEL'],
-                                   'keep_defaults': ['model', 'shift']},
-                      'widget_channels': {},
-                      'none_input_fields': [],
-                      'none_widget_fields': [],
-                      'output_slot_names': {}},
- 'ksampler': {'id': '3',
-              'uid': 'n8',
-              'class_type': 'KSampler',
-              'native_ports': {'native_input_names': ['seed',
-                                                      'steps',
-                                                      'cfg',
-                                                      'sampler_name',
-                                                      'scheduler',
-                                                      'denoise',
-                                                      'latent_image',
-                                                      'model',
-                                                      'negative',
-                                                      'positive'],
-                               'native_output_names': ['LATENT'],
-                               'native_input_types': ['INT',
-                                                      'INT',
-                                                      'FLOAT',
-                                                      'CHOICE',
-                                                      'CHOICE',
-                                                      'FLOAT',
-                                                      'LATENT',
-                                                      'MODEL',
-                                                      'CONDITIONING',
-                                                      'CONDITIONING'],
-                               'native_output_types': ['LATENT'],
-                               'native_input_optional': [False,
-                                                         False,
-                                                         False,
-                                                         False,
-                                                         False,
-                                                         False,
-                                                         False,
-                                                         False,
-                                                         False,
-                                                         False],
-                               'native_input_asset_kinds': None,
-                               'native_output_slots': None},
-              'metadata': {'provenance': 'agent_authored',
-                           'output_names': ['LATENT'],
-                           'keep_defaults': ['cfg',
-                                             'latent_image',
-                                             'model',
-                                             'negative',
-                                             'positive',
-                                             'sampler_name',
-                                             'scheduler',
-                                             'seed',
-                                             'steps']},
-              'widget_channels': {},
-              'none_input_fields': [],
-              'none_widget_fields': [],
-              'output_slot_names': {}},
- 'vaedecode': {'id': '8',
-               'uid': 'n9',
-               'class_type': 'VAEDecode',
-               'native_ports': {'native_input_names': ['samples', 'vae'],
-                                'native_output_names': ['IMAGE'],
-                                'native_input_types': ['LATENT', 'VAE'],
-                                'native_output_types': ['IMAGE'],
-                                'native_input_optional': [False, False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored',
-                            'output_names': ['IMAGE'],
-                            'keep_defaults': ['samples', 'vae']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}},
- 'createvideo': {'id': '49',
-                 'uid': 'n10',
-                 'class_type': 'CreateVideo',
-                 'native_ports': {'native_input_names': ['fps', 'audio', 'images'],
-                                  'native_output_names': ['VIDEO'],
-                                  'native_input_types': ['FLOAT', 'AUDIO', 'IMAGE'],
-                                  'native_output_types': ['VIDEO'],
-                                  'native_input_optional': [False, True, False],
-                                  'native_input_asset_kinds': None,
-                                  'native_output_slots': None},
-                 'metadata': {'provenance': 'agent_authored',
-                              'output_names': ['VIDEO'],
-                              'keep_defaults': ['fps', 'images']},
-                 'widget_channels': {},
-                 'none_input_fields': [],
-                 'none_widget_fields': [],
-                 'output_slot_names': {}},
- 'savevideo': {'id': '50',
-               'uid': 'n11',
-               'class_type': 'SaveVideo',
-               'native_ports': {'native_input_names': ['filename_prefix',
-                                                       'format',
-                                                       'codec',
-                                                       'extra_pnginfo',
-                                                       'prompt',
-                                                       'video'],
-                                'native_output_names': None,
-                                'native_input_types': ['STRING',
-                                                       'COMBO',
-                                                       'COMBO',
-                                                       'EXTRA_PNGINFO',
-                                                       'PROMPT',
-                                                       'VIDEO'],
-                                'native_output_types': None,
-                                'native_input_optional': [False, False, False, True, True, False],
-                                'native_input_asset_kinds': None,
-                                'native_output_slots': None},
-               'metadata': {'provenance': 'agent_authored', 'keep_defaults': ['video']},
-               'widget_channels': {},
-               'none_input_fields': [],
-               'none_widget_fields': [],
-               'output_slot_names': {}}}
 
 READY_METADATA = ReadyMetadata.build(
     capability='video',
@@ -285,51 +52,54 @@ READY_METADATA = ReadyMetadata.build(
 
 def build() -> VibeWorkflow:
     """Build the workflow (auto-generated)."""
-    wf = new_workflow(READY_METADATA, source_path=__file__, canonical_custody=CANONICAL_CUSTODY)
+    with new_workflow(READY_METADATA, source_path=__file__) as wf:
 
-    # Loaders
-    unetloader = UNETLoader(unet_name=UNET_NAME, weight_dtype='default')
-    cliploader = CLIPLoader(clip_name=CLIP_NAME, type='wan')
-    vaeloader = VAELoader(vae_name=VAE_NAME)
+        # Loaders
+        unetloader = UNETLoader(unet_name=UNET_NAME, weight_dtype='default')
+        cliploader = CLIPLoader(clip_name=CLIP_NAME, type='wan')
+        vaeloader = VAELoader(vae_name=VAE_NAME)
 
-    # Sampling
-    emptyhunyuanlatentvideo = EmptyHunyuanLatentVideo(
-        width=DEFAULT_WIDTH,
-        height=DEFAULT_HEIGHT,
-        length=DEFAULT_FRAMES,
-        batch_size=1,
-    )
+        # Sampling
+        emptyhunyuanlatentvideo = EmptyHunyuanLatentVideo(
+            width=DEFAULT_WIDTH,
+            height=DEFAULT_HEIGHT,
+            length=DEFAULT_FRAMES,
+            batch_size=1,
+        )
 
-    # Conditioning
-    cliptextencode = CLIPTextEncode(text=DEFAULT_PROMPT, clip=cliploader.out('CLIP'))
+        # Conditioning
+        cliptextencode = CLIPTextEncode(
+            text=DEFAULT_PROMPT,
+            clip=cliploader.out('CLIP'),
+        )
 
-    cliptextencode_2 = CLIPTextEncode(
-        text=DEFAULT_PROMPT_2,
-        clip=cliploader.out('CLIP'),
-    )
+        cliptextencode_2 = CLIPTextEncode(
+            text=DEFAULT_PROMPT_2,
+            clip=cliploader.out('CLIP'),
+        )
 
-    modelsamplingsd3 = ModelSamplingSD3(shift=8, model=unetloader.out('MODEL'))
+        modelsamplingsd3 = ModelSamplingSD3(shift=8, model=unetloader.out('MODEL'))
 
-    ksampler = KSampler(
-        seed=DEFAULT_SEED,
-        steps=30,
-        cfg=GUIDE_STRENGTH,
-        sampler_name='uni_pc',
-        scheduler='simple',
-        latent_image=emptyhunyuanlatentvideo.out('LATENT'),
-        model=modelsamplingsd3.out('MODEL'),
-        negative=cliptextencode_2.out('CONDITIONING'),
-        positive=cliptextencode.out('CONDITIONING'),
-    )
+        ksampler = KSampler(
+            seed=DEFAULT_SEED,
+            steps=30,
+            cfg=GUIDE_STRENGTH,
+            sampler_name='uni_pc',
+            scheduler='simple',
+            latent_image=emptyhunyuanlatentvideo.out('LATENT'),
+            model=modelsamplingsd3.out('MODEL'),
+            negative=cliptextencode_2.out('CONDITIONING'),
+            positive=cliptextencode.out('CONDITIONING'),
+        )
 
-    # Decode
-    vaedecode = VAEDecode(samples=ksampler.out('LATENT'), vae=vaeloader.out('VAE'))
-    createvideo = CreateVideo(fps=DEFAULT_FPS, images=vaedecode.out('IMAGE'))
+        # Decode
+        vaedecode = VAEDecode(samples=ksampler.out('LATENT'), vae=vaeloader.out('VAE'))
+        createvideo = CreateVideo(fps=DEFAULT_FPS, images=vaedecode.out('IMAGE'))
 
-    # Outputs
-    savevideo = SaveVideo(video=createvideo.out('VIDEO'))
+        # Outputs
+        savevideo = SaveVideo(video=createvideo.out('VIDEO'))
 
-    wf = wf.finalize(PUBLIC_INPUT_METADATA, canonical_outputs=[{'node': savevideo, 'output_type': 'SaveVideo', 'name': 'video', 'artifact_kind': 'video', 'mime_type': 'video/mp4', 'filename_prefix': 'video/ComfyUI', 'expected_cardinality': 'one'}], canonical_requirements={'models': ['umt5_xxl_fp8_e4m3fn_scaled.safetensors', 'wan2.1_t2v_1.3B_fp16.safetensors', 'wan_2.1_vae.safetensors'], 'custom_nodes': [], 'missing_models': [], 'missing_nodes': [], 'unsupported': []}, canonical_custody=CANONICAL_CUSTODY, canonical_bindings={'unetloader': unetloader, 'cliploader': cliploader, 'vaeloader': vaeloader, 'emptyhunyuanlatentvideo': emptyhunyuanlatentvideo, 'cliptextencode': cliptextencode, 'cliptextencode_2': cliptextencode_2, 'modelsamplingsd3': modelsamplingsd3, 'ksampler': ksampler, 'vaedecode': vaedecode, 'createvideo': createvideo, 'savevideo': savevideo})
-    wf.strict_types = False
-    return wf
+        wf = wf.finalize(PUBLIC_INPUT_METADATA, outputs=[OutputSpec(node=savevideo, output_type='SaveVideo', name='video', artifact_kind='video', mime_type='video/mp4', filename_prefix='video/ComfyUI', expected_cardinality='one')])
+        wf.strict_types = False
+        return wf
 

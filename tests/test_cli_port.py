@@ -2792,11 +2792,10 @@ def test_port_convert_keep_virtual_wires_integration(tmp_path: Path) -> None:
         )
         return result.text
 
-    # Unknown helper classes retain their canonical raw-call representation in
-    # both modes; `--keep-virtual-wires` must not silently drop the graph.
+    # Clean source lowers helper furniture; explicit keep mode retains it.
     text_default = _convert_and_get_text(keep=False)
-    assert "raw_call('GetNode'" in text_default
-    assert "raw_call('SetNode'" in text_default
+    assert "raw_call('GetNode'" not in text_default
+    assert "raw_call('SetNode'" not in text_default
 
     # With --keep-virtual-wires the same helper calls and signal survive.
     text_keep = _convert_and_get_text(keep=True)

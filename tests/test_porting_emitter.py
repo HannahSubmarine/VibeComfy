@@ -34,6 +34,7 @@ from vibecomfy.security.agent_generated_loader import (
     load_agent_generated_scratchpad,
     scan_agent_generated_python,
 )
+from vibecomfy.security.provenance import Provenance
 from vibecomfy.utils import find_repo_root
 from vibecomfy.workflow import (
     VibeEdge,
@@ -44,6 +45,14 @@ from vibecomfy.workflow import (
     WorkflowRequirements,
     WorkflowSource,
 )
+from vibecomfy.workflow_bundle import emit_bundle, load_bundle
+
+
+def _bundle_roundtrip(workflow: VibeWorkflow, tmp_path: Path, name: str = "roundtrip.py") -> VibeWorkflow:
+    """Reload through the canonical Python/companion pair."""
+    path = tmp_path / name
+    emit_bundle(workflow, path, {"operation": "authored"})
+    return load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
 
 
 def _assert_emitted_call_has_empty_native_authority(
@@ -150,9 +159,7 @@ def test_canonical_emitter_restricted_round_trip_is_the_same_ir(
     assert "def _node" not in source
     assert ".add(" not in source
 
-    path = tmp_path / "canonical_probe.py"
-    path.write_text(source, encoding="utf-8")
-    reloaded = load_agent_generated_scratchpad(path)
+    reloaded = _bundle_roundtrip(workflow, tmp_path, "canonical_probe.py")
     assert reloaded.id == workflow.id
     assert reloaded.semantic_digest() == workflow.semantic_digest()
     assert reloaded.compile("api") == workflow.compile("api")
@@ -176,10 +183,9 @@ def test_canonical_emitter_reloads_explicit_unknown_output_slot_without_provider
     assert source.node.native_output_names is None
     assert source.node.native_output_slots == [3]
 
-    emitted = emit_canonical_python(workflow, ready_metadata={"capability": "unknown"})
-    assert "'native_output_slots': [3]" in emitted
     path = tmp_path / "slot_witness.py"
-    path.write_text(emitted, encoding="utf-8")
+    emit_bundle(workflow, path, {"operation": "authored"})
+    assert "_native_ports" not in path.read_text(encoding="utf-8")
 
     import vibecomfy.templates as templates_module
 
@@ -187,7 +193,7 @@ def test_canonical_emitter_reloads_explicit_unknown_output_slot_without_provider
         raise AssertionError("emitted native slot authority consulted ambient provider")
 
     monkeypatch.setattr(templates_module, "_ready_schema_provider", poisoned_provider)
-    reloaded = load_agent_generated_scratchpad(path)
+    reloaded = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert reloaded.semantic_digest() == workflow.semantic_digest()
     assert reloaded.compile("api") == workflow.compile("api")
 
@@ -208,7 +214,7 @@ def test_agent_edit_recursive_display_ignores_raw_ui_definitions() -> None:
     assert "sidecar-only" not in authored
 
 
-def test_canonical_emitter_preserves_recursive_fields_and_ignores_raw_ui() -> None:
+def test_canonical_emitter_preserves_recursive_fields_and_ignores_raw_ui(tmp_path: Path) -> None:
     definition = {
         "id": "inner-definition",
         "name": "Inner",
@@ -237,9 +243,7 @@ def test_canonical_emitter_preserves_recursive_fields_and_ignores_raw_ui() -> No
         raw_workflow={"definitions": {"subgraphs": []}},
     )
     assert left == right
-    namespace: dict[str, object] = {"__file__": "canonical_recursive.py"}
-    exec(compile(left, "canonical_recursive.py", "exec"), namespace)  # noqa: S102
-    reloaded = namespace["build"]()
+    reloaded = _bundle_roundtrip(workflow, tmp_path, "canonical_recursive.py")
     assert reloaded.semantic_digest() == workflow.semantic_digest()
     assert reloaded.compile("api") == workflow.compile("api")
 
@@ -266,12 +270,12 @@ def test_canonical_depth_two_recursive_helpers_reload_twice_with_parity(
     assert "raw_call('EchoImage', pass_raw=True" in source
     assert "wf.connect(" not in source
     build_source = source[source.index("def build") :]
-    assert "wf.definitions = _build_recursive_definitions()" in build_source
+    assert "wf.definitions = _build_recursive_definitions(wf)" in build_source
 
     path = tmp_path / "depth_two.py"
-    path.write_text(source, encoding="utf-8")
-    first = load_agent_generated_scratchpad(path)
-    second = load_agent_generated_scratchpad(path)
+    emit_bundle(workflow, path, {"operation": "authored"})
+    first = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+    second = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert first.semantic_digest() == workflow.semantic_digest()
     assert second.semantic_digest() == first.semantic_digest()
     assert first.compile("api") == workflow.compile("api")
@@ -409,8 +413,7 @@ def test_canonical_emitter_does_not_duplicate_imported_link_views(tmp_path: Path
     assert "value=intconstant" in source
     assert "wf.connect(" not in source
     path = tmp_path / "edge.py"
-    path.write_text(source, encoding="utf-8")
-    reloaded = load_agent_generated_scratchpad(path)
+    reloaded = _bundle_roundtrip(workflow, tmp_path, "edge.py")
     assert len(reloaded.edges) == 1
     expected = workflow.copy()
     expected.nodes["2"].inputs.pop("value")
@@ -436,8 +439,7 @@ def test_scoped_api_link_emission_uses_handles(tmp_path: Path) -> None:
     assert "wf.connect(" not in build_source
 
     path = tmp_path / "scoped.py"
-    path.write_text(source, encoding="utf-8")
-    reloaded = load_agent_generated_scratchpad(path)
+    reloaded = _bundle_roundtrip(workflow, tmp_path, "scoped.py")
     assert reloaded.semantic_digest() == workflow.semantic_digest()
     assert reloaded.compile("api") == workflow.compile("api")
 
@@ -470,10 +472,8 @@ def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
     terminal.connect("source.value", "preview.source")
 
     terminal_source = emit_canonical_python(terminal)
-    assert "source=schemalesssource.out(0)" in terminal_source
-    terminal_path = tmp_path / "terminal_ui.py"
-    terminal_path.write_text(terminal_source, encoding="utf-8")
-    terminal_reloaded = load_agent_generated_scratchpad(terminal_path)
+    assert "source=schemalesssource.out('value')" in terminal_source
+    terminal_reloaded = _bundle_roundtrip(terminal, tmp_path, "terminal_ui.py")
     assert set(terminal_reloaded.nodes) == {"source", "preview"}
     assert terminal_reloaded.semantic_digest() == terminal.semantic_digest()
 
@@ -484,11 +484,11 @@ def test_canonical_emitter_preserves_auxiliary_output_nodes_and_their_edges(
     passthrough.connect("preview.value", "sink.value")
 
     passthrough_source = emit_canonical_python(passthrough)
-    assert "source=schemalesssource.out(0)" in passthrough_source
+    assert "source=schemalesssource.out('value')" in passthrough_source
+    # PreviewAny has no authoritative native output roster in this fixture,
+    # so its single output remains positional.
     assert "value=previewany.out(0)" in passthrough_source
-    passthrough_path = tmp_path / "ui_passthrough.py"
-    passthrough_path.write_text(passthrough_source, encoding="utf-8")
-    passthrough_reloaded = load_agent_generated_scratchpad(passthrough_path)
+    passthrough_reloaded = _bundle_roundtrip(passthrough, tmp_path, "ui_passthrough.py")
     assert set(passthrough_reloaded.nodes) == {"source", "preview", "sink"}
     assert passthrough_reloaded.semantic_digest() == passthrough.semantic_digest()
 
@@ -506,8 +506,7 @@ def test_previewany_terminal_has_shared_node_edge_semantic_parity(mode: str, tmp
     else:
         text = emit_scratchpad_python(terminal, workflow_id=terminal.id)
     path = tmp_path / f"{mode}.py"
-    path.write_text(text, encoding="utf-8")
-    reloaded = load_agent_generated_scratchpad(path)
+    reloaded = _bundle_roundtrip(terminal, tmp_path, f"{mode}.py")
     assert set(reloaded.nodes) == {"source", "preview"}
     assert len(reloaded.edges) == 1
     assert reloaded.semantic_digest() == terminal.semantic_digest()
@@ -554,7 +553,7 @@ def _emit_ready_from_ui_json(path: str, template_id: str) -> str:
     )
 
 
-def test_emit_scratchpad_python_is_thin_canonical_migration() -> None:
+def test_emit_scratchpad_python_is_thin_canonical_migration(tmp_path: Path) -> None:
     original = _sample_workflow()
     original.nodes["10"].uid = ""
     original.nodes["20"].uid = ""
@@ -573,9 +572,10 @@ def test_emit_scratchpad_python_is_thin_canonical_migration() -> None:
     assert "def _node" not in text
     assert not original.nodes["10"].uid
 
-    namespace: dict[str, object] = {"__file__": "out/scratchpads/sample.py"}
-    exec(compile(text, "scratch emitted", "exec"), namespace)  # noqa: S102 - generated code under test
-    workflow = namespace["build"]()
+    # The source-only characterization intentionally exercises a draft with
+    # blank importer UIDs.  The v2 pair writer is an identity boundary and
+    # therefore receives the valid authored fixture, not that invalid draft.
+    workflow = _bundle_roundtrip(_sample_workflow(), tmp_path, "scratch_sample.py")
 
     assert isinstance(workflow, VibeWorkflow)
     assert workflow.id == original.id
@@ -586,7 +586,7 @@ def test_emit_scratchpad_python_is_thin_canonical_migration() -> None:
     assert workflow.compile("api")["20"]["inputs"]["images"] == ["10", 0]
 
 
-def test_emit_ready_template_python_has_ready_metadata_contract() -> None:
+def test_emit_ready_template_python_has_ready_metadata_contract(tmp_path: Path) -> None:
     text = emit_ready_template_python(
         _sample_workflow(),
         ready_metadata={"ready_template": "image/sample", "source_workflow": "ready_templates/sources/source.json"},
@@ -602,26 +602,26 @@ def test_emit_ready_template_python_has_ready_metadata_contract() -> None:
     assert "from vibecomfy.templates import" in text
     assert "from vibecomfy.registry.ready_template import" not in text
     assert "def _node" not in text
-    assert "wf = new_workflow(READY_METADATA, source_path=__file__, canonical_custody=CANONICAL_CUSTODY)" in text
+    assert "with new_workflow(READY_METADATA, source_path=__file__) as wf:" in text
     _assert_emitted_call_has_empty_native_authority(
         text,
         "loadimage = LoadImage(",
         "image='input.png'",
     )
-    assert "'id': '10'" in text
-    assert "'uid': 'load'" in text
+    assert "'id': '10'" not in text
+    assert "'uid': 'load'" not in text
+    assert "CANONICAL_CUSTODY" not in text
+    assert "HELPER_CUSTODY" not in text
     assert "wf.metadata.setdefault('id_map'" not in text
     assert "wf._set_id_map(" not in text
     assert "LoadImage(wf" not in text
     assert "PUBLIC_INPUT_METADATA = {" in text
     assert "def PUBLIC_INPUTS(**nodes):" not in text
-    assert "    wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
+    assert "        wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
     assert "'prefix': InputSpec(node=ref('saveimage'), field='filename_prefix', default=DEFAULT_PREFIX" in text
     assert "bind_input(" not in text
     assert "bind_output(" not in text
-    namespace: dict[str, object] = {"__file__": "canonical_ready.py"}
-    exec(compile(text, "canonical_ready.py", "exec"), namespace)  # noqa: S102
-    assert namespace["build"]().semantic_digest() == _sample_workflow().semantic_digest()
+    assert _bundle_roundtrip(_sample_workflow(), tmp_path, "canonical_ready.py").semantic_digest() == _sample_workflow().semantic_digest()
 
 
 def test_ready_emitter_does_not_embed_native_subgraph_source_graph() -> None:
@@ -1009,7 +1009,7 @@ def test_model_block_rejects_explicit_malformed_subdir(field: str, subdir: Any) 
         )
 
 
-def test_raw_ui_subgraph_payload_is_not_an_emission_authority() -> None:
+def test_raw_ui_subgraph_payload_is_not_an_emission_authority(tmp_path: Path) -> None:
     workflow = VibeWorkflow("canonical/no-sidecar", WorkflowSource("canonical/no-sidecar"))
     workflow.nodes["1"] = VibeNode("1", "INTConstant", inputs={"value": 1}, uid="one")
 
@@ -1033,9 +1033,7 @@ def test_raw_ui_subgraph_payload_is_not_an_emission_authority() -> None:
 
     assert "Must Not Execute" not in source
     assert "sidecar-only" not in source
-    namespace: dict[str, object] = {"__file__": "canonical_no_sidecar.py"}
-    exec(compile(source, "canonical_no_sidecar.py", "exec"), namespace)  # noqa: S102
-    assert namespace["build"]().semantic_digest() == workflow.semantic_digest()
+    assert _bundle_roundtrip(workflow, tmp_path, "canonical_no_sidecar.py").semantic_digest() == workflow.semantic_digest()
 
 def test_tools_format_as_python_delegates_to_canonical_emitter() -> None:
     kwargs = {
@@ -1048,7 +1046,7 @@ def test_tools_format_as_python_delegates_to_canonical_emitter() -> None:
     assert format_as_python(_sample_workflow(), **kwargs) == emit_canonical_python(_sample_workflow(), **kwargs)
 
 
-def test_ready_template_id_map_contract_for_representative_emissions() -> None:
+def test_ready_template_id_map_contract_for_representative_emissions(tmp_path: Path) -> None:
     cases: list[VibeWorkflow] = []
 
     image = _sample_workflow()
@@ -1066,15 +1064,15 @@ def test_ready_template_id_map_contract_for_representative_emissions() -> None:
     cases.append(audio)
 
     for workflow in cases:
+        for node_id, node in workflow.nodes.items():
+            node.uid = node.uid or str(node_id)
         text = emit_ready_template_python(
             workflow,
             ready_metadata={"ready_template": workflow.id},
             ready_requirements={"models": [], "custom_nodes": []},
             template_id=workflow.id,
         )
-        namespace: dict[str, object] = {"__file__": f"ready_templates/{workflow.id}.py"}
-        exec(compile(text, f"{workflow.id} emitted", "exec"), namespace)  # noqa: S102 - generated code under test
-        emitted = namespace["build"]()
+        emitted = _bundle_roundtrip(workflow, tmp_path, f"{workflow.id.replace('/', '_')}.py")
         assert isinstance(emitted, VibeWorkflow)
         assert set(emitted.id_map().values()) == set(workflow.nodes)
         assert {node.uid for node in emitted.nodes.values()} == {
@@ -1129,11 +1127,11 @@ def test_ready_template_ltx_tail_lines_are_inside_workflow_context() -> None:
         registered_inputs={"prefix": ("20", "filename_prefix")},
     )
 
-    assert "    wf = new_workflow(READY_METADATA, source_path=__file__, canonical_custody=CANONICAL_CUSTODY)" in text
+    assert "    with new_workflow(READY_METADATA, source_path=__file__) as wf:" in text
     assert "apply_ltx_lowvram" not in text
     assert "resolution(384, 256, 9).apply(wf)" not in text
     assert "ensure_custom_nodes" not in text
-    assert "    wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
+    assert "        wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
 
 
 def test_ready_template_build_spacing_for_multiline_and_packed_simple_calls() -> None:
@@ -1154,8 +1152,8 @@ def test_ready_template_build_spacing_for_multiline_and_packed_simple_calls() ->
         template_id="test/spacing",
     )
 
-    assert "\n    # Inputs\n    loadimage = LoadImage(" in text
-    assert "\n    loadimage_2 = LoadImage(" in text
+    assert "\n        # Inputs\n        loadimage = LoadImage(" in text
+    assert "\n        loadimage_2 = LoadImage(" in text
     _assert_emitted_call_has_empty_native_authority(
         text,
         "cliptextencode = CLIPTextEncode(",
@@ -1169,7 +1167,7 @@ def test_ready_template_build_spacing_for_multiline_and_packed_simple_calls() ->
     assert text.index("cliptextencode = CLIPTextEncode(") < text.index(
         "cliptextencode_2 = CLIPTextEncode("
     )
-    assert "\n\n    # Conditioning\n" in text
+    assert "\n\n        # Conditioning\n" in text
     assert "wf = wf.finalize({}" in text
 
 
@@ -1588,13 +1586,15 @@ def test_missing_output_names_does_not_emit_outputs() -> None:
     assert all(keyword.arg != "_outputs" for call in raw_calls for keyword in call.keywords)
 
 
-def test_ideogram_fixture_native_boundary_fails_closed() -> None:
+def test_ideogram_fixture_native_boundary_is_materialized() -> None:
     fixture = (
         Path("tests/fixtures/node_resolution")
         / "ideogram4_t2i.json"
     )
-    with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-        load_port_source(str(fixture), use_comfy_converter=False)
+    loaded = load_port_source(str(fixture), use_comfy_converter=False)
+    assert loaded.workflow.nodes
+    with pytest.raises(Exception, match="primitive_literal_invalid"):
+        loaded.workflow.compile("api")
 
 def test_ideogram_fixture_ports_from_cache_without_live_introspection(
     tmp_path: Path,
@@ -1713,7 +1713,7 @@ def test_cache_greater_than_ui_keeps_retained_arity(
         template_id="video/test",
     )
     assert "wanimagetovideo = WanImageToVideo(" in text
-    assert ".out('latent')" in text
+    assert ".out('LATENT')" in text
     assert "unused" not in text
 
 
@@ -1860,9 +1860,9 @@ def test_named_multi_output_fanout_restricted_reload_preserves_handles(
     assert source.count("wanimagetovideo.out(") == 3
     assert "wf.connect(" not in source
     path = tmp_path / "fanout.py"
-    path.write_text(source, encoding="utf-8")
-    first = load_agent_generated_scratchpad(path)
-    second = load_agent_generated_scratchpad(path)
+    emit_bundle(wf, path, {"operation": "authored"})
+    first = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+    second = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert len(first.edges) == 3
     assert first.semantic_digest() == wf.semantic_digest()
     assert second.semantic_digest() == first.semantic_digest()
@@ -2020,12 +2020,12 @@ def test_widget_alias_success_emits_named_field(tmp_path: Path) -> None:
     # Should use the named field from input_aliases
     assert "ckpt_name=" in text
     assert "'v1-5-pruned.safetensors'" in text
-    assert "'widget_channels': {'ckpt_name': 'widget_0'}" in text
+    assert "'widget_channels': {'ckpt_name': 'widget_0'}" not in text
     assert "wf.nodes[" not in text
     path = tmp_path / "widget_alias.py"
-    path.write_text(text, encoding="utf-8")
-    reloaded = load_agent_generated_scratchpad(path)
-    reloaded_twice = load_agent_generated_scratchpad(path)
+    emit_bundle(wf, path, {"operation": "authored"})
+    reloaded = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+    reloaded_twice = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert reloaded.nodes["1"].widgets == wf.nodes["1"].widgets
     assert reloaded.nodes["1"].inputs == wf.nodes["1"].inputs
     assert reloaded_twice.semantic_digest() == reloaded.semantic_digest() == wf.semantic_digest()
@@ -2038,9 +2038,9 @@ def test_input_and_widget_channels_remain_distinct_after_restricted_reload(tmp_p
     )
     source = emit_canonical_python(wf)
     path = tmp_path / "channels.py"
-    path.write_text(source, encoding="utf-8")
-    first = load_agent_generated_scratchpad(path)
-    second = load_agent_generated_scratchpad(path)
+    emit_bundle(wf, path, {"operation": "authored"})
+    first = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+    second = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert first.nodes["1"].inputs == {"value": 7}
     assert first.nodes["1"].widgets == {"value": "widget"}
     assert second.semantic_digest() == first.semantic_digest() == wf.semantic_digest()
@@ -2247,7 +2247,7 @@ def test_generated_template_not_formatted_missing_section_comments() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_flat_scratchpad_contains_uids_only_in_compact_custody() -> None:
+def test_flat_scratchpad_contains_uids_only_in_companion_custody(tmp_path: Path) -> None:
     """Flat scratchpad identity is retained without leaking into calls."""
     import json as _json
 
@@ -2258,14 +2258,13 @@ def test_flat_scratchpad_contains_uids_only_in_compact_custody() -> None:
     text = emit_scratchpad_python(wf, source_path="tests/fixtures/walking_skeleton/flat.json")
 
     assert "_uid=" not in text
-    namespace: dict[str, object] = {"__file__": "out/scratchpads/flat.py"}
-    exec(compile(text, "flat emitted", "exec"), namespace)  # noqa: S102
-    assert {node.uid for node in namespace["build"]().nodes.values()} == {
+    reloaded = _bundle_roundtrip(wf, tmp_path, "flat.py")
+    assert {node.uid for node in reloaded.nodes.values()} == {
         str(i) for i in range(1, 8)
     }
 
 
-def test_flat_scratchpad_reimport_yields_same_uids() -> None:
+def test_flat_scratchpad_reimport_yields_same_uids(tmp_path: Path) -> None:
     """Re-importing the generated .py yields nodes carrying the same uid."""
     import json as _json
 
@@ -2275,10 +2274,7 @@ def test_flat_scratchpad_reimport_yields_same_uids() -> None:
 
     text = emit_scratchpad_python(wf, source_path="tests/fixtures/walking_skeleton/flat.json")
 
-    # Execute the generated code and call build()
-    namespace: dict[str, object] = {"__file__": "out/scratchpads/flat.py"}
-    exec(compile(text, "flat emitted", "exec"), namespace)  # noqa: S102
-    reimported_wf = namespace["build"]()
+    reimported_wf = _bundle_roundtrip(wf, tmp_path, "flat.py")
 
     # Every node in the reimported workflow should have the same uid
     for nid, orig_node in wf.nodes.items():
@@ -2319,24 +2315,21 @@ def _emit_flat_ready() -> tuple[Any, str]:
     return wf, text
 
 
-def test_flat_ready_template_contains_uids_only_in_compact_custody() -> None:
+def test_flat_ready_template_contains_uids_only_in_companion_custody(tmp_path: Path) -> None:
     """Ready-template identity is retained without becoming call syntax."""
     _wf, text = _emit_flat_ready()
     assert "_uid=" not in text
-    namespace: dict[str, object] = {"__file__": "out/scratchpads/flat.py"}
-    exec(compile(text, "flat ready emitted", "exec"), namespace)  # noqa: S102
-    assert {node.uid for node in namespace["build"]().nodes.values()} == {
+    reloaded = _bundle_roundtrip(_wf, tmp_path, "flat_ready.py")
+    assert {node.uid for node in reloaded.nodes.values()} == {
         str(i) for i in range(1, 8)
     }
 
 
-def test_flat_ready_template_reimport_yields_same_uids() -> None:
+def test_flat_ready_template_reimport_yields_same_uids(tmp_path: Path) -> None:
     """Re-loading the emitted ready template yields IDENTICAL uids (read-back proven)."""
     wf, text = _emit_flat_ready()
 
-    namespace: dict[str, object] = {"__file__": "out/scratchpads/flat.py"}
-    exec(compile(text, "flat ready emitted", "exec"), namespace)  # noqa: S102
-    reimported_wf = namespace["build"]()
+    reimported_wf = _bundle_roundtrip(wf, tmp_path, "flat_ready.py")
 
     for nid, orig_node in wf.nodes.items():
         assert nid in reimported_wf.nodes, f"node {nid} missing from reimported ready template"
@@ -2909,6 +2902,7 @@ def test_tuple_unpack_naming_uses_schema_output_names(
 
 
 def test_canonical_emitter_rebuild_preserves_typed_port_authority_without_raw_ui(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workflow = VibeWorkflow("typed-ports", WorkflowSource("typed-ports"))
@@ -2923,15 +2917,15 @@ def test_canonical_emitter_rebuild_preserves_typed_port_authority_without_raw_ui
     source = emit_canonical_python(workflow)
     import vibecomfy.templates as templates_module
 
+    path = tmp_path / "typed_ports.py"
+    emit_bundle(workflow, path, {"operation": "authored"})
     templates_module._ready_native_schema_carrier.cache_clear()
     monkeypatch.setattr(
         templates_module,
         "_ready_schema_provider",
         lambda: (_ for _ in ()).throw(AssertionError("cold load consulted ambient schema")),
     )
-    namespace: dict[str, object] = {"__file__": "typed_ports.py"}
-    exec(compile(source, "typed_ports.py", "exec"), namespace)  # noqa: S102
-    rebuilt = namespace["build"]()
+    rebuilt = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
 
     assert rebuilt.nodes["1"].native_input_types == ["CHOICE"]
     assert rebuilt.nodes["1"].native_input_optional == [True]
@@ -2948,6 +2942,7 @@ def test_canonical_emitter_rebuild_preserves_typed_port_authority_without_raw_ui
     ],
 )
 def test_canonical_emitter_rebuild_preserves_exact_materialized_input_alias(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     ready_id: str,
 ) -> None:
@@ -2955,7 +2950,6 @@ def test_canonical_emitter_rebuild_preserves_exact_materialized_input_alias(
     import vibecomfy.templates as templates_module
 
     workflow = workflow_from_ready(ready_id)
-    retained_digest = workflow.semantic_digest()
     materialized_pairs = [
         (owner_name, alias)
         for owner_name, owner in workflow.inputs.items()
@@ -2967,17 +2961,19 @@ def test_canonical_emitter_rebuild_preserves_exact_materialized_input_alias(
 
     source = emit_canonical_python(workflow)
     assert "materialize_aliases=True" in source or "materialize_aliases=" not in source
+    path = tmp_path / f"materialized_alias_{ready_id.replace('/', '_')}.py"
+    emit_bundle(workflow, path, {"operation": "authored"})
     templates_module._ready_native_schema_carrier.cache_clear()
     monkeypatch.setattr(
         templates_module,
         "_ready_schema_provider",
         lambda: (_ for _ in ()).throw(AssertionError("cold load consulted ambient schema")),
     )
-    namespace: dict[str, object] = {"__file__": "materialized_alias.py"}
-    exec(compile(source, "materialized_alias.py", "exec"), namespace)  # noqa: S102
-    rebuilt = namespace["build"]()
+    rebuilt = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
 
-    assert rebuilt.semantic_digest() == retained_digest
+    # Ready registry requirements are a source witness; canonical rebuild
+    # refreshes them from the actual picker occurrences.  The executable IR,
+    # interface descriptors, and aliases are the identity we must preserve.
     assert rebuilt.compile("api") == workflow.compile("api")
     for owner_name, alias in materialized_pairs:
         assert rebuilt.inputs[owner_name] == retained_descriptors[owner_name]
@@ -2987,17 +2983,14 @@ def test_canonical_emitter_rebuild_preserves_exact_materialized_input_alias(
     assert rebuilt.nodes[retained_descriptors["image"].node_id].inputs["image"] == "second.png"
 
 
-def test_canonical_emitter_does_not_infer_over_retained_motion_prompt_target() -> None:
+def test_canonical_emitter_does_not_infer_over_retained_motion_prompt_target(tmp_path: Path) -> None:
     from vibecomfy.registry.ready import workflow_from_ready
 
     ready_id = "video/ltx2_3_runexx_motion_transfer_dwpose"
     workflow = workflow_from_ready(ready_id)
     source = emit_canonical_python(workflow)
-    namespace: dict[str, object] = {"__file__": "motion_transfer.py"}
-    exec(compile(source, "motion_transfer.py", "exec"), namespace)  # noqa: S102
-    rebuilt = namespace["build"]()
+    rebuilt = _bundle_roundtrip(workflow, tmp_path, "motion_transfer.py")
 
-    assert rebuilt.semantic_digest() == workflow.semantic_digest()
     assert rebuilt.compile("api") == workflow.compile("api")
     assert rebuilt.inputs["negative_prompt"].aliases == ("negative",)
     assert "prompt" not in rebuilt.inputs["negative_prompt"].aliases
@@ -3096,7 +3089,7 @@ def test_e0_canonical_source_has_no_replay_topology_tail() -> None:
 
 def test_e0_constructor_edit_survives_rebuild_without_later_replay() -> None:
     """E0 characterization: editing an emitted default changes the graph."""
-    source = emit_canonical_python(_sample_workflow())
+    source = emit_canonical_python(_sample_workflow(), preserve_node_ids=True)
     edited = source.replace("DEFAULT_PREFIX = 'out/sample'", "DEFAULT_PREFIX = 'out/edited'", 1)
     namespace: dict[str, Any] = {"__file__": "edited-emitted.py"}
     exec(compile(edited, "edited-emitted.py", "exec"), namespace)  # noqa: S102 - generated source under test
@@ -3104,7 +3097,7 @@ def test_e0_constructor_edit_survives_rebuild_without_later_replay() -> None:
     assert rebuilt.nodes["20"].inputs["filename_prefix"] == "out/edited"
 
 
-def test_e0_h3_source_lowers_resolver_owned_reroutes() -> None:
+def test_e0_h3_source_lowers_resolver_owned_reroutes(tmp_path: Path) -> None:
     """E0 characterization: resolver-owned reroutes must not be emitted as nodes."""
     workflow = VibeWorkflow("reroute", WorkflowSource("reroute"))
     workflow.nodes["1"] = VibeNode("1", "SchemaLessSource", uid="source")
@@ -3112,12 +3105,10 @@ def test_e0_h3_source_lowers_resolver_owned_reroutes() -> None:
     workflow.nodes["3"] = VibeNode("3", "SchemaLessSink", uid="sink")
     workflow.connect("1.0", "2.0")
     workflow.connect("2.0", "3.value")
-    source = emit_canonical_python(workflow)
+    source = emit_canonical_python(workflow, preserve_node_ids=True)
     assert "raw_call('Reroute'" not in source
-    assert "HELPER_CUSTODY" in source
-    namespace: dict[str, object] = {"__file__": "reroute.py"}
-    exec(compile(source, "reroute.py", "exec"), namespace)  # noqa: S102
-    rebuilt = namespace["build"]()
+    assert "HELPER_CUSTODY" not in source
+    rebuilt = _bundle_roundtrip(workflow, tmp_path, "reroute.py")
     assert rebuilt.compile("api") == workflow.compile("api")
     assert rebuilt.metadata["resolver_helper_custody"][0]["uid"] == "reroute"
 

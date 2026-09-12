@@ -46,6 +46,7 @@ def emit_canonical_python(
     object_info_identities: dict[str, Any] | None = None,
     omit_terminal_ui_only: bool = False,
     keep_virtual_wires: bool = False,
+    preserve_node_ids: bool = False,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -115,6 +116,7 @@ def emit_canonical_python(
         object_info_identities=object_info_identities,
         omit_terminal_ui_only=omit_terminal_ui_only,
         keep_virtual_wires=keep_virtual_wires,
+        preserve_node_ids=preserve_node_ids,
     )
 
 
@@ -129,6 +131,7 @@ def emit_ready_template_python(
     diagnostics: list[EmissionDiagnostic] | None = None,
     raw_workflow: dict[str, Any] | None = None,
     object_info_identities: dict[str, Any] | None = None,
+    preserve_node_ids: bool = False,
 ) -> str:
     """One-way ready-template migration into canonical executable source."""
     migrated = workflow.copy()
@@ -145,6 +148,7 @@ def emit_ready_template_python(
         diagnostics=diagnostics,
         object_info_identities=object_info_identities,
         omit_terminal_ui_only=False,
+        preserve_node_ids=preserve_node_ids,
     )
 
 
@@ -159,6 +163,7 @@ def emit_scratchpad_python(
     diagnostics: list[EmissionDiagnostic] | None = None,
     keep_virtual_wires: bool = True,
     prune_dead_branches: bool = False,
+    preserve_node_ids: bool = False,
 ) -> str:
     if not keep_virtual_wires or prune_dead_branches:
         message = (
@@ -195,6 +200,7 @@ def emit_scratchpad_python(
         apply_overrides=apply_overrides,
         diagnostics=diagnostics,
         keep_virtual_wires=keep_virtual_wires,
+        preserve_node_ids=preserve_node_ids,
     )
 
 

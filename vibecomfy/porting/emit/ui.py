@@ -4406,7 +4406,7 @@ def emit_ui_json(
         inputs: list[dict[str, Any]] = []
         if exec_io is not None:
             inputs = _exec_dynamic_inputs(exec_io, incoming_link_ids_by_input)
-        elif isinstance(node.native_input_names, list):
+        elif isinstance(node.native_input_names, list) and node.native_input_names:
             incoming_by_name = {edge.to_input: edge for edge in incoming_sorted}
             for slot_idx, name in enumerate(node.native_input_names):
                 edge = incoming_by_name.get(name) if isinstance(name, str) else None
