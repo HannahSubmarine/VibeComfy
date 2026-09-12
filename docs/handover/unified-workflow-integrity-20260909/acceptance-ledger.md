@@ -182,3 +182,28 @@ Case 14 remains conditional on the bounded matching-frontend load/export
 experiment; conversion success alone does not establish recovery. Stop on
 identity loss, unexplained semantic drift, leaked context, fabricated or
 dropped endpoints, partial publication or missing lifecycle evidence.
+
+## Correction evidence — implementation commit `955d5f01`
+
+The three findings above were repaired within the existing owners. Recursive
+companion custody is now closed at the definition, constructor-record and
+port-shape boundaries; the emitter only carries definition identity plus the
+typed structural witness. The scratchpad loader compiles current source bytes
+on every pair load, and the rewrite regression proves that authored positions
+and Markdown annotations survive a semantic edit.
+
+The 17 positive corpus cases each have original/edited/reloaded/exported and
+repeat-regeneration artifacts in
+`evidence/corpus-lifecycle-f239-rework-20260912/`. Cases 10, 16 and 17 have
+independent refusal receipts in
+`evidence/refusal-lifecycle-rework2-20260912/`, including unchanged existing
+candidate bytes and zero partial outputs. H3’s corrected pair and exact
+exported graph are in `evidence/h3-current-final-20260912/`; its presentation
+contains 7 positioned records and 4 annotations, and the exported graph has
+20 nodes and 25 links.
+
+The deterministic configured suite on the corrected commit reports **10,562
+passed, 195 skipped, 35 deselected, 1 xfailed, 0 failed** with empty stderr;
+the IR boundary scan reports `IR boundary: clean`. The recorded Astra final
+review remains `REWORK` because the review ceiling was exhausted before this
+correction; no new review approval is implied.

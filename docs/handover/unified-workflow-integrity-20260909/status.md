@@ -141,3 +141,26 @@ or task/stage/budget change. It requires the identity/provenance pair mapping,
 recursive context cleanup, independent corruption counterexamples and atomic
 publication proof already covered by the current candidate. Final integrated
 review is pending under the existing budget; no Astra Max call is permitted.
+
+## Post-review correction closure — 2026-09-12
+
+The recorded final-review `REWORK` findings are now addressed locally in
+implementation commit `955d5f0124b5f124806f035ed0b8e738a392b41b`:
+
+- recursive companion definitions, constructor records and port-shape rows are
+  closed schemas; unknown runtime/value/topology payloads are refused;
+- recursive custody emission retains only definition identity and the typed
+  structural witness, keeping runtime/layout/vendor data in its owning source
+  or presentation channel;
+- pair reload always compiles the current Python bytes, preventing stale
+  same-timestamp bytecode from combining with a new companion;
+- rewriting an existing pair preserves authored node geometry and annotations.
+
+Fresh evidence records 17/17 positive corpus lifecycle passes and refusal with
+no partial writes for cases 10, 16 and 17. Corrected H3 evidence retains all 7
+presentation node records and 4 annotations, exports 20 nodes/25 links, and
+passes same-path deterministic regeneration. The exact configured full suite
+on this commit is **10,562 passed, 195 skipped, 35 deselected, 1 xfailed,
+0 failed**; stderr is empty. The authoritative receipts are under the active
+run’s `evidence/` directory. The review ceiling is exhausted, so this records
+implementation closure without claiming a new Astra approval.
