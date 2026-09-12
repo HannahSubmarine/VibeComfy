@@ -1602,6 +1602,49 @@ def test_native_port_rosters_validate_holes_duplicates_and_missing_sidecar_evide
         validate_sidecar(sidecar, workflow)
 
 
+@pytest.mark.parametrize("bad_name", [{}, False, 7, ""])
+def test_v2_native_port_roster_names_reject_nonblank_nonnull_values(bad_name) -> None:
+    from vibecomfy.workflow_bundle import _validate_native_ports
+
+    with pytest.raises(WorkflowBundleError, match="nonblank strings or null"):
+        _validate_native_ports(
+            {"native_input_names": ["head", bad_name, "tail"]},
+            "custody node native ports",
+        )
+    accepted = _validate_native_ports(
+        {"native_output_names": ["head", None, "tail"]},
+        "custody node native ports",
+    )
+    assert accepted["native_output_names"] == ["head", None, "tail"]
+
+
+def test_v2_canonical_pair_preserves_sparse_native_port_rosters(tmp_path: Path) -> None:
+    workflow = _workflow("sparse-native-rosters")
+    workflow.nodes["source"] = VibeNode(
+        "source", "Source", uid="source",
+        native_output_names=["out", None, "tail"],
+        native_output_types=["A", None, "B"],
+    )
+    workflow.nodes["target"] = VibeNode(
+        "target", "Target", uid="target", inputs={"in": None},
+        native_input_names=["in", None, "tail"],
+        native_input_types=["A", None, "B"],
+        native_input_optional=[False, True, False],
+    )
+    workflow.edges.append(VibeEdge("source", "0", "target", "0"))
+
+    path = tmp_path / "sparse-native-rosters.py"
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    validate_sidecar(bundle.ui_sidecar, workflow)
+    loaded = load_bundle(path, trust=Provenance.USER_CONFIRMED)
+    assert loaded.workflow.nodes["source"].native_output_names == ["out", None, "tail"]
+    assert loaded.workflow.nodes["source"].native_output_types == ["A", None, "B"]
+    assert loaded.workflow.nodes["target"].native_input_names == ["in", None, "tail"]
+    assert loaded.workflow.nodes["target"].native_input_types == ["A", None, "B"]
+    assert loaded.workflow.nodes["target"].native_input_optional == [False, True, False]
+
+
 def test_recursive_edges_and_virtual_wires_use_structural_scope_and_local_uids() -> None:
     from vibecomfy.identity.scope import compose_scope_path, sg_key
     from vibecomfy.identity.uid import make_uid

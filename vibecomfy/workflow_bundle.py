@@ -692,8 +692,11 @@ def _validate_native_ports(value: Any, where: str) -> dict[str, Any]:
             raise WorkflowBundleError(f"{where}.{key} must be a list or null")
     for key in ("native_input_names", "native_output_names"):
         names = result.get(key)
-        if names is not None and any(type(item) is not str or not item.strip() for item in names):
-            raise WorkflowBundleError(f"{where}.{key} must contain nonblank strings")
+        if names is not None and any(
+            item is not None and (type(item) is not str or not item.strip())
+            for item in names
+        ):
+            raise WorkflowBundleError(f"{where}.{key} must contain nonblank strings or null")
     for key in ("native_input_types", "native_output_types", "native_input_asset_kinds"):
         items = result.get(key)
         if items is not None and any(item is not None and type(item) is not str for item in items):
