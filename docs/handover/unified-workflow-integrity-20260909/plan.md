@@ -103,3 +103,22 @@ The user requested an assessment of actual output elegance. The clean-source cla
 ## Latest Astra sense-check requirements
 
 Apply the two mandatory evidence clarifications in [the acceptance ledger](acceptance-ledger.md#astra-sense-check-acceptance-clarification--2026-09-09): E0 maps the existing ingress owners and establishes cross-entrypoint baseline; E1 corrects only demonstrated shared-owner/emission defects; T3 adds the focused regressions to Q5; E2 saves/reloads and exports the edited H3 graph, asserts presentation/subgraph structure and records inspection of the exact rendered graph and whole Python file. A nested-definition source edit is a recommended optional test choice within existing I8/I9. No added task family or review stage.
+
+## Latest corpus-completeness amendment — 2026-09-12
+
+The user has amended the completion target: the 20-workflow corpus must work
+through the canonical path unless a workflow is genuinely malformed or
+semantically unresolved. The previous 10-success/10-refusal result is not
+completion evidence under this target. The designated Astra high adjudication
+classified six refusals (01, 02, 11, 13, 15 and 18) as required-positive
+importer fixes, case 14 as a bounded source-format investigation, and cases
+10, 16 and 17 as justified refusals for the supplied bytes. The detailed
+disposition, source evidence, owners, batches and proof matrix are in
+[corpus-completeness-amendment-20260912.md](corpus-completeness-amendment-20260912.md).
+
+Extend the existing E0/E1/T1/T2/T3/E2/T4 assignments and I1–I10 criteria; do
+not add a review stage, reset a counter or create another representation. The
+minimum completion outcome is 16 positive corpus pairs and three contextual,
+atomic refusals, or 17 positives if case 14 is source-proven recoverable. All
+positives require full lifecycle and source-backed value/edge/identity proof;
+all refusals require source-specific diagnostics and unchanged destinations.

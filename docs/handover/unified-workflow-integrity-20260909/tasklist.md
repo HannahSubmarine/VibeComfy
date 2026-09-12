@@ -19,6 +19,22 @@ boundaries. No future assignments are dispatched in preparation-only mode.
 
 Active delivery work. Model/reasoning resolution comes from run.yaml; the E1 route resolves through the configured worker_xhard slot. Coordinator owns dispatch/counters, reviewers inspect independently, oracle adjudicates consequential uncertainty. NS references mean principles in northstar.md; I references mean implementation criteria in acceptance-ledger.md.
 
+## Corpus-completeness amendment — 2026-09-12
+
+The latest user requirement supersedes the prior expectation that ten of the
+20 corpus inputs may be intentional refusals. Valid source workflows must be
+supported; refusal is reserved for a source-specific malformed or unresolved
+condition. The Astra adjudication and dispatch plan are recorded in
+[corpus-completeness-amendment-20260912.md](corpus-completeness-amendment-20260912.md).
+
+Cases 01, 02, 11, 13, 15 and 18 are now required-positive regressions. Case 14
+is a bounded source-format investigation, while 10, 16 and 17 remain refusals
+only for the supplied source bytes. This reopens affected E0/E1/T1/T2/T3/E2/T4
+evidence without changing task IDs, I1–I10, the existing review stages, role
+bindings or counters. Route normal work to Luna medium, the recursive
+composition kernel to Sol high, and use Astra only for the bounded adjudication
+already recorded; Astra Max is not part of this plan.
+
 ## Current amendment dispatch map
 
 User reaffirmed [mandatory end-of-run practical validation](acceptance-ledger.md#required-final-practical-validation--before-completion).
@@ -53,6 +69,20 @@ retains its existing assignment only if needed, with no automatic rerun.
 Bounded adjacent checks from the direction document's smell triage are covered
 by these rows. A passing focused characterization closes that question; it does
 not trigger a new cleanup project. No new task IDs or review gates are added.
+
+The amended corpus dispatch is:
+
+| Existing task | Required work | Route |
+| --- | --- | --- |
+| E0/T3 | Freeze source/schema/frontend identities; add source-backed positive contracts for 01/02/11/13/15/18; run the half-day case-14 serialization experiment; add a real native depth-two positive beside case 10. | Luna medium |
+| E1 | Fix identity-based proxy binding, absent-versus-explicit overrides, agreeing linked fanout and recursive boundary composition in existing owners. | Luna medium, with the recursive composition kernel assigned to Sol high XHARD |
+| T1/T2/T3 | Preserve virtual-wire roster safety, improve contextual refusal diagnostics, and prove CLI/SDK/canvas parity under one authority. | Luna medium |
+| E2/T4 | Rerun the original corpus, full lifecycle for every supported case, atomic refusal proof for 10/16/17, exact Python/exported-graph inspection, H3 and configured suite. | Luna medium |
+
+The acceptance target is at least 16 positive original workflows, plus 10/16/17
+as justified refusals, or 17 positives if case 14 is source-proven recoverable.
+No importer-vs-importer agreement, success exit code or mocked runtime seam can
+substitute for source-backed semantic, identity and lifecycle evidence.
 
 ## Inherited v5 scope
 

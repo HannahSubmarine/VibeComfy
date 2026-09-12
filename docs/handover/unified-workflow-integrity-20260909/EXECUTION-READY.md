@@ -6,4 +6,6 @@ For this machine, resume the [existing Megado launch instructions](/Users/hannah
 
 Bounded missing development/browser-test dependency setup is approved at launch. pytest-timeout and local Playwright dependencies/browser need resolving. The user approved up to two additional Astra medium calls for the existing final stage; current status/configuration records the increased ceilings with all historical charges preserved. Actual end-to-end validation precedes those reviews.
 
+Before dispatch, also read [the 2026-09-12 corpus-completeness amendment](corpus-completeness-amendment-20260912.md). It requires the six source-valid refusals to become positive regressions, bounds case 14 to a source experiment, and retains only 10/16/17 as refusals for their supplied bytes. This extends existing tasks and counters; it adds no stage or allowance.
+
 The current plan and corpus are committed at 44c03d62153eaa79793c97aff5dcbb8d6016ed1c and published to the authorized fork branch `handover/unified-workflow-integrity-20260911`. Preserve the existing control history/configuration together with the source checkout; no main merge, runtime provisioning beyond bounded test dependencies, or deployment is authorized by this document.

@@ -15,6 +15,8 @@ Test-signal planning supplement: [focused cleanup plan](test-signal-cleanup-plan
 and [six-slice Luna inventory](evidence/test-signal-audit-20260911/test-signal-audit-20260911.md).
 This is preparation only; no test deletion, lane suppression or new acceptance PASS.
 
+Latest corpus requirement: read [corpus-completeness-amendment-20260912.md](corpus-completeness-amendment-20260912.md). It supersedes the prior 10/10 corpus expectation: valid sources must work, with only source-proven refusals retained.
+
 This is the active Megado handover for VibeComfy's canonical workflow integrity and editable Python work. It consolidates the save/export integrity plan with the absorbed Pythonic-emission contract. Delivery implementation and validation are in progress in the isolated candidate checkout; the exact evidence is recorded under the active run. Final review PASS, merge, deployment, and generated-video success remain distinct claims.
 
 Project: `VibeComfy`

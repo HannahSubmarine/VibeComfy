@@ -14,7 +14,18 @@ companion JSON. Markdown-note text is typed presentation data with exact
 content; it is not runtime Python or custody. A legacy `.layout.json` is not
 emitted by this canonical path.
 
-## Results
+## Current acceptance amendment — 2026-09-12
+
+The results below are the historical 2026-09-11 baseline, not the current
+completion target. The latest requirement is that every valid source workflow
+must work through the canonical path. The Astra-adjudicated amendment at
+`../../corpus-completeness-amendment-20260912.md` reclassifies 01, 02, 11, 13,
+15 and 18 as required-positive fixes, bounds 14 to a source-format
+investigation, and retains 10, 16 and 17 as refusals only for their supplied
+descriptive/malformed bytes. The previous 10/10 split is preserved as
+historical evidence and must not be reported as completion.
+
+## Historical baseline results
 
 | # | Source | Coverage | Outcome | Triage |
 |---:|---|---|---|---|
@@ -41,11 +52,15 @@ emitted by this canonical path.
 
 ## Failure taxonomy and plan extension
 
-The 20-case run identifies six distinct classes to handle in the implementation
-and test plan. Three supported-input fidelity defects were fixed and rerun:
+The 20-case baseline identified six distinct classes to handle in the
+implementation and test plan. Three supported-input fidelity defects were fixed
+and rerun:
 case 12 (switch values/scoped links), case 19 (authored model path spelling and
 output mapping), and case 20 (audio fan-in topology). The remaining failures
-are intentional, source-backed refusals:
+were treated as intentional, source-backed refusals at the time. The current
+Astra adjudication supersedes that treatment for 01, 02, 11, 13, 15 and 18;
+those cases are now required-positive regressions. Case 14 is bounded
+investigation. Only 10, 16 and 17 remain refusals for the supplied bytes:
 
 - 01 rejects an invalid `PrimitiveInt` literal (`75::68`).
 - 02, 11, 13, 14, and 15 reject unsupported native recursive-boundary encoding.

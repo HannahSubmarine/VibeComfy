@@ -2,6 +2,28 @@
 
 # Status
 
+## Latest corpus-completeness amendment — 2026-09-12
+
+The user requires all valid workflows in the 20-workflow corpus to work through
+the canonical path. The current candidate's `10 successful / 10 intentional
+refusal` result is therefore not complete under the amended target. The
+previous evidence is retained, but the affected refusal expectations are
+superseded.
+
+Decision `D-CORPUS-20260912`, adjudicated by Astra high, classified 01, 02, 11, 13, 15 and 18
+as required-positive fixes; 14 as a bounded source-format investigation; and
+10, 16 and 17 as justified refusals for the supplied bytes. The detailed plan
+and source-backed classifications are in
+[corpus-completeness-amendment-20260912.md](corpus-completeness-amendment-20260912.md).
+
+This reopens affected implementation and acceptance evidence under the
+existing E0/E1/T1/T2/T3/E2/T4 tasks. It does not reset counters, add a review
+stage or change model bindings: normal work is Luna medium, the irreducible
+recursive composition kernel is Sol high, and Astra Max is not used. The
+minimum completion outcome is 16 positive pairs plus contextual atomic
+refusals for 10/16/17, or 17 positives if 14 is source-proven recoverable.
+No implementation or test result is claimed by this status amendment.
+
 ## Current validation continuation — `ff5972ab`
 
 The implementation candidate is complete and pushed to the authorized fork

@@ -1,12 +1,28 @@
 # Acceptance and evidence — planning history plus future behavior
 
+## Current corpus-completeness amendment — 2026-09-12
+
+The current user requirement is that valid workflows work through the canonical
+path. The former corpus expectation of ten intentional refusals is superseded:
+cases 01, 02, 11, 13, 15 and 18 are required-positive importer regressions;
+case 14 is a bounded source-format investigation; cases 10, 16 and 17 remain
+refusals only for their supplied malformed/descriptive bytes. See the complete
+[Astra-adjudicated corpus plan](corpus-completeness-amendment-20260912.md).
+
+This amendment changes expected scenario outcomes, not criterion IDs, scope
+owners, review stages or counters. Positive cases require source-backed
+semantic/identity expectations and full edit/save/reload/export proof. Refused
+cases require contextual diagnostics, no partial outputs and byte-for-byte
+preservation of any existing destination pair. The prior 10/10 result remains
+historical and does not satisfy this amended acceptance target.
+
 ## Required final practical validation — before completion
 
 User explicitly reaffirmed actual end-of-run validation. This is required E2/T4 evidence under I1–I10, not another model-review stage. All items remain NOT RUN for the new amendment.
 
 1. **Programmatic fidelity and source shape:** validate the entire freshly generated Python and companion JSON; independently assert effective values, exact edges/output slots, public outputs, identity/native scopes/provenance, and presentation-only metadata. Include malformed/missing/mixed companion refusal, valid drafts, revision protection and injected failure/rollback tests. Matching producer-generated snapshots alone is insufficient.
 2. **Real entrypoints and editing pipeline:** ingest the same supported and malformed inputs through actual CLI, SDK and canvas paths. Perform an actual Comfy Node edit/apply/save/reload/export lifecycle through production persistence owners, with deterministic model responses only at the provider seam. Assert intended edits and unchanged unrelated graph content. Browser boot, intercepted backend routes, mocked callbacks or success exit codes alone do not satisfy this proof.
-3. **Original workflow corpus:** rerun all 20 original inputs through the canonical path; require each documented success or intentional refusal, exact diagnostics and no partial/clobbered output. Do not force twenty successes. Every unexpected defect is minimized into a regression and its original workflow is rerun after the fix.
+3. **Original workflow corpus:** rerun all 20 original inputs through the canonical path. Every valid source must produce a complete pair and full lifecycle evidence; refusal is allowed only for a documented malformed or semantically unresolved source condition. The current minimum is 16 positive pairs plus justified refusals for 10, 16 and 17, or 17 positives if case 14 is source-proven recoverable. Every unexpected defect is minimized into a regression and its original workflow is rerun after the fix.
 4. **Exact H3 rehearsal:** onboard the specified H3 source, retain freshly generated Python/JSON, edit the required controls, rebuild, save/reload/export, and compare exact intended changes plus untouched wiring/identity. Regenerate unchanged inputs deterministically. Inspect the whole Python file and a rendering from the exact exported graph; retain files, hashes, command receipts and inspection findings. No manual output cleanup or bespoke restoration may stand in for the canonical path.
 5. **Final integrated checks:** pass the configured full offline suite, complete browser smoke and required applicable Comfy/browser/parity checks on the final candidate under existing resource limits. Report actual commands, collected/selected counts, failures/errors, skips/deselections/xfails and reasons. Required unavailable boundaries remain blockers, not silent skips. No new live-model/GPU requirement is introduced. Rerun only affected checks after further changes while retaining unaffected evidence.
 
