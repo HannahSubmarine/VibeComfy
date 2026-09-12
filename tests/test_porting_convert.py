@@ -133,6 +133,65 @@ def test_ready_requirements_refreshes_mixed_models_without_stale_assets() -> Non
     }]
 
 
+def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
+    tmp_path,
+) -> None:
+    """The preflight and external-companion rebuild must share one witness."""
+    wf = _wf("model-requirement-pair")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "repeated.safetensors"
+    wf.nodes["2"] = _regular_node("2", "CheckpointLoaderSimple")
+    wf.nodes["2"].inputs["ckpt_name"] = "repeated.safetensors"
+    wf.nodes["3"] = _regular_node("3", "CheckpointLoaderSimple")
+    wf.nodes["3"].inputs["ckpt_name"] = "second.safetensors"
+    wf.metadata["model_assets"] = [
+        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints"},
+        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints"},
+    ]
+    # This is the stale source witness that previously made the external v2
+    # rebuild fail its staged semantic-digest check.
+    wf.requirements.models = ["repeated.safetensors"]
+    before = wf.copy()
+
+    result = port_convert_workflow(wf, validate=False)
+    assert wf == before
+    assert "canonical_requirements={'models': ['repeated.safetensors', 'repeated.safetensors', 'second.safetensors']" in result.text
+
+    from vibecomfy.porting.convert import _build_emitted_workflow_from_text
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
+
+    staged = _build_emitted_workflow_from_text(result.text)
+    destination = tmp_path / "model-requirement-pair.py"
+    emit_bundle_with_candidate(staged, destination, {"operation": "authored"}, None)
+    reloaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow
+    assert reloaded.requirements.models == [
+        "repeated.safetensors",
+        "repeated.safetensors",
+        "second.safetensors",
+    ]
+
+
+def test_scratchpad_pair_preserves_explicit_empty_model_requirements(tmp_path) -> None:
+    wf = _wf("empty-model-requirements")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "picker.safetensors"
+    wf.requirements.models = []
+
+    result = port_convert_workflow(wf, validate=False)
+    assert "canonical_requirements={'models': []" in result.text
+
+    from vibecomfy.porting.convert import _build_emitted_workflow_from_text
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
+
+    staged = _build_emitted_workflow_from_text(result.text)
+    destination = tmp_path / "empty-model-requirements.py"
+    emit_bundle_with_candidate(staged, destination, {"operation": "authored"}, None)
+    reloaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow
+    assert reloaded.requirements.models == []
+
+
 def test_port_convert_does_not_mutate_caller_owned_workflow_or_raw_evidence():
     wf = _wf("caller-owned")
     wf.nodes["1"] = VibeNode("1", "PrimitiveInt", inputs={"value": 7})

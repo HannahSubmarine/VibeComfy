@@ -1448,9 +1448,17 @@ def _v2_output_args(
             ("expected_cardinality", item.expected_cardinality),
         )
         args = [f"node={binding(item)}"]
-        args.extend(f"{name}={_format_value(value)}" for name, value in fields)
+        # None is the typed OutputSpec default.  Omitting it keeps a
+        # multi-output finalizer readable without changing its semantics.
+        args.extend(
+            f"{name}={_format_value(value)}"
+            for name, value in fields
+            if value is not None
+        )
         records.append(f"OutputSpec({', '.join(args)})")
-    return ", outputs=[" + ", ".join(records) + "]"
+    if len(outputs) > 1:
+        return ", outputs=[\n        " + ",\n        ".join(records) + ",\n    ]"
+    return ", outputs=[" + records[0] + "]"
 
 
 def _plain_canonical_value(value: Any) -> Any:

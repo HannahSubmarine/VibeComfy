@@ -462,6 +462,20 @@ def test_ready_metadata_build_appends_edit_guide_extra_and_warns_once_on_model_d
     assert "differs from MODELS-derived" in str(caught[0].message)
 
 
+def test_ready_metadata_build_does_not_warn_without_derived_model_assets() -> None:
+    templates._MODEL_DISAGREEMENT_WARNED = False
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ReadyMetadata.build(
+            template_id="image/plain-requirements",
+            capability="text_to_image",
+            requirements={"models": ["plain.safetensors"]},
+        )
+
+    assert not [warning for warning in caught if "differs from MODELS-derived" in str(warning.message)]
+
+
 def test_finalize_preserves_source_requirements_and_image_output_contract() -> None:
     wf = _workflow("image/example")
     _force_id(wf, wf.node("CLIPTextEncode", text="current prompt"), "1")

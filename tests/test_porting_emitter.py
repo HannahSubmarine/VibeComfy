@@ -28,6 +28,7 @@ from vibecomfy.porting.emitter import (
     emit_scratchpad_python,
     format_as_python,
 )
+from vibecomfy.porting.emit.emit_ready import _v2_output_args
 from vibecomfy.security.agent_generated_loader import (
     AgentGeneratedLoadError,
     load_agent_generated_scratchpad,
@@ -1415,6 +1416,25 @@ def _workflow_with_output_names(
     workflow.connect("1.0", "2.a")
     workflow.connect("1.1", "2.b")
     return workflow
+
+
+def test_v2_multi_output_finalizer_is_readable_and_omits_default_fields() -> None:
+    workflow = _sample_workflow()
+    workflow.outputs = [
+        VibeOutput("20", "SaveImage"),
+        VibeOutput("20", "PreviewImage"),
+        VibeOutput("20", "SaveAudioMP3"),
+    ]
+
+    rendered = _v2_output_args(workflow, {"20": "save"}, {})
+
+    assert rendered == (
+        ", outputs=[\n"
+        "        OutputSpec(node=save, output_type='SaveImage'),\n"
+        "        OutputSpec(node=save, output_type='PreviewImage'),\n"
+        "        OutputSpec(node=save, output_type='SaveAudioMP3'),\n"
+        "    ]"
+    )
 
 
 def _workflow_with_widget_aliases(

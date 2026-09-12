@@ -286,8 +286,30 @@ def port_convert_workflow(
             output_mode="scratchpad",
             ready_id=None,
         )
+        # The v2 bundle writer rebuilds the staged source with the external
+        # companion.  That rebuild refreshes ``requirements.models`` from the
+        # actual model-picker values so an edited loader cannot retain a stale
+        # requirement witness.  Keep the source workflow used for parity
+        # evidence unchanged, but give the scratchpad preflight the same
+        # effective model witness; otherwise the later atomic pair check sees
+        # an avoidable semantic-digest mismatch for workflows whose source
+        # requirements list omits one or more picker values.
+        emission_workflow = workflow
+        model_names: list[str] = []
+        for item in _referenced_model_values_for_workflow(workflow):
+            if not isinstance(item, Mapping) or not item.get("value"):
+                continue
+            name = str(item["value"])
+            # Keep the same occurrence order as the external v2 rebuild. Its
+            # model requirement witness is intentionally per picker occurrence
+            # so the staged and companion-backed constructors have one exact
+            # semantic projection (including repeated use of one model).
+            model_names.append(name)
+        if model_names and workflow.requirements.models:
+            emission_workflow = workflow.copy()
+            emission_workflow.requirements.models = model_names
         text = emit_scratchpad_python(
-            workflow,
+            emission_workflow,
             workflow_id=workflow.id,
             source_path=source_path,
             provenance=complete_provenance,

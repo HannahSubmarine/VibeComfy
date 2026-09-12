@@ -1633,7 +1633,7 @@ def _requirements_with_models(
     merged: dict[str, Any] = dict(requirements or {})
     merged, _warnings = normalize_custom_node_requirements(merged)
     existing_models = merged.get("models")
-    if existing_models:
+    if existing_models and derived_models:
         _warn_on_model_requirement_disagreement(existing_models, derived_models)
     elif derived_models:
         merged["models"] = derived_models
