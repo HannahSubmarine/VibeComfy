@@ -115,6 +115,40 @@ def _widget_target(definition: Mapping[str, Any], native_link: tuple[Any, str, i
     return target, positions.index(matches[0])
 
 
+def _definition_entries(raw: Any) -> list[Mapping[str, Any]]:
+    """Return definitions in lexical order, including nested definitions."""
+    if isinstance(raw, Mapping) and isinstance(raw.get("subgraphs"), list):
+        entries = raw["subgraphs"]
+    elif isinstance(raw, Mapping):
+        entries = list(raw.values())
+    elif isinstance(raw, (list, tuple)):
+        entries = list(raw)
+    else:
+        return []
+    result: list[Mapping[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            continue
+        result.append(entry)
+        result.extend(_definition_entries(entry.get("definitions")))
+    return result
+
+
+def _is_native_definition(definition: Mapping[str, Any]) -> bool:
+    """Identify a definition whose boundary is owned by Comfy's native form."""
+    links = canonical_definition_links(definition, ()) or ()
+    return "inputNode" in definition or "outputNode" in definition or any(
+        isinstance(link, Mapping)
+        and (str(link.get("origin_id")) in {"-10", "-20"} or str(link.get("target_id")) in {"-10", "-20"})
+        for link in links
+    ) or any(
+        isinstance(link, (list, tuple))
+        and len(link) == 6
+        and (str(link[1]) in {"-10", "-20"} or str(link[3]) in {"-10", "-20"})
+        for link in links
+    )
+
+
 def _definition_for(instance: Mapping[str, Any], definitions: list[Mapping[str, Any]]) -> Mapping[str, Any] | None:
     candidates = [d for d in definitions if _id(d.get("id", d.get("name"))) == _id(instance.get("type")) or _id(d.get("name")) == _id(instance.get("type"))]
     if len(candidates) > 1:
@@ -122,7 +156,12 @@ def _definition_for(instance: Mapping[str, Any], definitions: list[Mapping[str, 
     return candidates[0] if candidates else None
 
 
-def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
+def expand_native_subgraphs(
+    raw_ui: Mapping[str, Any],
+    *,
+    _retain_definitions: bool = False,
+    _consumed_definition_keys: set[str] | None = None,
+) -> dict[str, Any]:
     """Expand supported native definitions into an ordinary flat UI graph.
 
     The returned mapping contains ``_native_subgraph_diagnostics`` and
@@ -130,10 +169,15 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
     """
     if not isinstance(raw_ui, Mapping):
         _fail("UI graph must be a mapping")
+    consumed_definition_keys = (
+        _consumed_definition_keys
+        if _consumed_definition_keys is not None
+        else set()
+    )
     result = deepcopy(dict(raw_ui))
     nodes = door_get_nodes(result)
     defs_payload = result.get("definitions")
-    definitions = defs_payload.get("subgraphs", []) if isinstance(defs_payload, Mapping) else []
+    definitions = _definition_entries(defs_payload)
     if not isinstance(nodes, list) or not isinstance(definitions, list):
         _fail("expected nodes list and definitions.subgraphs list")
     if not any(_definition_for(n, definitions) is not None for n in nodes if isinstance(n, Mapping)):
@@ -178,10 +222,13 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
             rebuilt_nodes.append(deepcopy(dict(original)))
             continue
         expanded = True
+        consumed_definition_keys.add(
+            str(definition.get("id", definition.get("name")))
+        )
         definition_nodes = canonical_definition_nodes(definition)
         definition_links = canonical_definition_links(definition)
-        if definition.get("definitions") or not isinstance(definition_nodes, list) or not isinstance(definition_links, list):
-            _fail(f"unsupported nested or malformed definition {definition.get('name')!r}")
+        if not isinstance(definition_nodes, list) or not isinstance(definition_links, list):
+            _fail(f"malformed definition {definition.get('name')!r}")
         inner = { _id(n.get("id")): deepcopy(dict(n)) for n in definition_nodes if isinstance(n, Mapping) }
         if len(inner) != len(definition_nodes):
             _fail("duplicate or malformed inner node id")
@@ -323,6 +370,12 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
                 continue
             source = root_by_id.get(source_link)
             assert source is not None
+            # A graph-level native boundary is a public input marker, not a
+            # real executable node.  Once the instance is flattened, retain
+            # the inner authored/default value and do not leak ``-10`` into
+            # the ordinary UI graph.
+            if source[1] in {"-10", "-20"}:
+                continue
             rebuilt_links.append((source_link, source[1], source[2], renamed[target_id], target_slot, source[5]))
         # Replace output boundary links at their existing root consumer(s).
         for output_index, entry in enumerate(boundary_outputs):
@@ -357,6 +410,10 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
                 root_consumers = [x for x in root_links if x[0] in instance_output_ids]
             source_inner = edge[1]
             for root in root_consumers:
+                # A graph-level native output marker is a presentation
+                # boundary, not an executable sink in the flattened graph.
+                if root[3] in {"-10", "-20"}:
+                    continue
                 rebuilt_links.append((root[0], ns + source_inner, edge[2], root[3], root[4], root[5]))
         # Native links must all be accounted for; unknown topology is unsafe.
         allowed = {x[0] for x in native if x[1] != "-10" and x[3] != "-20"}
@@ -366,7 +423,13 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
         diagnostics.append({"kind": "expanded_native_subgraph", "instance_id": _id(original.get("id")), "definition": definition.get("name", definition.get("id"))})
 
     # Keep non-instance root links, then rebuild all socket backlink records.
-    instance_ids = {_id(n.get("id")) for n in nodes if isinstance(n, Mapping) and _definition_for(n, definitions) is not None}
+    instance_ids = {
+        _id(n.get("id"))
+        for n in nodes
+        if isinstance(n, Mapping)
+        and (definition := _definition_for(n, definitions)) is not None
+        and _is_native_definition(definition)
+    }
     for edge in root_links:
         if edge[1] in instance_ids or edge[3] in instance_ids:
             continue
@@ -385,7 +448,10 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
     outgoing: dict[str, dict[int, list[Any]]] = {k: {} for k in node_map}
     for edge in final_links:
         if edge[1] not in node_map or edge[3] not in node_map:
-            _fail("expanded link points at a missing node")
+            _fail(
+                f"expanded link points at a missing node: {edge[1]!r}->{edge[3]!r}; "
+                f"available nodes={sorted(node_map)}"
+            )
         if edge[4] in incoming[edge[3]]:
             _fail("multiple links target one input socket")
         incoming[edge[3]][edge[4]] = edge[0]
@@ -395,6 +461,90 @@ def expand_native_subgraphs(raw_ui: Mapping[str, Any]) -> dict[str, Any]:
     door_nodes(result)[:] = rebuilt_nodes
     door_links(result)[:] = [[a, b, c, d, e, f] for a, b, c, d, e, f in final_links]
     if expanded:
+        # A supported native definition may contain another native instance.
+        # Run the same bounded materializer again over the newly namespaced
+        # graph.  Each pass consumes one occurrence layer, so this is
+        # terminating for an acyclic finite definition tree; the existing
+        # identity/topology checks remain the refusal boundary.
+        nested_instances = any(
+            isinstance(node, Mapping)
+            and (definition := _definition_for(node, definitions)) is not None
+            and _is_native_definition(definition)
+            for node in rebuilt_nodes
+        )
+        if nested_instances:
+            nested_result = expand_native_subgraphs(
+                result,
+                _retain_definitions=True,
+                _consumed_definition_keys=consumed_definition_keys,
+            )
+            prior_diagnostics = diagnostics
+            nested_diagnostics = nested_result.get("_native_subgraph_diagnostics", [])
+            if isinstance(nested_diagnostics, list):
+                nested_result["_native_subgraph_diagnostics"] = [
+                    *prior_diagnostics,
+                    *nested_diagnostics,
+                ]
+            nested_result["_native_subgraph_provenance"] = {
+                "source_sha256": hashlib.sha256(
+                    json.dumps(raw_ui, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+                ).hexdigest(),
+                "source_kind": "comfyui_native_subgraph",
+            }
+            result = nested_result
+
+        def retain_unconsumed_definitions(raw_definitions: Any) -> Any:
+            """Drop only consumed native definitions; preserve safe extras."""
+            if isinstance(raw_definitions, Mapping) and isinstance(raw_definitions.get("subgraphs"), list):
+                entries = raw_definitions["subgraphs"]
+                kept: list[dict[str, Any]] = []
+                for entry in entries:
+                    if not isinstance(entry, Mapping):
+                        _fail("malformed subgraph definition")
+                    key = str(entry.get("id", entry.get("name")))
+                    if _is_native_definition(entry):
+                        if key not in consumed_definition_keys:
+                            _fail(f"unused native definition {key!r}")
+                        continue
+                    item = deepcopy(dict(entry))
+                    if "definitions" in item:
+                        nested = retain_unconsumed_definitions(item["definitions"])
+                        if nested in (None, {}, {"subgraphs": []}):
+                            item.pop("definitions", None)
+                        else:
+                            item["definitions"] = nested
+                    kept.append(item)
+                return {"subgraphs": kept}
+            if isinstance(raw_definitions, Mapping):
+                result_mapping: dict[str, Any] = {}
+                for name, entry in raw_definitions.items():
+                    if not isinstance(entry, Mapping):
+                        _fail("malformed subgraph definition")
+                    key = str(entry.get("id", entry.get("name", name)))
+                    if _is_native_definition(entry):
+                        if key not in consumed_definition_keys:
+                            _fail(f"unused native definition {key!r}")
+                        continue
+                    item = deepcopy(dict(entry))
+                    if "definitions" in item:
+                        nested = retain_unconsumed_definitions(item["definitions"])
+                        if nested in (None, {}, {"subgraphs": []}):
+                            item.pop("definitions", None)
+                        else:
+                            item["definitions"] = nested
+                    result_mapping[str(name)] = item
+                return result_mapping
+            if isinstance(raw_definitions, (list, tuple)):
+                return retain_unconsumed_definitions({"subgraphs": list(raw_definitions)})
+            return raw_definitions
+
+        retained = retain_unconsumed_definitions(result.get("definitions"))
+        if retained in (None, {}, {"subgraphs": []}):
+            result.pop("definitions", None)
+        else:
+            result["definitions"] = retained
+        if _retain_definitions:
+            return result
         raw_bytes = json.dumps(raw_ui, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         result["_native_subgraph_provenance"] = {"source_sha256": hashlib.sha256(raw_bytes).hexdigest(), "source_kind": "comfyui_native_subgraph"}
         result["_native_subgraph_diagnostics"] = diagnostics

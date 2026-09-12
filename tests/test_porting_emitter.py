@@ -335,7 +335,8 @@ def test_from_ui_nested_definition_round_trips_authored_roster_and_link_metadata
     edited_path = tmp_path / "nested-edited.py"
     edited_path.write_text(edited, encoding="utf-8")
     changed = load_agent_generated_scratchpad(edited_path)
-    assert changed.definitions["subgraphs"][0]["nodes"][0]["class_type"] == "EditedSourceNode"
+    changed_node = changed.definitions["subgraphs"][0]["nodes"][0]
+    assert changed_node.get("class_type", changed_node.get("type")) == "EditedSourceNode"
 
 
 def test_canonical_recursive_callable_source_has_known_unknown_local_nodes() -> None:

@@ -145,14 +145,14 @@ _ANNOTATION_OWNER_KINDS = frozenset({"workflow", "definition", "instance", "node
 
 _V2_KEYS = frozenset({"format_version", "bind", "custody", "presentation"})
 _V2_BIND_KEYS = frozenset({"workflow_identity", "generation_id", "custody_digest"})
-_V2_CUSTODY_KEYS = frozenset({"scopes"})
+_V2_CUSTODY_KEYS = frozenset({"scopes", "definitions"})
 _V2_SCOPE_KEYS = frozenset({"scope_path", "nodes", "helpers"})
 _V2_NODE_KEYS = frozenset({
     "label", "id", "uid", "class_type", "native_ports", "metadata",
     "widget_channels", "none_input_fields", "none_widget_fields",
     "output_slot_names", "construction_output_names",
 })
-_V2_HELPER_KEYS = frozenset({"id", "uid", "class_type", "provenance", "native_ports"})
+_V2_HELPER_KEYS = frozenset({"id", "uid", "class_type", "provenance", "native_ports", "pos", "size"})
 _V2_MARKER_KEYS = frozenset({"format_version", "generation_id", "custody_digest"})
 _V2_PRESENTATION_KEYS = frozenset({"nodes", "links", "groups", "canvas", "annotations"})
 _V2_SCOPE_NODES_KEY = "nodes"
@@ -760,8 +760,8 @@ def _validate_v2_custody(value: Any) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise WorkflowBundleError("workflow companion custody must be an object")
     _closed_keys(value, _V2_CUSTODY_KEYS, "workflow companion custody")
-    if set(value) != _V2_CUSTODY_KEYS or not isinstance(value.get("scopes"), list):
-        raise WorkflowBundleError("workflow companion custody must contain one scopes list")
+    if "scopes" not in value or not isinstance(value.get("scopes"), list):
+        raise WorkflowBundleError("workflow companion custody must contain a scopes list")
     scopes: list[dict[str, Any]] = []
     seen_scopes: set[str] = set()
     for scope_index, raw_scope in enumerate(value["scopes"]):
@@ -880,12 +880,84 @@ def _validate_v2_custody(value: Any) -> dict[str, Any]:
                 helper["provenance"] = _validate_generated_provenance(
                     helper["provenance"], f"{helper_where}.provenance"
                 )
+            for field in ("pos", "size"):
+                if field in helper:
+                    helper[field] = _pair(helper[field], f"{helper_where}.{field}")
             canonical_digest(helper)
             helpers.append(helper)
         scopes.append({"scope_path": scope_path, "nodes": nodes, "helpers": helpers})
     if "" not in seen_scopes:
         raise WorkflowBundleError("workflow companion custody must contain the root scope")
-    return {"scopes": scopes}
+    result: dict[str, Any] = {"scopes": scopes}
+    if "definitions" in value:
+        definitions = value["definitions"]
+        if not isinstance(definitions, Mapping) or set(definitions) != {"subgraphs"}:
+            raise WorkflowBundleError(
+                "workflow companion recursive custody must contain only subgraphs"
+            )
+
+        def validate_recursive(value: Any, where: str) -> None:
+            entries = value.get("subgraphs") if isinstance(value, Mapping) else None
+            if not isinstance(entries, list):
+                raise WorkflowBundleError(f"{where}.subgraphs must be a list")
+            for index, definition in enumerate(entries):
+                item_where = f"{where}.subgraphs[{index}]"
+                if not isinstance(definition, Mapping):
+                    raise WorkflowBundleError(f"{item_where} must be an object")
+                if any(key in definition for key in ("nodes", "links", "edges")):
+                    raise WorkflowBundleError(
+                        f"{item_where} cannot contain executable graph payload"
+                    )
+                for key in ("_scope_key", "_constructor_nodes"):
+                    if key not in definition:
+                        raise WorkflowBundleError(f"{item_where} is missing {key}")
+                if not isinstance(definition["_scope_key"], str) or not definition["_scope_key"].strip():
+                    raise WorkflowBundleError(f"{item_where}._scope_key must be nonblank")
+                records = definition["_constructor_nodes"]
+                if not isinstance(records, list):
+                    raise WorkflowBundleError(f"{item_where}._constructor_nodes must be a list")
+                for record_index, record in enumerate(records):
+                    record_where = f"{item_where}._constructor_nodes[{record_index}]"
+                    if not isinstance(record, Mapping):
+                        raise WorkflowBundleError(f"{record_where} must be an object")
+                    for key in ("id", "class_type", "node_field"):
+                        if not isinstance(record.get(key), str) or not record[key].strip():
+                            raise WorkflowBundleError(f"{record_where}.{key} must be nonblank")
+                    for key in ("input_shape", "output_shape"):
+                        if record.get(key) is not None and not isinstance(record[key], list):
+                            raise WorkflowBundleError(f"{record_where}.{key} must be a list or null")
+                nested = definition.get("definitions")
+                if nested is not None:
+                    validate_recursive(nested, f"{item_where}.definitions")
+
+        validate_recursive(definitions, "workflow companion custody.definitions")
+        from vibecomfy.identity.scope import compose_scope_path
+
+        structural_scopes: set[str] = set()
+
+        def collect_scope_paths(value: Any, parents: tuple[str, ...]) -> None:
+            entries = value.get("subgraphs") if isinstance(value, Mapping) else None
+            if not isinstance(entries, list):
+                return
+            for definition in entries:
+                if not isinstance(definition, Mapping):
+                    continue
+                key = str(definition["_scope_key"])
+                scope_path = compose_scope_path((*parents, key))
+                structural_scopes.add(scope_path)
+                collect_scope_paths(definition.get("definitions"), (*parents, key))
+
+        collect_scope_paths(definitions, ())
+        observed_scopes = seen_scopes - {""}
+        if observed_scopes != structural_scopes:
+            missing = sorted(structural_scopes - observed_scopes)
+            extra = sorted(observed_scopes - structural_scopes)
+            detail = f"missing={missing!r}" if missing else f"extra={extra!r}"
+            raise WorkflowBundleError(
+                f"workflow companion recursive custody scopes do not match definitions ({detail})"
+            )
+        result["definitions"] = copy.deepcopy(dict(definitions))
+    return result
 
 
 def _validate_v2_sidecar(
@@ -1138,6 +1210,25 @@ def _first(mapping: Mapping[str, Any], *names: str) -> Any:
     return None
 
 
+def _source_provenance(provenance: Any) -> Any:
+    """Return stable provenance suitable for regenerated Python source.
+
+    ``revision_evidence`` is derived when a pair is bound and is deliberately
+    retained on the in-memory bundle for lineage checks. It is not source
+    authority, though: embedding it in regenerated Python makes a second
+    load/save cycle change the source solely because the first cycle created a
+    revision. Stable provenance and the parent precondition remain part of the
+    source contract; derived lineage stays at the pair boundary.
+    """
+    if not isinstance(provenance, Mapping):
+        return provenance
+    result = dict(provenance)
+    result.pop("revision_evidence", None)
+    if result.get("parent_revision") == "":
+        result.pop("parent_revision")
+    return result
+
+
 def filter_provenance(
     provenance: Any,
     *,
@@ -1297,6 +1388,42 @@ def _canonicalize_for_v2_pair(
         operation=operation,
         parent_revision=parent_revision,
     )
+    # Establish the semantic expectation before asking the generated source to
+    # rebuild it.  The staged load is a publication preflight, not an
+    # authority that is allowed to define what the first build meant.  This
+    # catches accidental value/topology loss while the original candidate is
+    # still available and leaves the visible pair untouched on refusal.
+    # Imported API-shaped graphs may retain a redundant ``[node, slot]`` view
+    # beside the authoritative VibeEdge.  The canonical emitter deliberately
+    # drops that duplicate view, so establish the pre-build expectation from
+    # the admitted workflow after applying only that lossless normalization.
+    expected_workflow = workflow.copy()
+    from vibecomfy.workflow import _embedded_api_link_details
+
+    for detail in _embedded_api_link_details(expected_workflow):
+        if detail["edge_collision"] != "identical":
+            raise WorkflowBundleError(
+                "canonical first-build candidate contains conflicting embedded API link"
+            )
+        node = expected_workflow.nodes[str(detail["node_id"])]
+        storage = getattr(node, detail["storage"])
+        storage.pop(str(detail["input_name"]), None)
+    # Finalize canonically refreshes a non-empty model requirement witness from
+    # the source-backed picker values.  Establish the same expectation before
+    # the staged rebuild so the independent first-build check compares like
+    # with like while retaining duplicate picker occurrences and explicit
+    # empty requirements.
+    from vibecomfy.model_assets import _referenced_model_values
+
+    if expected_workflow.requirements.models:
+        expected_models = [
+            str(item["value"])
+            for item in _referenced_model_values(expected_workflow)
+            if isinstance(item, Mapping) and item.get("value")
+        ]
+        if expected_models:
+            expected_workflow.requirements.models = expected_models
+    expected_semantic_digest = expected_workflow.semantic_digest()
     from vibecomfy.porting.emit import emit_scratchpad_python
     from vibecomfy.scratchpad_loader import load_scratchpad
 
@@ -1309,6 +1436,7 @@ def _canonicalize_for_v2_pair(
         workflow_id=workflow.id,
         source_path=str(logical_path),
         provenance=provenance_payload,
+        external_custody=True,
     )
     with tempfile.TemporaryDirectory(prefix="vibecomfy-v2-canonicalize-") as temp_dir:
         staged_path = Path(temp_dir) / path.name
@@ -1319,6 +1447,10 @@ def _canonicalize_for_v2_pair(
                 provenance_override=Provenance.USER_CONFIRMED,
                 logical_path=logical_path,
             )
+    if normalized.semantic_digest() != expected_semantic_digest:
+        raise WorkflowBundleError(
+            "canonical first-build semantic digest differs from admitted candidate"
+        )
     return normalized, candidate
 
 
@@ -2464,7 +2596,8 @@ def emit_bundle(
         emitted_workflow,
         workflow_id=workflow.id,
         source_path=str(path),
-        provenance=dict(bundle.provenance),
+        provenance=_source_provenance(bundle.provenance),
+        external_custody=True,
     )
     _atomic_publish_pair(path, source, bundle.ui_sidecar, expected=bundle)
     return bundle
@@ -2701,7 +2834,8 @@ def emit_bundle_with_candidate(
             emitted_workflow,
             workflow_id=workflow.id,
             source_path=str(path),
-            provenance=dict(source_provenance or bundle.provenance),
+            provenance=_source_provenance(source_provenance or bundle.provenance),
+            external_custody=True,
         ),
         bundle.ui_sidecar,
         expected=bundle,

@@ -88,7 +88,7 @@ def recursive_definition_scope(workflow: VibeWorkflow):
 def materialize_recursive_definitions(
     workflow: VibeWorkflow,
     captures: list[tuple[str, tuple[Any, ...]]],
-    custody: Mapping[str, Any],
+    custody: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     """Build recursive definitions from executed constructor products.
 
@@ -96,6 +96,9 @@ def materialize_recursive_definitions(
     semantic node values and topology below ``nodes``/``links`` come from the
     temporary workflow populated by the emitted helper functions, so changing
     a nested constructor or default cannot be shadowed by a replay literal.
+    A direct renderer preview has no companion; in that narrow case derive a
+    minimal structural witness from the captured constructor objects rather
+    than putting a second graph-shaped manifest in generated Python.
     """
     by_scope = {scope: tuple(nodes) for scope, nodes in captures}
 
@@ -105,6 +108,222 @@ def materialize_recursive_definitions(
         if isinstance(value, Mapping):
             return list(value.values())
         return list(value) if isinstance(value, (list, tuple)) else []
+
+    def structural_roster(value: Any) -> list[Any] | None:
+        if not isinstance(value, (list, tuple)):
+            return None
+        return [
+            {
+                **{
+                    key: deepcopy(item[key])
+                    for key in ("name", "type", "slot")
+                    if key in item
+                },
+                "_has_link": "link" in item,
+                "_has_value": "value" in item,
+            }
+            if isinstance(item, Mapping) else item
+            for item in value
+        ]
+
+    def source_records(definition: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """Project an inline source definition into constructor identity custody."""
+        from vibecomfy.ingest.normalize import canonical_definition_links, canonical_definition_nodes
+
+        raw_nodes = canonical_definition_nodes(definition)
+        values = raw_nodes.values() if isinstance(raw_nodes, Mapping) else raw_nodes
+        if not isinstance(values, (list, tuple)):
+            return []
+        records: list[dict[str, Any]] = []
+        for index, raw in enumerate(values):
+            if not isinstance(raw, Mapping):
+                continue
+            node_id = str(raw.get("uid") or raw.get("id") or f"node_{index}")
+            class_type = str(raw.get("class_type", raw.get("type", "")))
+            if not class_type:
+                continue
+            raw_inputs = raw.get("inputs")
+            records.append({
+                "id": node_id,
+                "uid": raw.get("uid"),
+                "class_type": class_type,
+                "node_field": "type" if "type" in raw and "class_type" not in raw else "class_type",
+                "input_shape": structural_roster(raw_inputs),
+                "output_shape": structural_roster(raw.get("outputs")),
+            })
+
+        # Match the constructor helper's stable dependency order so captured
+        # runtime products zip to the same source identities on a standalone
+        # conversion that has no sibling companion.
+        # Source metadata may preserve UI order; normalized definitions begin
+        # from canonical lexical-id order before dependency ordering.
+        records.sort(key=lambda record: record["id"])
+        raw_links = canonical_definition_links(definition)
+        dependencies = {record["id"]: set() for record in records}
+        for link in raw_links if isinstance(raw_links, (list, tuple)) else ():
+            if isinstance(link, Mapping):
+                source = link.get("from_node", link.get("origin_id"))
+                target = link.get("to_node", link.get("target_id"))
+            elif isinstance(link, (list, tuple)) and len(link) >= 5:
+                source, target = link[1], link[3]
+            else:
+                continue
+            source_key, target_key = str(source), str(target)
+            if source_key in dependencies and target_key in dependencies:
+                dependencies[target_key].add(source_key)
+        ordered: list[dict[str, Any]] = []
+        remaining = list(records)
+        while remaining:
+            ready = [
+                record for record in remaining
+                if not (dependencies[record["id"]] & {item["id"] for item in remaining})
+            ]
+            if not ready:
+                return records
+            ordered.extend(ready)
+            remaining = [record for record in remaining if record not in ready]
+        return ordered
+
+    def source_custody(value: Any) -> dict[str, Any] | None:
+        """Create compact structural custody from existing inline metadata."""
+        from vibecomfy.identity.scope import sg_key
+
+        if value is None or value == {} or value == []:
+            return None
+
+        def build(definition: Mapping[str, Any]) -> dict[str, Any]:
+            key = sg_key(definition)
+            result = {
+                str(field): deepcopy(item)
+                for field, item in definition.items()
+                if field not in {"nodes", "links", "definitions"}
+                and not str(field).startswith("_")
+            }
+            result["_scope_key"] = key
+            result["_constructor_nodes"] = source_records(definition)
+            nested = definition.get("definitions")
+            if nested not in (None, {}, []):
+                result["definitions"] = {
+                    "subgraphs": [
+                        build(item)
+                        for item in entries(nested)
+                        if isinstance(item, Mapping)
+                    ]
+                }
+            return result
+
+        return {"subgraphs": [
+            build(item) for item in entries(value) if isinstance(item, Mapping)
+        ]}
+
+    if custody is None:
+        # Standalone previews are intentionally companion-free.  The captured
+        # builders still provide the stable local order, ids and classes needed
+        # to materialize a definition; the full source-backed shapes are only
+        # required by the published v2 companion path.
+        local_edges = list(workflow.edges)
+
+        def preview_shape(node: Any, *, output: bool) -> list[dict[str, Any]] | None:
+            source_node = getattr(node, "node", node)
+            node_id = str(getattr(source_node, "id", ""))
+            if output and not any(str(edge.from_node) == node_id for edge in local_edges):
+                return None
+            if not output and not any(str(edge.to_node) == node_id for edge in local_edges):
+                return None
+            if output:
+                names = getattr(source_node, "native_output_names", None)
+                types = getattr(source_node, "native_output_types", None)
+                if not isinstance(names, (list, tuple)):
+                    slots = sorted({
+                        int(edge.from_output)
+                        for edge in local_edges
+                        if str(edge.from_node) == node_id
+                        and str(edge.from_output).isdigit()
+                    })
+                    if not slots:
+                        return None
+                    names = [str(slot) for slot in range(max(slots) + 1)]
+                rows = []
+                for slot, name in enumerate(names):
+                    row: dict[str, Any] = {"name": name}
+                    if isinstance(types, (list, tuple)) and slot < len(types) and types[slot] is not None:
+                        row["type"] = types[slot]
+                    if any(
+                        str(edge.from_node) == node_id
+                        and str(edge.from_output) == str(slot)
+                        for edge in local_edges
+                    ):
+                        row["_has_link"] = True
+                    rows.append(row)
+                return rows
+            inputs = getattr(source_node, "inputs", {})
+            names = getattr(source_node, "native_input_names", None)
+            types = getattr(source_node, "native_input_types", None)
+            if not isinstance(names, (list, tuple)):
+                names = list(inputs) if isinstance(inputs, Mapping) else []
+            rows = []
+            for slot, name in enumerate(names):
+                if name is None:
+                    continue
+                field = str(name)
+                row = {"name": name}
+                if isinstance(types, (list, tuple)) and slot < len(types) and types[slot] is not None:
+                    row["type"] = types[slot]
+                has_link = any(
+                    str(edge.to_node) == node_id
+                    and str(edge.to_input) == field
+                    for edge in local_edges
+                )
+                if has_link:
+                    row["_has_link"] = True
+                if isinstance(inputs, Mapping) and field in inputs:
+                    row["_has_value"] = True
+                rows.append(row)
+            return rows or None
+
+        metadata_definitions = getattr(workflow, "metadata", {}).get("definitions")
+        if metadata_definitions is None or metadata_definitions == {} or metadata_definitions == []:
+            # Direct callers may retain the canonical recursive source on the
+            # workflow itself without wrapping it in ready-template metadata.
+            # That source is still the authority; synthetic capture is only a
+            # last resort when neither representation exists.
+            metadata_definitions = getattr(workflow, "definitions", None)
+        custody = source_custody(metadata_definitions)
+
+        synthetic_root: dict[str, Any] = {"subgraphs": []}
+        by_path: dict[tuple[str, ...], dict[str, Any]] = {}
+        if custody is None:
+            for scope_path, captured_nodes in captures:
+                parts = tuple(part for part in str(scope_path).split("/") if part)
+                if not parts:
+                    continue
+                for depth in range(1, len(parts) + 1):
+                    path = parts[:depth]
+                    if path in by_path:
+                        continue
+                    definition = {
+                        "_scope_key": path[-1],
+                        "_constructor_nodes": [],
+                    }
+                    by_path[path] = definition
+                    if depth == 1:
+                        synthetic_root["subgraphs"].append(definition)
+                    else:
+                        parent = by_path[path[:-1]]
+                        parent.setdefault("definitions", {"subgraphs": []})["subgraphs"].append(definition)
+                definition = by_path[parts]
+                definition["_constructor_nodes"] = [
+                    {
+                        "id": str(getattr(getattr(node, "node", node), "id", index)),
+                        "uid": str(getattr(getattr(node, "node", node), "uid", "")) or None,
+                        "class_type": str(getattr(getattr(node, "node", node), "class_type", "")),
+                        "node_field": "type",
+                        "input_shape": preview_shape(node, output=False),
+                        "output_shape": preview_shape(node, output=True),
+                    }
+                    for index, node in enumerate(captured_nodes)
+                ]
+            custody = synthetic_root
 
     def node_payload(node: Any, identity: Mapping[str, Any], link_by_target: Mapping[tuple[str, str], int], links_by_source: Mapping[tuple[str, str], list[int]]) -> dict[str, Any]:
         is_handle = hasattr(node, "node_id") and hasattr(node, "output_slot")
@@ -176,6 +395,7 @@ def materialize_recursive_definitions(
             for key_name, value in definition.items()
             if key_name not in {"nodes", "links", "definitions"} and not str(key_name).startswith("_")
         }
+        result["_scope_key"] = key
         identities = definition.get("_constructor_nodes", ())
         runtime_nodes = list(by_scope.get(scope, ()))
         if not isinstance(identities, (list, tuple)):
@@ -336,6 +556,11 @@ def new_workflow(
         source_path=source_path or __file__,
         provenance=provenance if isinstance(provenance, Mapping) else None,
     )
+    # Keep the generated canonical source companion-aware without requiring a
+    # reflection call in the readable Python.  Bundle loading replaces this
+    # sentinel with validated recursive custody; standalone previews let the
+    # materializer derive its minimal witness from captured constructors.
+    wf._canonical_v2_recursive_custody = None
     wf.metadata.update(metadata)
     if companion is not None:
         if canonical_custody is not None:
@@ -355,6 +580,9 @@ def new_workflow(
         }
         wf._canonical_v2_custody = canonical_custody
         wf._canonical_v2_helpers = deepcopy(root_scope["helpers"])
+        wf._canonical_v2_recursive_custody = deepcopy(
+            companion["custody"].get("definitions")
+        )
         wf._canonical_v2_companion = companion
         wf._canonical_construction_objects = []
     if canonical_custody is not None:
@@ -1536,7 +1764,7 @@ def _finalize_impl(
     if canonical_helpers is not None:
         if not isinstance(canonical_helpers, (list, tuple)):
             raise TypeError("canonical helper custody must be a sequence")
-        allowed_helper_keys = {"id", "uid", "class_type", "provenance", "native_ports"}
+        allowed_helper_keys = {"id", "uid", "class_type", "provenance", "native_ports", "pos", "size"}
         retained_helpers: list[dict[str, Any]] = []
         for index, record in enumerate(canonical_helpers):
             if not isinstance(record, Mapping):

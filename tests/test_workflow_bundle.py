@@ -67,6 +67,20 @@ def test_revision_uses_exact_root_preimage_and_emitted_companion(tmp_path: Path)
     assert bundle.revision_id == expected
 
 
+def test_reemitting_a_loaded_pair_is_byte_deterministic(tmp_path: Path) -> None:
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+
+    emit_bundle(_nonempty_workflow("deterministic-pair"), first_dir / "workflow.py", {"operation": "authored"})
+    loaded = load_bundle(first_dir / "workflow.py", trust=Provenance.USER_CONFIRMED)
+    emit_bundle(loaded.workflow, second_dir / "workflow.py", {"operation": "authored"})
+
+    assert (first_dir / "workflow.py").read_bytes() == (second_dir / "workflow.py").read_bytes()
+    assert (first_dir / "workflow.vibe.json").read_bytes() == (second_dir / "workflow.vibe.json").read_bytes()
+
+
 def test_provenance_is_closed_and_excludes_operational_fields() -> None:
     filtered = filter_provenance(
         {
@@ -757,6 +771,88 @@ def test_atomic_pair_rolls_back_after_second_replacement(tmp_path: Path, monkeyp
         emit_bundle_with_candidate(workflow, tmp_path / "atomic.py", {"operation": "authored"}, sidecar)
     assert before == {(tmp_path / name).read_bytes() for name in ("atomic.py", "atomic.vibe.json")}
     assert not list(tmp_path.glob(".*.tmp"))
+
+
+def test_first_build_semantic_drift_preserves_existing_pair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The private canonicalization preflight must fail before publication."""
+    workflow = _nonempty_workflow("first-build-drift")
+    destination = tmp_path / "first-build-drift.py"
+    emit_bundle(workflow, destination, {"operation": "authored"})
+    python_before = destination.read_bytes()
+    sidecar_before = destination.with_suffix(".vibe.json").read_bytes()
+    real_load_scratchpad = load_scratchpad
+
+    def load_with_first_build_drift(*args, **kwargs):
+        loaded = real_load_scratchpad(*args, **kwargs)
+        loaded.nodes["1"].inputs["value"] = 8
+        return loaded
+
+    monkeypatch.setattr(
+        "vibecomfy.scratchpad_loader.load_scratchpad",
+        load_with_first_build_drift,
+    )
+    candidate = {
+        "format_version": 1,
+        "bind": {"workflow_identity": workflow.id, "semantic_digest": workflow.semantic_digest()},
+        "nodes": {}, "links": [], "groups": [], "canvas": {},
+    }
+    with pytest.raises(WorkflowBundleError, match="first-build semantic digest"):
+        emit_bundle_with_candidate(
+            workflow, destination, {"operation": "authored"}, candidate,
+        )
+    assert destination.read_bytes() == python_before
+    assert destination.with_suffix(".vibe.json").read_bytes() == sidecar_before
+
+
+def test_helper_custody_preserves_source_backed_canvas_geometry(tmp_path: Path) -> None:
+    """Lowered helpers stay inspectable in the companion without Python bloat."""
+    workflow = _workflow("helper-geometry")
+    workflow.nodes["source"] = VibeNode(
+        "source", "SchemaLessSource", uid="source", native_output_names=["IMAGE"],
+    )
+    workflow.nodes["reroute"] = VibeNode(
+        "reroute", "Reroute", uid="reroute", pos=[5, 6], size=[75, 26],
+    )
+    workflow.nodes["sink"] = VibeNode(
+        "sink", "SchemaLessSink", uid="sink", inputs={"image": None},
+        native_input_names=["image"],
+    )
+    workflow.edges = [
+        VibeEdge("source", "0", "reroute", "0"),
+        VibeEdge("reroute", "0", "sink", "image"),
+    ]
+    first_path = tmp_path / "helper-geometry.py"
+    emit_bundle(workflow, first_path, {"operation": "authored"})
+    first = load_bundle(first_path, trust=Provenance.USER_CONFIRMED)
+    helper = first.ui_sidecar["custody"]["scopes"][0]["helpers"][0]
+    assert helper["uid"] == "reroute"
+    assert helper["pos"] == [5.0, 6.0]
+    assert helper["size"] == [75.0, 26.0]
+
+    second_path = tmp_path / "helper-geometry-copy.py"
+    emit_bundle(first.workflow, second_path, {"operation": "authored"})
+    second = load_bundle(second_path, trust=Provenance.USER_CONFIRMED)
+    assert second.ui_sidecar["custody"]["scopes"][0]["helpers"][0]["pos"] == [5.0, 6.0]
+
+
+def test_recursive_companion_scopes_match_recursive_definitions(tmp_path: Path) -> None:
+    from tests.test_b11b_execution_projection import _depth_two_sibling_workflow
+    from vibecomfy.workflow_bundle import _validate_v2_custody
+
+    workflow, inner_key, outer_key = _depth_two_sibling_workflow()
+    path = tmp_path / "recursive-scopes.py"
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    custody = copy.deepcopy(bundle.ui_sidecar["custody"])
+    custody["scopes"] = [
+        scope
+        for scope in custody["scopes"]
+        if scope["scope_path"] != f"{outer_key}/{inner_key}"
+    ]
+    with pytest.raises(WorkflowBundleError, match="scopes do not match definitions"):
+        _validate_v2_custody(custody)
 
 
 def test_sidecar_groups_are_sorted_and_duplicate_identity_rejected() -> None:

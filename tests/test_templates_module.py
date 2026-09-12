@@ -302,6 +302,22 @@ def test_recursive_definition_scope_cleans_failed_build_and_allows_reuse() -> No
         wf.__exit__(None, None, None)
 
 
+def test_recursive_definition_scope_restores_callers_context_after_failure() -> None:
+    """A nested recursive failure cannot steal the caller's active workflow."""
+    from vibecomfy.workflow_context import active_workflow
+
+    wf = new_workflow({"ready_template": "image/recursive-caller"})
+    try:
+        with wf:
+            with pytest.raises(RuntimeError, match="nested recursive boom"):
+                with recursive_definition_scope(wf):
+                    node("TemporaryRecursiveNode", value=1, pass_raw=True)
+                    raise RuntimeError("nested recursive boom")
+            assert active_workflow() is wf
+    finally:
+        wf.__exit__(None, None, None)
+
+
 def test_finalize_ready_unbinds_between_repeated_calls() -> None:
     from vibecomfy.workflow_context import active_workflow
 

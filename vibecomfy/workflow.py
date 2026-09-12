@@ -870,7 +870,14 @@ class VibeWorkflow:
         """Materialize emitted recursive constructors through the existing IR."""
         from vibecomfy.templates import materialize_recursive_definitions
 
-        return materialize_recursive_definitions(self, captures, custody)
+        try:
+            return materialize_recursive_definitions(self, captures, custody)
+        finally:
+            # Scoped companion custody is a one-build witness.  Clearing it at
+            # the materialization boundary prevents a later sibling build from
+            # accidentally reusing the previous definition roster.
+            if hasattr(self, "_canonical_v2_recursive_custody"):
+                delattr(self, "_canonical_v2_recursive_custody")
 
     def _release_context(self) -> None:
         """Release an eagerly-bound authoring context."""

@@ -760,6 +760,7 @@ def emit_ready_template_python(
     omit_terminal_ui_only: bool = False,
     keep_virtual_wires: bool = False,
     preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     from vibecomfy.porting.emitter import _use_object_info_identities, _drain_lookup_warning_diagnostics  # noqa: PLC0415
     with _use_object_info_identities(object_info_identities):
@@ -775,6 +776,7 @@ def emit_ready_template_python(
             omit_terminal_ui_only=omit_terminal_ui_only,
             keep_virtual_wires=keep_virtual_wires,
             preserve_node_ids=preserve_node_ids,
+            external_custody=external_custody,
         )
         lookup_warnings = _drain_lookup_warning_diagnostics(diagnostics)
         if lookup_warnings:
@@ -798,9 +800,14 @@ def _emit_ready_template_python_inner(
     omit_terminal_ui_only: bool = False,
     keep_virtual_wires: bool = False,
     preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit  # noqa: PLC0415
     _preflight_object_info_identity_resolution(workflow)
+    # Bundle publication opts into the compact companion-backed form. Direct
+    # ready-template conversion remains independently buildable and may retain
+    # the recursive helper's structural witness locally; published pairs keep
+    # that witness in the sibling companion instead.
     metadata = dict(ready_metadata)
     metadata["ready_template"] = str(workflow.id)
     metadata["workflow_template"] = str(workflow.id).rsplit("/", 1)[-1]
@@ -892,6 +899,7 @@ def _emit_ready_template_python_inner(
         workflow.definitions,
         interfaces=workflow.interfaces,
         boundary_ports=workflow.boundary_ports,
+        external_custody=external_custody,
     )
     wrapper_imports = _wrapper_imports_for_nodes(_all_nodes_for_imports(workflow_nodes, subgraph_definitions))
     wrapper_imports = _merge_definition_wrapper_imports(
@@ -984,11 +992,6 @@ def _emit_ready_template_python_inner(
         out_lines.append("")
         out_lines.extend(public_input_metadata_lines)
         out_lines.append("")
-    # Canonical source is always emitted as the readable half of a Python /
-    # sibling-sidecar pair.  Identity, provenance, and importer-only witness
-    # data belong in the sidecar; keeping this unconditional also makes the
-    # standalone renderer preview the same clean source that will be published.
-    external_custody = True
     out_lines.append("")
     output_node_ids = _terminal_output_node_ids(workflow_nodes, edges_in)
     output_node_cls: str | None = (
@@ -1019,13 +1022,18 @@ def _emit_ready_template_python_inner(
         metadata,
     )
     input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
-    tail_lines[-1] = f"    return wf.finalize({input_expr})"
+    if external_custody:
+        # The v2 source uses the concise companion-backed output declaration.
+        tail_lines[-1] = f"    return wf.finalize({input_expr})"
     finalize_line = tail_lines[-1].replace("return wf.finalize(", "wf = wf.finalize(", 1)
     if not finalize_line.endswith(")"):
         raise RuntimeError("canonical finalize line is malformed")
-    if external_custody:
-        input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
-        finalize_line = f"    wf = wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
+    input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
+    # Use one typed output spelling for direct and companion-backed renders.
+    # It preserves explicit multi-output contracts and makes an output-less
+    # direct graph unambiguous without reintroducing the legacy output-node
+    # argument bundle.
+    finalize_line = f"    wf = wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
     # Finalization owns compact identity/schema rebinding.  Runtime values and
     # topology are already authoritative in the constructor calls above.
     tail_lines = [
@@ -1211,7 +1219,7 @@ def canonical_v2_custody(workflow: Any) -> dict[str, Any]:
         edges_in=prepared["edges_in"],
         name_authority=prepared["name_authority"],
     )
-    return {
+    result: dict[str, Any] = {
         "scopes": [
             {
                 "scope_path": "",
@@ -1223,10 +1231,26 @@ def canonical_v2_custody(workflow: Any) -> dict[str, Any]:
             }
         ]
     }
+    recursive_custody = _recursive_constructor_custody(
+        getattr(workflow, "definitions", None)
+    )
+    if recursive_custody is not None:
+        result["scopes"].extend(_recursive_scope_custody(recursive_custody))
+        result["definitions"] = recursive_custody
+    return result
 
 
 def _canonical_helper_custody(workflow: Any) -> list[dict[str, Any]]:
     """Retain provenance for lowered helpers without retaining their values."""
+
+    def position_pair(value: Any) -> list[float] | None:
+        if not isinstance(value, (list, tuple)) or len(value) < 2:
+            return None
+        first, second = value[:2]
+        if any(isinstance(item, bool) or not isinstance(item, (int, float)) for item in (first, second)):
+            return None
+        return [float(first), float(second)]
+
     records: list[dict[str, Any]] = []
     for node_id, node in sorted(workflow.nodes.items(), key=lambda item: _id_sort_key(str(item[0]))):
         if str(node.class_type) not in RESOLVABLE_HELPER_CLASS_TYPES:
@@ -1241,6 +1265,14 @@ def _canonical_helper_custody(workflow: Any) -> list[dict[str, Any]]:
         safe_provenance = _v2_custody_provenance(provenance)
         if safe_provenance is not None:
             record["provenance"] = safe_provenance
+        for field in ("pos", "size"):
+            pair = position_pair(getattr(node, field, None))
+            if pair is None and isinstance(metadata, Mapping):
+                ui_record = metadata.get("_ui")
+                if isinstance(ui_record, Mapping):
+                    pair = position_pair(ui_record.get(field))
+            if pair is not None:
+                record[field] = pair
         native_ports = {
             "native_input_names": copy.deepcopy(node.native_input_names),
             "native_output_names": copy.deepcopy(node.native_output_names),
@@ -1253,7 +1285,178 @@ def _canonical_helper_custody(workflow: Any) -> list[dict[str, Any]]:
         if any(value is not None for value in native_ports.values()):
             record["native_ports"] = native_ports
         records.append(record)
-    return records
+    # A v2 rebuild removes UI-only/value helpers from the executable node
+    # roster, but finalize() has already retained their source-backed custody
+    # in metadata.  Merge both witnesses so a second publication cannot turn
+    # a four-helper source into an empty companion.  Identity conflicts are a
+    # refusal, never a last-write-wins repair.
+    metadata = getattr(workflow, "metadata", {})
+    retained = metadata.get("resolver_helper_custody") if isinstance(metadata, Mapping) else None
+    if isinstance(retained, (list, tuple)):
+        records.extend(copy.deepcopy(dict(item)) for item in retained if isinstance(item, Mapping))
+    by_identity: dict[tuple[str, str], dict[str, Any]] = {}
+    by_id: dict[str, tuple[str, str]] = {}
+    by_uid: dict[str, tuple[str, str]] = {}
+    for record in records:
+        identity = (str(record.get("id")), str(record.get("uid")))
+        prior_id = by_id.get(identity[0])
+        prior_uid = by_uid.get(identity[1])
+        if prior_id is not None and prior_id != identity:
+            raise ValueError(f"conflicting helper custody id {identity[0]!r}")
+        if prior_uid is not None and prior_uid != identity:
+            raise ValueError(f"conflicting helper custody uid {identity[1]!r}")
+        by_id[identity[0]] = identity
+        by_uid[identity[1]] = identity
+        previous = by_identity.get(identity)
+        if previous is None:
+            by_identity[identity] = copy.deepcopy(record)
+            continue
+        merged = copy.deepcopy(previous)
+        for field, value in record.items():
+            if field in merged and merged[field] != value:
+                raise ValueError(f"conflicting helper custody for identity {identity!r}")
+            merged.setdefault(field, copy.deepcopy(value))
+        by_identity[identity] = merged
+    return [
+        by_identity[key]
+        for key in sorted(by_identity, key=lambda item: (item[0], item[1]))
+    ]
+
+
+def _recursive_constructor_custody(source: Any) -> Any:
+    """Return structural recursive custody for the v2 companion.
+
+    Recursive constructor products remain the editable/value authority.  This
+    companion witness contains only the definition boundary roster and the
+    stable constructor identities needed to materialize those products after a
+    clean source rebuild; it intentionally contains no node values or links.
+    """
+    from vibecomfy.identity.scope import sg_key
+    from vibecomfy.ingest.normalize import canonical_definition_nodes
+
+    def entries(value: Any) -> list[Any]:
+        if isinstance(value, Mapping) and "subgraphs" in value:
+            return list(value["subgraphs"])
+        if isinstance(value, Mapping):
+            return list(value.values())
+        return list(value) if isinstance(value, (list, tuple)) else []
+
+    def roster(value: Any) -> Any:
+        if not isinstance(value, (list, tuple)):
+            return None
+        result: list[Any] = []
+        for item in value:
+            if not isinstance(item, Mapping):
+                result.append(item)
+                continue
+            result.append({
+                **{
+                    key: copy.deepcopy(item[key])
+                    for key in ("name", "type", "slot")
+                    if key in item
+                },
+                "_has_link": "link" in item,
+                "_has_value": "value" in item,
+            })
+        return result
+
+    def records(definition: Mapping[str, Any]) -> list[dict[str, Any]]:
+        raw_nodes = canonical_definition_nodes(definition)
+        values = raw_nodes.values() if isinstance(raw_nodes, Mapping) else raw_nodes
+        if not isinstance(values, (list, tuple)):
+            raise ValueError("recursive_definition_nodes_malformed: nodes must be a sequence or mapping")
+        result: list[dict[str, Any]] = []
+        for index, raw in enumerate(values):
+            if not isinstance(raw, Mapping):
+                raise ValueError("recursive_definition_nodes_malformed: node must be a mapping")
+            node_id = str(raw.get("uid") or raw.get("id") or f"node_{index}")
+            class_type = str(raw.get("class_type", raw.get("type", "")))
+            if not class_type:
+                raise ValueError(f"recursive_definition_nodes_malformed: node {node_id!r} has no class type")
+            raw_inputs = raw.get("inputs")
+            raw_outputs = raw.get("outputs")
+            row: dict[str, Any] = {
+                "id": node_id,
+                "uid": raw.get("uid"),
+                "class_type": class_type,
+                "node_field": "type" if "type" in raw and "class_type" not in raw else "class_type",
+                "input_shape": roster(raw_inputs),
+                "output_shape": roster(raw_outputs),
+            }
+            for field in (
+                "native_input_names", "native_output_names", "native_input_types",
+                "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                "native_output_slots",
+            ):
+                if field in raw:
+                    row[field] = copy.deepcopy(raw[field])
+            result.append(row)
+        return result
+
+    def build(definition: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(definition, Mapping):
+            raise ValueError("recursive definition entries must be mappings")
+        result = {
+            str(key): copy.deepcopy(value)
+            for key, value in definition.items()
+            if key not in {"nodes", "links", "definitions"}
+            and not str(key).startswith("_")
+        }
+        result["_scope_key"] = sg_key(definition)
+        ordered = records(definition)
+        result["_constructor_nodes"] = ordered
+        nested = definition.get("definitions")
+        if nested not in (None, {}, []):
+            result["definitions"] = {"subgraphs": [
+                build(item) for item in entries(nested) if isinstance(item, Mapping)
+            ]}
+        return result
+
+    if source in (None, {}, []):
+        return None
+    return {"subgraphs": [build(item) for item in entries(source) if isinstance(item, Mapping)]}
+
+
+def _recursive_scope_custody(source: Any) -> list[dict[str, Any]]:
+    """Project structural recursive custody into the v2 scope roster."""
+    from vibecomfy.identity.scope import compose_scope_path
+
+    scopes: list[dict[str, Any]] = []
+
+    def walk(value: Any, parents: tuple[str, ...]) -> None:
+        for definition in value.get("subgraphs", []) if isinstance(value, Mapping) and isinstance(value.get("subgraphs"), list) else ():
+            if not isinstance(definition, Mapping):
+                continue
+            key = str(definition.get("_scope_key"))
+            scope_path = compose_scope_path((*parents, key))
+            nodes: list[dict[str, Any]] = []
+            for record in definition.get("_constructor_nodes", ()):
+                if not isinstance(record, Mapping):
+                    continue
+                node_id = str(record.get("id"))
+                node = {
+                    "label": node_id,
+                    "id": node_id,
+                    "uid": str(record.get("uid") or node_id),
+                    "class_type": str(record.get("class_type")),
+                }
+                native_ports = {
+                    field: copy.deepcopy(record[field])
+                    for field in (
+                        "native_input_names", "native_output_names", "native_input_types",
+                        "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                        "native_output_slots",
+                    )
+                    if field in record
+                }
+                if native_ports:
+                    node["native_ports"] = native_ports
+                nodes.append(node)
+            scopes.append({"scope_path": scope_path, "nodes": nodes, "helpers": []})
+            walk(definition.get("definitions"), (*parents, key))
+
+    walk(source, ())
+    return scopes
 
 
 _V2_CUSTODY_PROVENANCE_KEYS = frozenset({
@@ -1607,6 +1810,7 @@ def _canonical_definition_helpers(
     *,
     interfaces: Mapping[str, Any] | None = None,
     boundary_ports: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    external_custody: bool = False,
 ) -> tuple[list[str], str | None]:
     """Render the authoritative recursive constructor helpers.
 
@@ -2135,7 +2339,11 @@ def _canonical_definition_helpers(
     if lines and lines[-1] == "":
         lines.pop()
     helper_name = "_build_recursive_definitions"
-    custody_expr = render(constructor_custody(definitions))
+    custody_expr = (
+        "wf._canonical_v2_recursive_custody"
+        if external_custody
+        else render(constructor_custody(definitions))
+    )
     lines.extend([
         f"def {helper_name}(wf: VibeWorkflow) -> dict[str, Any]:",
         "    with recursive_definition_scope(wf):",
@@ -2408,7 +2616,9 @@ def _emit_build_function(
         # Scope the eager new_workflow() binding with its existing context
         # manager. finalize() releases it on success; __exit__ releases it
         # when a constructor or validation step fails.
-        custody_argument = "" if external_custody else ", canonical_custody=CANONICAL_CUSTODY"
+        # Root identity is recovered from constructor calls for direct renders
+        # and from the validated sibling companion for bundle publication.
+        custody_argument = ""
         if source_type != "ready_template":
             out_lines.append(
                 f"    with new_workflow({workflow_id_expr}, source_path={source_path_expr}, source_type={source_type!r}{custody_argument}) as wf:"

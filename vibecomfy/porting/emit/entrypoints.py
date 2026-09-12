@@ -47,6 +47,7 @@ def emit_canonical_python(
     omit_terminal_ui_only: bool = False,
     keep_virtual_wires: bool = False,
     preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -117,6 +118,7 @@ def emit_canonical_python(
         omit_terminal_ui_only=omit_terminal_ui_only,
         keep_virtual_wires=keep_virtual_wires,
         preserve_node_ids=preserve_node_ids,
+        external_custody=external_custody,
     )
 
 
@@ -164,6 +166,7 @@ def emit_scratchpad_python(
     keep_virtual_wires: bool = True,
     prune_dead_branches: bool = False,
     preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     if not keep_virtual_wires or prune_dead_branches:
         message = (
@@ -201,6 +204,7 @@ def emit_scratchpad_python(
         diagnostics=diagnostics,
         keep_virtual_wires=keep_virtual_wires,
         preserve_node_ids=preserve_node_ids,
+        external_custody=external_custody,
     )
 
 
