@@ -155,6 +155,18 @@ _V2_NODE_KEYS = frozenset({
 _V2_HELPER_KEYS = frozenset({"id", "uid", "class_type", "provenance", "native_ports", "pos", "size"})
 _V2_MARKER_KEYS = frozenset({"format_version", "generation_id", "custody_digest"})
 _V2_PRESENTATION_KEYS = frozenset({"nodes", "links", "groups", "canvas", "annotations"})
+_V2_RECURSIVE_DEFINITION_KEYS = frozenset({
+    "id", "name", "_scope_key", "_constructor_nodes", "definitions",
+})
+_V2_RECURSIVE_RECORD_KEYS = frozenset({
+    "id", "uid", "class_type", "node_field", "input_shape", "output_shape",
+    "native_input_names", "native_output_names", "native_input_types",
+    "native_output_types", "native_input_optional", "native_input_asset_kinds",
+    "native_output_slots",
+})
+_V2_RECURSIVE_SHAPE_KEYS = frozenset({
+    "name", "type", "slot", "_has_link", "_has_value",
+})
 _V2_SCOPE_NODES_KEY = "nodes"
 _V2_SCOPE_HELPERS_KEY = "helpers"
 _V2_PRESENTATION_NODES_KEY = "nodes"
@@ -896,6 +908,59 @@ def _validate_v2_custody(value: Any) -> dict[str, Any]:
                 "workflow companion recursive custody must contain only subgraphs"
             )
 
+        def validate_shape(value: Any, where: str) -> list[dict[str, Any]] | None:
+            if value is None:
+                return None
+            if not isinstance(value, list):
+                raise WorkflowBundleError(f"{where} must be a list or null")
+            result: list[dict[str, Any]] = []
+            for index, raw_shape in enumerate(value):
+                shape_where = f"{where}[{index}]"
+                if not isinstance(raw_shape, Mapping):
+                    raise WorkflowBundleError(f"{shape_where} must be an object")
+                _closed_keys(raw_shape, _V2_RECURSIVE_SHAPE_KEYS, shape_where)
+                if "name" not in raw_shape or not isinstance(raw_shape["name"], str) or not raw_shape["name"].strip():
+                    raise WorkflowBundleError(f"{shape_where}.name must be nonblank")
+                if "type" in raw_shape and raw_shape["type"] is not None and not isinstance(raw_shape["type"], str):
+                    raise WorkflowBundleError(f"{shape_where}.type must be a string or null")
+                if "slot" in raw_shape and (
+                    type(raw_shape["slot"]) is not int or raw_shape["slot"] < 0
+                ):
+                    raise WorkflowBundleError(f"{shape_where}.slot must be a non-negative integer")
+                for field in ("_has_link", "_has_value"):
+                    if field in raw_shape and type(raw_shape[field]) is not bool:
+                        raise WorkflowBundleError(f"{shape_where}.{field} must be boolean")
+                result.append(copy.deepcopy(dict(raw_shape)))
+            return result
+
+        def validate_record(record: Any, where: str) -> dict[str, Any]:
+            if not isinstance(record, Mapping):
+                raise WorkflowBundleError(f"{where} must be an object")
+            _closed_keys(record, _V2_RECURSIVE_RECORD_KEYS, where)
+            required = {"id", "uid", "class_type", "node_field", "input_shape", "output_shape"}
+            if set(record) & required != required:
+                raise WorkflowBundleError(f"{where} is missing a required constructor field")
+            for field in ("id", "class_type", "node_field"):
+                if not isinstance(record[field], str) or not record[field].strip():
+                    raise WorkflowBundleError(f"{where}.{field} must be nonblank")
+            if record["node_field"] not in {"type", "class_type"}:
+                raise WorkflowBundleError(f"{where}.node_field is invalid")
+            if record["uid"] is not None and (not isinstance(record["uid"], str) or not record["uid"].strip()):
+                raise WorkflowBundleError(f"{where}.uid must be nonblank or null")
+            normalized = copy.deepcopy(dict(record))
+            normalized["input_shape"] = validate_shape(record["input_shape"], f"{where}.input_shape")
+            normalized["output_shape"] = validate_shape(record["output_shape"], f"{where}.output_shape")
+            native_fields = {
+                field: copy.deepcopy(record[field])
+                for field in _V2_RECURSIVE_RECORD_KEYS
+                if field.startswith("native_") and field in record
+            }
+            if native_fields:
+                normalized_native = _validate_native_ports(native_fields, f"{where}.native_ports")
+                for field, item in normalized_native.items():
+                    normalized[field] = item
+            return normalized
+
         def validate_recursive(value: Any, where: str) -> None:
             entries = value.get("subgraphs") if isinstance(value, Mapping) else None
             if not isinstance(entries, list):
@@ -904,30 +969,33 @@ def _validate_v2_custody(value: Any) -> dict[str, Any]:
                 item_where = f"{where}.subgraphs[{index}]"
                 if not isinstance(definition, Mapping):
                     raise WorkflowBundleError(f"{item_where} must be an object")
-                if any(key in definition for key in ("nodes", "links", "edges")):
-                    raise WorkflowBundleError(
-                        f"{item_where} cannot contain executable graph payload"
-                    )
+                _closed_keys(definition, _V2_RECURSIVE_DEFINITION_KEYS, item_where)
                 for key in ("_scope_key", "_constructor_nodes"):
                     if key not in definition:
                         raise WorkflowBundleError(f"{item_where} is missing {key}")
-                if not isinstance(definition["_scope_key"], str) or not definition["_scope_key"].strip():
+                if (
+                    not isinstance(definition["_scope_key"], str)
+                    or not definition["_scope_key"].strip()
+                    or "/" in definition["_scope_key"]
+                ):
                     raise WorkflowBundleError(f"{item_where}._scope_key must be nonblank")
+                for key in ("id", "name"):
+                    if key in definition and (
+                        not isinstance(definition[key], str) or not definition[key].strip()
+                    ):
+                        raise WorkflowBundleError(f"{item_where}.{key} must be nonblank")
                 records = definition["_constructor_nodes"]
                 if not isinstance(records, list):
                     raise WorkflowBundleError(f"{item_where}._constructor_nodes must be a list")
                 for record_index, record in enumerate(records):
                     record_where = f"{item_where}._constructor_nodes[{record_index}]"
-                    if not isinstance(record, Mapping):
-                        raise WorkflowBundleError(f"{record_where} must be an object")
-                    for key in ("id", "class_type", "node_field"):
-                        if not isinstance(record.get(key), str) or not record[key].strip():
-                            raise WorkflowBundleError(f"{record_where}.{key} must be nonblank")
-                    for key in ("input_shape", "output_shape"):
-                        if record.get(key) is not None and not isinstance(record[key], list):
-                            raise WorkflowBundleError(f"{record_where}.{key} must be a list or null")
+                    validate_record(record, record_where)
                 nested = definition.get("definitions")
                 if nested is not None:
+                    if not isinstance(nested, Mapping) or set(nested) != {"subgraphs"}:
+                        raise WorkflowBundleError(
+                            f"{item_where}.definitions must contain only subgraphs"
+                        )
                     validate_recursive(nested, f"{item_where}.definitions")
 
         validate_recursive(definitions, "workflow companion custody.definitions")

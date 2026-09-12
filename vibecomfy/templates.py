@@ -194,10 +194,9 @@ def materialize_recursive_definitions(
         def build(definition: Mapping[str, Any]) -> dict[str, Any]:
             key = sg_key(definition)
             result = {
-                str(field): deepcopy(item)
-                for field, item in definition.items()
-                if field not in {"nodes", "links", "definitions"}
-                and not str(field).startswith("_")
+                str(field): deepcopy(definition[field])
+                for field in ("id", "name")
+                if field in definition
             }
             result["_scope_key"] = key
             result["_constructor_nodes"] = source_records(definition)

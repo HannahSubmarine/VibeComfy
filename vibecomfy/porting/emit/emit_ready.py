@@ -1396,11 +1396,14 @@ def _recursive_constructor_custody(source: Any) -> Any:
     def build(definition: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(definition, Mapping):
             raise ValueError("recursive definition entries must be mappings")
+        # Only the readable identity label crosses into the companion.  The
+        # constructor roster below is the structural witness; source nodes,
+        # links, values, layout, and arbitrary vendor payload stay in the
+        # executed constructors or the presentation sidecar.
         result = {
-            str(key): copy.deepcopy(value)
-            for key, value in definition.items()
-            if key not in {"nodes", "links", "definitions"}
-            and not str(key).startswith("_")
+            str(key): copy.deepcopy(definition[key])
+            for key in ("id", "name")
+            if key in definition
         }
         result["_scope_key"] = sg_key(definition)
         ordered = records(definition)
@@ -1965,9 +1968,9 @@ def _canonical_definition_helpers(
             if "subgraphs" in source:
                 return {"subgraphs": [constructor_custody(item) for item in entries(source["subgraphs"])]}
             result = {
-                str(key): copy.deepcopy(value)
-                for key, value in source.items()
-                if key not in {"nodes", "links", "definitions"}
+                str(key): copy.deepcopy(source[key])
+                for key in ("id", "name")
+                if key in source
             }
             result["_scope_key"] = sg_key(source)
             records = node_records(source)

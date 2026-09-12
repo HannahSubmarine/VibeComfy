@@ -855,6 +855,78 @@ def test_recursive_companion_scopes_match_recursive_definitions(tmp_path: Path) 
         _validate_v2_custody(custody)
 
 
+def test_recursive_companion_is_closed_and_structural_only(tmp_path: Path) -> None:
+    """Recursive custody cannot become a hidden graph/value replay channel."""
+    from tests.test_b11b_execution_projection import _depth_two_sibling_workflow
+    from vibecomfy.workflow_bundle import _validate_v2_custody
+
+    workflow, _inner_key, _outer_key = _depth_two_sibling_workflow()
+    bundle = emit_bundle(workflow, tmp_path / "recursive-closed.py", {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    base = copy.deepcopy(bundle.ui_sidecar["custody"])
+    definition = base["definitions"]["subgraphs"][0]
+    record = definition["definitions"]["subgraphs"][0]["_constructor_nodes"][0]
+
+    cases = (
+        ("runtime payload", lambda custody: custody["definitions"]["subgraphs"][0].update(
+            {"runtime_payload": {"nodes": [{"id": "999"}], "value": 7}}
+        )),
+        ("record extension", lambda custody: custody["definitions"]["subgraphs"][0]["_constructor_nodes"][0].update(
+            {"replay_values": {"x": 7}}
+        )),
+        ("shape extension", lambda custody: custody["definitions"]["subgraphs"][0]["definitions"]["subgraphs"][0]
+            ["_constructor_nodes"][0]["input_shape"][0].update({"value": 7})),
+        ("nested container extension", lambda custody: custody["definitions"]["subgraphs"][0].update(
+            {"definitions": {"subgraphs": [], "edges": []}}
+        )),
+    )
+    assert record["input_shape"]
+    for label, mutate in cases:
+        candidate = copy.deepcopy(base)
+        mutate(candidate)
+        with pytest.raises(WorkflowBundleError, match="unknown field|only subgraphs"):
+            _validate_v2_custody(candidate)
+
+
+def test_rewriting_existing_pair_preserves_authored_presentation(tmp_path: Path) -> None:
+    """Editing semantic Python must retain the existing companion's canvas."""
+    workflow = _nonempty_workflow("presentation-rewrite")
+    destination = tmp_path / "presentation-rewrite.py"
+    candidate = {
+        "format_version": 1,
+        "bind": {
+            "workflow_identity": workflow.id,
+            "semantic_digest": workflow.semantic_digest(),
+        },
+        "nodes": {
+            "integer-node": {"id": 7, "pos": [101, 202], "class_type": "Integer"},
+            "note": {"id": 8, "pos": [303, 404], "class_type": "MarkdownNote"},
+        },
+        "links": [],
+        "groups": [],
+        "canvas": {},
+        "annotations": [{
+        "annotation_id": "note",
+        "scope_path": "",
+        "owner": {"kind": "node", "uid": "note"},
+        "class_type": "MarkdownNote",
+        "title": "Authored note",
+        "content": "Keep this through an edit",
+        }],
+    }
+    emit_bundle_with_candidate(workflow, destination, {"operation": "captured"}, candidate)
+
+    loaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
+    loaded.workflow.nodes["1"].inputs["value"] = 8
+    emit_bundle(loaded.workflow, destination, {"operation": "authored"})
+    rewritten = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
+    presentation = rewritten.ui_sidecar["presentation"]
+    assert rewritten.workflow.nodes["1"].inputs["value"] == 8
+    assert presentation["nodes"]["integer-node"]["pos"] == [101.0, 202.0]
+    assert presentation["nodes"]["note"]["pos"] == [303.0, 404.0]
+    assert presentation["annotations"][0]["content"] == "Keep this through an edit"
+
+
 def test_sidecar_groups_are_sorted_and_duplicate_identity_rejected() -> None:
     workflow = _connected_workflow()
     sidecar = _strict_sidecar(workflow)
