@@ -2,6 +2,26 @@
 
 # Status
 
+## Current validation continuation — `ff5972ab`
+
+The implementation candidate is complete and pushed to the authorized fork
+branch. The current candidate passes the full local pytest gate (`10518 passed,
+193 skipped, 35 deselected, 1 xfailed, 0 failed/errors`) and the pinned
+20-workflow Hivemind-derived corpus (10 expected v2 pairs and 10 intentional
+refusals, with no partial outputs). The detailed receipt and inspectable
+artifacts are retained under the active `.otto/runs/unified-workflow-integrity-20260909/`
+run directory.
+
+The VibeComfy Manager portfolio now oversees this task with bounded hourly
+progress checks and a twelve-hour Astra-high review of progress, acceleration,
+direction, and process health. This is oversight only: it adds no acceptance
+gate, does not change the run.yaml role bindings or budgets, and grants no
+push, PR, merge, deployment, or spending authority. The existing manager
+remains the owner. Coordinate before another heavy test/build on this machine,
+preserve existing evidence and work, keep routine receipts here, and send
+upstream only a meaningful dependency handoff, blocker requiring action,
+resource-coordination need, or completion.
+
 Delivery is complete in the isolated candidate checkout pending the final Astra
 review. I1–I10 have exact-candidate evidence recorded in the run evidence
 directory; the ledger uses `EVIDENCE RECORDED — final review pending` until the
