@@ -101,3 +101,43 @@ native-resolution detail band.
 ## Latest user authorization — execute
 
 The user instructed: “And give them approval to execute too, keep it simple.” This supersedes earlier planning-only/start-permission instructions throughout this package. Receiving mode is delivery: begin C0, implement the unified plan, fix in-scope defects and run all required programmatic and visual acceptance checks. Preserve roles, scope, review/oracle counters and resource boundaries. Report completion with evidence and any actual unresolved blockers. No additional permission to start is required.
+
+## Current exact-candidate delivery evidence — 2026-09-12
+
+The amended implementation is frozen locally at
+`20fa4baa372f44c905b9daa869ad8c0de7e5160d`, tree
+`1fc69fefe3611d8bdeeff8a5f4d26997fbe0fe36`, on the isolated
+`otto/unified-workflow-integrity-20260909` branch. No push, PR, merge,
+deployment or production cutover was performed.
+
+The configured offline suite passed with the required deterministic command:
+
+```text
+PYTHONHASHSEED=0 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=. \
+  <Python 3.11.16> -m pytest -q -p pytest_asyncio.plugin -p pytest_timeout
+```
+
+Result: **10,560 passed, 195 skipped, 35 deselected, 1 xfailed, 0 failed**.
+The exact receipt is `full-suite-current-20fa4baa.md` in the active run
+evidence directory. The focused integrity lane passed `334` tests; the IR
+boundary scanner reports `IR boundary: clean`.
+
+The current 20-case replay produced complete Python/`.vibe.json` pairs for
+01–09, 11–15 and 18–20 (**17 positives**) with no partial outputs. Only the
+supplied descriptive/non-workflow case 10 and malformed missing-endpoint cases
+16 and 17 refused. Case 14 is conversion-positive, but its matching live
+frontend serialization/load-export experiment is unavailable in this
+environment and remains explicitly provisional.
+
+Fresh H3 evidence is under `h3-current-final-20260912/`: conversion, meaningful
+prompt/source/mask/duration/seed edit, save/reload, UI export, semantic/identity
+checks and deterministic pair regeneration pass. The whole generated Python
+file and the exact exported graph rendering were inspected. The generated file
+contains no canonical/helper custody blob, raw graph topology, replay tail,
+`wf.connect` or direct node-table restoration.
+
+Astra’s final repair-completeness adjudication found no additional architecture
+or task/stage/budget change. It requires the identity/provenance pair mapping,
+recursive context cleanup, independent corruption counterexamples and atomic
+publication proof already covered by the current candidate. Final integrated
+review is pending under the existing budget; no Astra Max call is permitted.

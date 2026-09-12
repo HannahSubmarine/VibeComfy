@@ -91,6 +91,27 @@ Previous frozen P PASS entries, review counts and rulings are archived under the
 
 I1/I2/I3/I7/I8/I9 are the intermediate scope after C0/T0/E0/E1/T1/T2; final includes all I IDs including I10. I7 at intermediate never demands future T3/T4 work. Changes invalidate only affected criteria and stated downstream dependencies; criterion IDs and review counters survive renaming/restarts. An actual integration change broadens the affected evidence, not the budget. The acceptance contract is behavioral plus identity/provenance fidelity; importer-shaped exact syntax is no longer authoritative.
 
+## Exact-candidate evidence override — 2026-09-12
+
+The planning table above intentionally preserves the pre-delivery `NOT RUN /
+MISSING` snapshot. For candidate `20fa4baa372f44c905b9daa869ad8c0de7e5160d`,
+the effective status of every criterion is `EVIDENCE RECORDED — final review
+pending`, with the following exact receipts:
+
+| Criteria | Evidence |
+| --- | --- |
+| I1–I5 | `evidence/full-suite-current-20fa4baa.md`, focused integrity lane, and the atomic pair/revision tests |
+| I6–I7 | CLI/help/parity evidence and `evidence/ir-boundary-20fa4baa.txt` (`IR boundary: clean`) |
+| I8–I9 | `evidence/focused-integrity-20fa4baa.md` and `evidence/h3-current-final-20260912/source-inspection.txt` |
+| I10 | `evidence/corpus-and-h3-current-20fa4baa.md` and `evidence/h3-current-final-20260912/` |
+
+The full suite is `10,560 passed, 195 skipped, 35 deselected, 1 xfailed, 0
+failed`. The corpus has 17 complete pairs and three contextual refusals (10,
+16, 17), with case 14’s frontend serialization evidence still provisional.
+No criterion is marked `PASS` until the configured independent final review
+disposition is recorded. Missing live frontend/ComfyUI/GPU/provider execution
+remains an explicit environment boundary, not a silently accepted success.
+
 ## Outcomes and evidence discipline
 
 PASS requires adequate exact-candidate evidence and no unresolved blockers. REWORK names a source-backed contract violation, implementation defect or required evidence gap attributable to the deliverable. UNKNOWN covers inaccessible/mismatched identity/evidence; it consumes the attempted round and cannot imply PASS. Optional improvement, out_of_scope and stale_or_repeated remain nonblocking with a recorded disposition.
