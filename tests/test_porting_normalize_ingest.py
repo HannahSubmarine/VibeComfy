@@ -537,7 +537,7 @@ def test_bypass_roster_corpus_import_is_not_ambiguous(workflow_id: str) -> None:
     ("workflow_id", "active_output_ids"),
     [
         ("00444a9409f56c07", {"1", "3", "37", "69", "73", "111", "113"}),
-        ("0070184c5f1c8ca2", {"9"}),
+        ("0070184c5f1c8ca2", {"9", "229", "231", "262"}),
         ("1b136036c776018a", {"222", "223"}),
         ("1c7ad8a2a8c0224b", {"264"}),
         ("78afac42baf0a381", {"16", "48", "50", "62"}),

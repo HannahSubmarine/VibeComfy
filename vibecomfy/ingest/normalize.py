@@ -2191,6 +2191,11 @@ def _decode_serialized_vibe(
 
     # ── nodes ──────────────────────────────────────────────────────────────
     for key, entry in nodes_raw.items():
+        # Hydration below is internal IR enrichment. Work on a detached node
+        # payload so the lossless-door snapshot still sees the exact envelope
+        # supplied by the caller; otherwise absence-only roster promotion
+        # becomes an accidental wire mutation on the first round trip.
+        node_entry = deepcopy(entry)
         node_id = entry.get("id")
         if not isinstance(node_id, str) or not node_id.strip():
             raise ValueError(f"node {key!r}: id must be a nonblank string")
@@ -2256,14 +2261,14 @@ def _decode_serialized_vibe(
         # node metadata. Promote only absent execution carriers before the
         # virtual-wire capture pass; explicit entry values stay authoritative.
         _promote_ui_native_port_carriers(
-            entry,
-            _node_ui_carrier({"metadata": node_metadata, "_ui": entry.get("_ui")}),
+            node_entry,
+            _node_ui_carrier({"metadata": node_metadata, "_ui": node_entry.get("_ui")}),
         )
         if schema_provider is not None:
             from vibecomfy.porting.widgets.aliases import promote_positional_widget_aliases
 
             promote_positional_widget_aliases(
-                {"inputs": entry["inputs"], "widgets": entry["widgets"], "metadata": node_metadata},
+                {"inputs": node_entry["inputs"], "widgets": node_entry["widgets"], "metadata": node_metadata},
                 class_type,
             )
         # Mode is first-class: prefer the serialized node-level ``mode`` field
@@ -2273,19 +2278,19 @@ def _decode_serialized_vibe(
         node_mode = _decode_envelope_node_mode(entry, node_metadata)
         node_pos = _decode_envelope_geometry(entry, node_metadata, "pos", node_id)
         node_size = _decode_envelope_geometry(entry, node_metadata, "size", node_id)
-        native_input_names = entry.get("native_input_names")
-        native_output_names = entry.get("native_output_names")
-        native_input_types = entry.get("native_input_types")
-        native_output_types = entry.get("native_output_types")
-        native_input_optional = entry.get("native_input_optional")
-        native_input_asset_kinds = entry.get("native_input_asset_kinds")
-        native_output_slots = entry.get("native_output_slots")
+        native_input_names = node_entry.get("native_input_names")
+        native_output_names = node_entry.get("native_output_names")
+        native_input_types = node_entry.get("native_input_types")
+        native_output_types = node_entry.get("native_output_types")
+        native_input_optional = node_entry.get("native_input_optional")
+        native_input_asset_kinds = node_entry.get("native_input_asset_kinds")
+        native_output_slots = node_entry.get("native_output_slots")
         workflow.nodes[str(key)] = VibeNode(
             id=node_id,
             class_type=class_type,
             pack=pack,
-            inputs=deepcopy(entry["inputs"]),
-            widgets=deepcopy(entry["widgets"]),
+            inputs=deepcopy(node_entry["inputs"]),
+            widgets=deepcopy(node_entry["widgets"]),
             metadata=node_metadata,
             uid=uid,
             raw_widgets=raw_widget_payload,

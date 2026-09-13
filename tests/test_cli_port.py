@@ -732,7 +732,7 @@ def test_h3_draft_convert_writes_with_schema_diagnostics_but_strict_refuses(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Unknown H3 schemas remain visible in draft conversion, not promotion."""
+    """Source-backed H3 wrappers emit cleanly, but readiness stays strict."""
     source = Path("docs/handover/unified-workflow-integrity-20260909/assets/h3/MiniMax_H3_AV_EncodeDecode_Inpaint.json")
     monkeypatch.setenv("VIBECOMFY_ON_DEMAND_SCHEMAS", "0")
     draft = tmp_path / "h3.py"
@@ -752,7 +752,8 @@ def test_h3_draft_convert_writes_with_schema_diagnostics_but_strict_refuses(
     payload = json.loads(capsys.readouterr().out)
     assert draft.is_file()
     assert payload["status"] == "ok"
-    assert any(d["code"] == "unresolved_runtime_class" for d in payload["report"]["diagnostics"])
+    assert not any(d["code"] == "unresolved_runtime_class" for d in payload["report"]["diagnostics"])
+    assert "MiniMaxH3ImageToVideo" in draft.read_text(encoding="utf-8")
     assert payload["conversion"]["validation"]["parity_ok"] is True
 
     strict = tmp_path / "h3-strict.py"
