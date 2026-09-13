@@ -135,7 +135,7 @@ def test_widget_n_is_rejected_with_named_hint():
     assert res.names[1] == "guidance_scale"
 
 
-def test_ultrashape_opaque_save_widgets_stay_positional_and_seed_is_typed():
+def test_ultrashape_opaque_save_widgets_stay_positional_and_seed_is_not_inferred():
     wf = _wf_from_corpus("tests/fixtures/live_agentic_corpus/corpus/8800a945cff8d090.json")
     from vibecomfy.porting.emit.emit_ready import _infer_public_input_bindings
     from vibecomfy.porting.widgets.aliases import resolve_widget_name_with_provenance
@@ -150,8 +150,7 @@ def test_ultrashape_opaque_save_widgets_stay_positional_and_seed_is_typed():
     bindings = _infer_public_input_bindings(
         wf.nodes, {str(node_id): [] for node_id in wf.nodes}
     )
-    seed = next(binding for binding in bindings if binding.name == "seed")
-    assert (seed.node_id, seed.field, seed.type) == ("2", "seed", "INT")
+    assert not any(binding.name == "seed" for binding in bindings)
 
 
 def test_range_validation_shares_vocabulary():

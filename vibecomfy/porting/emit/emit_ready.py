@@ -181,6 +181,14 @@ def _resolved_field_values(node: Any) -> dict[str, Any]:
     return values
 
 
+def _has_proven_schema_type(node: Any) -> bool:
+    """Whether a node carries source-backed type evidence for inference."""
+    metadata = getattr(node, "metadata", {})
+    source = metadata.get("schema_source") if isinstance(metadata, Mapping) else None
+    confidence = source.get("confidence") if isinstance(source, Mapping) else None
+    return isinstance(confidence, (int, float)) and confidence > 0
+
+
 # ---------------------------------------------------------------------------
 # Public-input inference
 # ---------------------------------------------------------------------------
@@ -263,9 +271,19 @@ def _infer_public_input_bindings(
             prompt_candidate = prompt_candidate or (str(node_id), "value")
         if class_type == "LoadImage" and "image" in fields:
             add("image", str(node_id), "image", type="IMAGE", required=True, aliases=("input_image",), media_semantics="image")
-        if "seed" in fields and isinstance(fields["seed"], int) and not isinstance(fields["seed"], bool):
+        if (
+            "seed" in fields
+            and isinstance(fields["seed"], int)
+            and not isinstance(fields["seed"], bool)
+            and _has_proven_schema_type(node)
+        ):
             add("seed", str(node_id), "seed", type="INT")
-        if "noise_seed" in fields and isinstance(fields["noise_seed"], int) and not isinstance(fields["noise_seed"], bool):
+        if (
+            "noise_seed" in fields
+            and isinstance(fields["noise_seed"], int)
+            and not isinstance(fields["noise_seed"], bool)
+            and _has_proven_schema_type(node)
+        ):
             add("seed", str(node_id), "noise_seed", type="INT")
         if "width" in fields and isinstance(fields["width"], int):
             add("width", str(node_id), "width", type="INT")
@@ -398,8 +416,10 @@ def _public_input_specs(
             metadata = getattr(node, "metadata", {})
             aliases = metadata.get("input_aliases") if isinstance(metadata, Mapping) else None
             resolved = resolve_widget_key_with_provenance(cls, field, input_aliases=aliases)
-            if resolved.name is not None:
+            if resolved.resolved and resolved.name is not None:
                 resolved_field = resolved.name
+        if resolved_field.startswith("widget_"):
+            continue
         add(
             _PublicInputBinding(name=input_name, node_id=str(old_id), field=resolved_field),
             retained_node_ref=repr(str(old_id)),

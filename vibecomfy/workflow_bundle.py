@@ -1467,6 +1467,29 @@ def _canonicalize_for_v2_pair(
     # the admitted workflow after applying only that lossless normalization.
     expected_workflow = workflow.copy()
     from vibecomfy.workflow import _embedded_api_link_details
+    from vibecomfy.ingest.snapshot import frozen_widget_names_by_uid
+
+    # Normalize only aliases sealed by ingest. Ambient schema/object-info
+    # guesses must never change the digest expectation; unresolved slots stay
+    # positional and therefore fail closed if the staged source changes them.
+    names_by_uid = frozen_widget_names_by_uid(workflow)
+    for node_id, node in expected_workflow.nodes.items():
+        if str(getattr(node, "class_type", "")) != "TripoImageToModelNode":
+            continue
+        names = names_by_uid.get(str(getattr(node, "uid", "") or node_id), ())
+        for key in list(node.widgets):
+            if not key.startswith("widget_"):
+                continue
+            try:
+                index = int(key.split("_", 1)[1])
+            except ValueError:
+                continue
+            alias = names[index] if index < len(names) else None
+            if not isinstance(alias, str) or alias.startswith("widget_"):
+                continue
+            if alias in node.widgets and node.widgets[alias] != node.widgets[key]:
+                continue
+            node.widgets[alias] = node.widgets.pop(key)
 
     for detail in _embedded_api_link_details(expected_workflow):
         if detail["edge_collision"] != "identical":
