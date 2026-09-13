@@ -2391,6 +2391,51 @@ def _decode_serialized_vibe(
     outputs_raw = raw.get("outputs")
     if not isinstance(outputs_raw, list):
         raise ValueError("serialized vibe envelope 'outputs' must be a list")
+    # External Comfy UI records have no authored public-output contract. A
+    # legacy envelope may nevertheless contain descriptors mechanically
+    # inferred from every terminal node before exact UI modes were hydrated.
+    # Recognize only that source-backed, complete, unnamed shape; named or
+    # partial descriptors remain authored and stay fail-closed.
+    source_metadata = raw.get("metadata")
+    source_inferred_output_ids: set[str] = set()
+    if (
+        source.source_type == "api"
+        and isinstance(source_metadata, Mapping)
+        and source_metadata.get("external_workflow") is True
+        and source.provenance.get("workflow_format") == "comfy_ui"
+    ):
+        terminal_ids = {
+            str(node_id)
+            for node_id, node in workflow.nodes.items()
+            if node.class_type in OUTPUT_NODE_NAMES
+        }
+        candidate_ids: set[str] = set()
+        source_inferred = len(outputs_raw) == len(terminal_ids)
+        for entry in outputs_raw:
+            if not isinstance(entry, dict):
+                source_inferred = False
+                break
+            node_id = entry.get("node_id")
+            node = workflow.nodes.get(str(node_id)) if isinstance(node_id, str) else None
+            if node is None or node.class_type not in OUTPUT_NODE_NAMES:
+                source_inferred = False
+                break
+            if any(
+                entry.get(field) is not None
+                for field in (
+                    "name", "artifact_kind", "mime_type", "filename_prefix",
+                    "expected_cardinality",
+                )
+            ):
+                source_inferred = False
+                break
+            if entry.get("output_type") != node.class_type:
+                source_inferred = False
+                break
+            candidate_ids.add(str(node_id))
+        if source_inferred and candidate_ids == terminal_ids:
+            source_inferred_output_ids = candidate_ids
+
     for index, entry in enumerate(outputs_raw):
         if not isinstance(entry, dict):
             raise ValueError(
@@ -2406,6 +2451,11 @@ def _decode_serialized_vibe(
             )
         if not isinstance(output_type, str) or not output_type.strip():
             raise ValueError(f"output {index}: output_type must be a nonblank string")
+        if (
+            node_id in source_inferred_output_ids
+            and mode_to_litegraph(workflow.nodes[node_id].mode) in (2, 4)
+        ):
+            continue
         for field_name in ("name", "artifact_kind", "mime_type", "filename_prefix"):
             value = entry.get(field_name)
             if value is not None and not isinstance(value, str):

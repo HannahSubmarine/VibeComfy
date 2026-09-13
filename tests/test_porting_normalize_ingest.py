@@ -533,6 +533,28 @@ def test_bypass_roster_corpus_import_is_not_ambiguous(workflow_id: str) -> None:
     assert workflow.virtual_wires == {}
 
 
+@pytest.mark.parametrize(
+    ("workflow_id", "active_output_ids"),
+    [
+        ("00444a9409f56c07", {"1", "3", "37", "69", "73", "111", "113"}),
+        ("0070184c5f1c8ca2", {"9"}),
+        ("1b136036c776018a", {"222", "223"}),
+        ("1c7ad8a2a8c0224b", {"264"}),
+        ("78afac42baf0a381", {"16", "48", "50", "62"}),
+    ],
+)
+def test_external_corpus_inferred_outputs_follow_hydrated_ui_modes(
+    workflow_id: str, active_output_ids: set[str]
+) -> None:
+    """Stale pre-hydration terminal discovery does not become a contract."""
+    path = Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json"
+    raw = json.loads(path.read_text())
+    workflow = from_envelope(raw)
+
+    assert {output.node_id for output in workflow.outputs} == active_output_ids
+    assert workflow.compile("api")
+
+
 @pytest.mark.parametrize("workflow_id", [
     "00444a9409f56c07",
     "78afac42baf0a381",
