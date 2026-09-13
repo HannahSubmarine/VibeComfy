@@ -2190,10 +2190,6 @@ def _decode_serialized_vibe(
     )
 
     # ── nodes ──────────────────────────────────────────────────────────────
-    captures_virtual_wires = any(
-        isinstance(entry, dict) and entry.get("class_type") in {"SetNode", "GetNode"}
-        for entry in nodes_raw.values()
-    )
     for key, entry in nodes_raw.items():
         node_id = entry.get("id")
         if not isinstance(node_id, str) or not node_id.strip():
@@ -2259,11 +2255,10 @@ def _decode_serialized_vibe(
         # Rich envelopes retain the LiteGraph roster canonically under the
         # node metadata. Promote only absent execution carriers before the
         # virtual-wire capture pass; explicit entry values stay authoritative.
-        if captures_virtual_wires:
-            _promote_ui_native_port_carriers(
-                entry,
-                _node_ui_carrier({"metadata": node_metadata, "_ui": entry.get("_ui")}),
-            )
+        _promote_ui_native_port_carriers(
+            entry,
+            _node_ui_carrier({"metadata": node_metadata, "_ui": entry.get("_ui")}),
+        )
         # Mode is first-class: prefer the serialized node-level ``mode`` field
         # (written by to_envelope's dataclass walk), falling back to the legacy
         # ``_ui.mode`` / ``metadata["mode"]`` locations for old envelopes.

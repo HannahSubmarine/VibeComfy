@@ -533,6 +533,43 @@ def test_bypass_roster_corpus_import_is_not_ambiguous(workflow_id: str) -> None:
     assert workflow.virtual_wires == {}
 
 
+@pytest.mark.parametrize("workflow_id", [
+    "00444a9409f56c07",
+    "78afac42baf0a381",
+    "506ebdde037e22d8",
+])
+def test_bypass_corpus_import_promotes_exact_ui_port_rosters(workflow_id: str) -> None:
+    """Every serialized node gets absence-only roster hydration, including bypass cases."""
+    path = Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    workflow = from_envelope(raw)
+
+    for node_id, serialized in raw["nodes"].items():
+        ui = serialized["metadata"].get("_ui")
+        node = workflow.nodes[node_id]
+        if not isinstance(ui, dict):
+            continue
+
+        for direction in ("input", "output"):
+            field = f"{direction}s"
+            ports = ui.get(field)
+            if ports is not None:
+                assert getattr(node, f"native_{direction}_names") == [
+                    (port.get("name") or None) if isinstance(port, dict) else None
+                    for port in ports
+                ]
+                assert getattr(node, f"native_{direction}_types") == [
+                    (port.get("type") or None) if isinstance(port, dict) else None
+                    for port in ports
+                ]
+        inputs = ui.get("inputs")
+        if inputs is not None:
+            assert node.native_input_optional == [
+                isinstance(port, dict) and port.get("shape") == 7
+                for port in inputs
+            ]
+
+
 # ── Case 1a: 'randomize' captured from named inputs dict ─────────────────────
 
 
