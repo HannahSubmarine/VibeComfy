@@ -155,6 +155,23 @@ WIDGET_SCHEMA: dict[str, list[str | None]] = {
     "BasicScheduler": ["scheduler", "steps", "denoise"],
     "CFGGuider": ["cfg"],
     "CheckpointLoaderSimple": ["ckpt_name"],
+    # TripoImageToModelNode's object_info roster is input order with the
+    # required image socket leading it.  The compact UI vector omits that
+    # linked socket and this legacy fixture has eleven serialized values;
+    # keep the exact observed prefix rather than inventing the absent tail.
+    "TripoImageToModelNode": [
+        "model_version",
+        "style",
+        "texture",
+        "pbr",
+        "model_seed",
+        "orientation",
+        "texture_seed",
+        "texture_quality",
+        "texture_alignment",
+        "face_limit",
+        "quad",
+    ],
     "CLIPLoader": ["clip_name", "type", "device"],
     "CLIPTextEncode": ["text"],
     "CLIPTextEncodeFlux": ["clip_l", "t5xxl", "guidance"],

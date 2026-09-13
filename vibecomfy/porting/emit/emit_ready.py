@@ -45,6 +45,7 @@ from typing import Any, Mapping
 from vibecomfy._compile._helpers import RESOLVABLE_HELPER_CLASS_TYPES
 from vibecomfy.node_packs import LockEntry, read_lockfile
 from vibecomfy.porting.widgets.aliases import resolve_widget_key_with_provenance
+from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
 from vibecomfy.porting.widgets.schema import WIDGET_SCHEMA
 from vibecomfy.porting.emit.emit_constants import (
     _LOAD_IMAGE_FAMILY,
@@ -158,6 +159,12 @@ def _resolved_field_values(node: Any) -> dict[str, Any]:
     class_type = str(getattr(node, "class_type", ""))
     metadata = getattr(node, "metadata", {})
     aliases = metadata.get("input_aliases") if isinstance(metadata, Mapping) else None
+    if not isinstance(aliases, (list, tuple)):
+        # Public-input inference must use the same source-backed compact
+        # widget roster as Python emission.  This names proven seed slots
+        # (including custom-node schemas) without inventing names for opaque
+        # widgets such as UltraShapeSaveGLB.
+        aliases = compact_widget_names_for_node(node, class_type).names
     values: dict[str, Any] = {}
     # ``inputs`` is the semantic channel and wins only after translating both
     # channels to their canonical field names.  This mirrors direct compile's

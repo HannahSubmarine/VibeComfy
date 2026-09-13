@@ -47,6 +47,25 @@ def test_emit_uses_named_field_for_ultrashape():
     assert "guidance_scale=5" in snippet or "guidance_scale" in snippet
 
 
+def test_tripo_image_model_uses_object_info_compact_aliases():
+    wf = _wf_from_corpus("tests/fixtures/live_agentic_corpus/corpus/352066ccef9dbe37.json")
+    from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
+
+    node = wf.nodes["35"]
+    resolution = compact_widget_names_for_node(node)
+    assert resolution.names == (
+        "model_version", "style", "texture", "pbr", "model_seed",
+        "orientation", "texture_seed", "texture_quality",
+        "texture_alignment", "face_limit", "quad",
+    )
+    source = emit_agent_edit_python(wf)
+    start = source.index("tripoimagetomodelnode =")
+    end = source.index(")  # uid:35", start) + len(")  # uid:35")
+    block = source[start:end]
+    assert "model_version='v2.5-20250123'" in block
+    assert "widget_0" not in block
+
+
 def test_emit_uses_named_field_for_inpaint():
     wf = _wf_from_corpus("external_workflows/corpus/485ff2fa6dcc1917.json")
     src = emit_agent_edit_python(wf)
@@ -114,6 +133,25 @@ def test_widget_n_is_rejected_with_named_hint():
     node = wf.nodes["2"]
     res = compact_widget_names_for_node(node, name_authority=None)
     assert res.names[1] == "guidance_scale"
+
+
+def test_ultrashape_opaque_save_widgets_stay_positional_and_seed_is_typed():
+    wf = _wf_from_corpus("tests/fixtures/live_agentic_corpus/corpus/8800a945cff8d090.json")
+    from vibecomfy.porting.emit.emit_ready import _infer_public_input_bindings
+    from vibecomfy.porting.widgets.aliases import resolve_widget_name_with_provenance
+
+    save = wf.nodes["4"]
+    assert resolve_widget_name_with_provenance("UltraShapeSaveGLB", 0).resolved is False
+    assert save.widgets == {
+        "widget_0": "ultrashape_output",
+        "widget_1": "refined",
+        "widget_2": "glb",
+    }
+    bindings = _infer_public_input_bindings(
+        wf.nodes, {str(node_id): [] for node_id in wf.nodes}
+    )
+    seed = next(binding for binding in bindings if binding.name == "seed")
+    assert (seed.node_id, seed.field, seed.type) == ("2", "seed", "INT")
 
 
 def test_range_validation_shares_vocabulary():
