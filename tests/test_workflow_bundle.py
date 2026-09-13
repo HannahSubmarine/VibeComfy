@@ -128,6 +128,32 @@ def test_cli_convert_corpus_pair_admits_through_real_loader_path(
     assert bundle.semantic_digest
 
 
+def test_load_workflow_any_promotes_source_widget_aliases_for_digest_admission() -> None:
+    """The real CLI loader admits the remaining UI-backed positional case."""
+    from vibecomfy.cli_loader import load_workflow_any
+    from vibecomfy.porting.convert import port_convert_workflow
+
+    source = Path(__file__).parent / "fixtures/live_agentic_corpus/corpus/1cc45704dcffe34a.json"
+    workflow = load_workflow_any(str(source))
+
+    assert workflow.nodes["369"].inputs["width"] == 832
+    assert workflow.nodes["408"].inputs["context_length"] == 13
+    assert workflow.nodes["380"].inputs["device"] == "cpu"
+    assert workflow.nodes["500"].inputs["expression"] == "(a - 1) / 4 + 1"
+
+    result = port_convert_workflow(
+        workflow,
+        source_path=str(source),
+        registered_inputs={},
+        preserve_node_ids=True,
+    )
+    assert result.validation is not None
+    assert result.validation.import_ok
+    assert result.validation.build_ok
+    assert result.validation.compile_ok
+    assert result.validation.parity_ok
+
+
 def test_provenance_is_closed_and_excludes_operational_fields() -> None:
     filtered = filter_provenance(
         {

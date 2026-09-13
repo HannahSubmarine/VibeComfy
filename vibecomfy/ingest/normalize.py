@@ -2259,6 +2259,13 @@ def _decode_serialized_vibe(
             entry,
             _node_ui_carrier({"metadata": node_metadata, "_ui": entry.get("_ui")}),
         )
+        if schema_provider is not None:
+            from vibecomfy.porting.widgets.aliases import promote_positional_widget_aliases
+
+            promote_positional_widget_aliases(
+                {"inputs": entry["inputs"], "widgets": entry["widgets"], "metadata": node_metadata},
+                class_type,
+            )
         # Mode is first-class: prefer the serialized node-level ``mode`` field
         # (written by to_envelope's dataclass walk), falling back to the legacy
         # ``_ui.mode`` / ``metadata["mode"]`` locations for old envelopes.
