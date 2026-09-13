@@ -207,3 +207,50 @@ passed, 195 skipped, 35 deselected, 1 xfailed, 0 failed** with empty stderr;
 the IR boundary scan reports `IR boundary: clean`. The recorded Astra final
 review remains `REWORK` because the review ceiling was exhausted before this
 correction; no new review approval is implied.
+
+## Astra high custom-node emission rework — required closure — 2026-09-13
+
+The explicit Astra-high adjudication reopened the cleanliness obligations
+that the historical H3 artifact does not satisfy. The artifact contains five
+raw calls: four LanPaint classes whose schemas are proven by the pinned
+registry source, and unresolved `MiniMaxH3ImageToVideo`. I8/I9/I10 therefore
+remain not closed by the previous green suite or corpus receipts.
+
+### I8 — typed imports and calls
+
+E0/T3 must freeze source/version/digest/reason per class, separating backend
+field order from frontend-added widget positions. E1 must reuse the existing
+discovery/codegen/registration path to provide bounded importable LanPaint
+wrappers for `LanPaint_SamplerCustomAdvanced`, `LanPaint_AVDecode`,
+`LanPaint_AVEncode` and `LanPaint_VideoMaskEditor`. The emitter must produce
+complete imports and typed constructors for every proven class across the
+shared paths. Dynamic editor choices must not be fabricated; the trailing
+sampler UI button must not become a backend argument.
+
+### I9 — residual fallback and finalization contract
+
+Every remaining `raw_call` must carry an exact class/source/reason allowlist
+entry. MiniMax is the current unresolved positive control; a missing wrapper
+registration, incompatible schema or missing import is a failure, not an
+ordinary unresolved fallback. Tests must cover forwarding/omission, output
+arity/names/types, nonzero output slots, malformed/conflicting schema refusal,
+unchanged destination bytes and zero partial outputs.
+
+Finalization must preserve semantics rather than force one spelling: use
+`output_node` only when its inferred artifact metadata is lossless; preserve
+explicit `OutputSpec` for explicit null artifact metadata, empty outputs and
+ordered multi-output declarations. Whole-file checks reject custody/replay,
+duplicate authority, oversized closing expressions and incomplete imports.
+
+### I10 — fresh practical validation
+
+T1/T2/T3/E2/T4 must regenerate the exact H3 and affected corpus through normal
+CLI/SDK/canvas entrypoints, then prove source shape, semantic values/edges,
+identity/UIDs, provenance, nested/native subgraphs, editability,
+save/reload/export, atomicity/refusal/rollback and deterministic repeat
+generation. Record inspection of the exact whole Python file and exported
+graph. Add or extend existing tests only; no new task ID or review stage.
+
+Closure requires the current implementation plus fresh evidence for all three
+end-state fixes together: typed custom-node imports, elimination of avoidable
+raw calls, and a clean semantics-aware finalizer.

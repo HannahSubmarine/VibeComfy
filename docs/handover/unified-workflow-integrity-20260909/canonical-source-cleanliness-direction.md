@@ -856,3 +856,40 @@ Python snapshots for visual/API review. These artifacts are not custody-v2
 acceptance evidence: the external partner-JSON boundary described above is
 still planned, and current generated Python may contain the legacy embedded
 custody representation.
+
+## Astra high rework adjudication — 2026-09-13
+
+The user-authorized Astra-high decision changes the raw-call conclusion for
+the inspected H3 artifact. Its five raw calls comprise four LanPaint classes
+with pinned, source-backed schemas and one still-unresolved
+`MiniMaxH3ImageToVideo`. The LanPaint calls must be routed through the
+existing discovery/codegen/registration path so the generated file has
+typed constructors and complete custom-node imports. The MiniMax call remains
+an allowed fallback only with a durable class/source/reason record; its
+signature must not be guessed.
+
+The pinned LanPaint archive is registry `2.1.0`, digest
+`c56e8494b3db225817f95ea06de53564721f1ac5376168afb7358e29205e8b5b`, and the
+inspected source SHA is
+`d9bf9bccbb68ad0504b4be753c4dcb61164b0cf342dc59f1f87f0f0040f80334`.
+Evidence covers `LanPaint_SamplerCustomAdvanced`, `LanPaint_AVDecode`,
+`LanPaint_AVEncode` and `LanPaint_VideoMaskEditor`; the latter's dynamic
+choices remain unresolved unless independently proven by frontend/runtime
+evidence.
+
+The existing task IDs absorb this rework: E0/T3 freeze per-class provenance
+and backend-versus-frontend widget contracts; E1 reuses wrapper discovery and
+codegen to register a bounded `vibecomfy.nodes.lanpaint` module; E1/T1
+fixes only demonstrated shared emitter/import/schema seams; T1/T2/T3/E2/T4
+regenerate and validate the exact H3 and affected corpus. No runtime wrapper
+synthesis, all-pack generation, second emitter, new representation or new
+review stage is added.
+
+Finalization remains semantics-aware: use `output_node` only when inferred
+metadata is exactly lossless; preserve explicit `OutputSpec` for explicit
+null artifact metadata, empty outputs and ordered multi-output declarations.
+Closure requires AST proof of typed imports/calls, an exact residual raw-call
+allowlist, source/semantic/identity/failure tests, and fresh H3 editing,
+save/reload/export, whole-file/graph inspection and deterministic
+regeneration. These checks cover the three cleanliness issues together:
+custom-node imports, avoidable raw calls, and the closing finalizer form.

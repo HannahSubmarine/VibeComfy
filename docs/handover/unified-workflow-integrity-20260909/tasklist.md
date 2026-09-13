@@ -181,3 +181,25 @@ See evidence/h3-main-baseline.md. E0 captures actual port-check/convert refusal 
 ## Latest Astra sense-check requirements
 
 Apply the two mandatory evidence clarifications in [the acceptance ledger](acceptance-ledger.md#astra-sense-check-acceptance-clarification--2026-09-09): E0 maps the existing ingress owners and establishes cross-entrypoint baseline; E1 corrects only demonstrated shared-owner/emission defects; T3 adds the focused regressions to Q5; E2 saves/reloads and exports the edited H3 graph, asserts presentation/subgraph structure and records inspection of the exact rendered graph and whole Python file. A nested-definition source edit is a recommended optional test choice within existing I8/I9. No added task family or review stage.
+
+## Astra high rework amendment — 2026-09-13
+
+The user-authorized Astra-high decision supersedes the earlier assumption that
+all five H3 raw calls were unavoidable. Four are LanPaint classes with pinned
+source schemas and must become typed, imported constructors through the
+existing wrapper owners. `MiniMaxH3ImageToVideo` remains the only current
+unresolved fallback in this fixture. Existing task IDs absorb the work:
+
+| Existing ID | Added bounded obligation | Closure evidence |
+| --- | --- | --- |
+| E0/T3 | Freeze class provenance, exact field/output contracts, frontend-added positions and unresolved reasons; do not guess dynamic choices. | Pinned LanPaint source/archive digest and per-class contract records. |
+| E1 | Reuse wrapper discovery/codegen and register the bounded LanPaint module/stub; feed the same evidence into offline schema consumption. | Importable constructors, deterministic generated wrappers and registration/import tests. |
+| E1/T1 | Select typed wrappers across the shared emitter; permit raw calls only with a specific immutable unresolved-evidence record. | Whole-file AST imports/calls and exact residual raw-call fixture. |
+| T1/T2/T3/E2/T4 | Run the full affected lifecycle and inspect the exact H3 Python and exported graph. | Semantic/identity/failure/edit/reload/export/atomicity/determinism receipts. |
+
+Finalizer coverage stays semantics-aware: compact `output_node` is required
+only where lossless; explicit `OutputSpec` remains correct for explicit null
+artifact metadata, empty outputs and ordered multi-output declarations. No new
+task IDs, review stage, runtime wrapper synthesis, all-pack generation or
+second representation is added. Historical green evidence does not close
+this amendment; fresh focused evidence is required.

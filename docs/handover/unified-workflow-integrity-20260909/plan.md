@@ -104,6 +104,49 @@ The user requested an assessment of actual output elegance. The clean-source cla
 
 Apply the two mandatory evidence clarifications in [the acceptance ledger](acceptance-ledger.md#astra-sense-check-acceptance-clarification--2026-09-09): E0 maps the existing ingress owners and establishes cross-entrypoint baseline; E1 corrects only demonstrated shared-owner/emission defects; T3 adds the focused regressions to Q5; E2 saves/reloads and exports the edited H3 graph, asserts presentation/subgraph structure and records inspection of the exact rendered graph and whole Python file. A nested-definition source edit is a recommended optional test choice within existing I8/I9. No added task family or review stage.
 
+## Astra high rework amendment — typed custom-node emission — 2026-09-13
+
+The explicitly authorized Astra-high adjudication found that the inspected H3
+file's four LanPaint `raw_call` fallbacks are avoidable: the pinned LanPaint
+2.1.0 source archive proves their schemas and node mappings. The fifth raw
+call, `MiniMaxH3ImageToVideo`, remains unresolved in the available immutable
+registry/source evidence and stays a narrowly evidenced fallback until its
+schema is proven. The absence of custom-node imports is the same wrapper
+discovery/registration gap, not a separate ingestion path.
+
+Apply this as a bounded extension of the existing task IDs, in order:
+
+- E0/T3 freeze per-class provenance, exact backend field order, frontend-added
+  widget positions, output arity/names/types and unresolved reasons using the
+  existing registry/source owners.
+- E1 reuse `wrappers/discovery.py` and `wrappers/codegen.py` to register a
+  bounded `vibecomfy.nodes.lanpaint` module/stub for all proven in-scope
+  classes, and make the offline schema path consume the same pinned evidence.
+  Do not add runtime wrapper synthesis or generate every installed pack.
+- E1/T1 make the shared emitter select registered wrappers and emit their
+  imports/calls across canonical entrypoints. A raw call is valid only when
+  its class has a specific source/version/digest/reason record.
+- T1/T2/T3/E2/T4 regenerate the exact H3 and affected corpus, then prove
+  source shape, semantics, identity, provenance, editability, native
+  subgraphs, atomic pair lifecycle, failure refusal, whole-file/graph
+  inspection and deterministic repeat generation.
+
+Keep finalization lossless rather than mechanically uniform: use the compact
+`output_node` form only when artifact metadata can be inferred without change;
+retain explicit `OutputSpec` for explicit null metadata, empty outputs and
+ordered multi-output contracts. No new task ID, review stage, representation
+or compatibility framework is introduced. Luna medium owns the normal work;
+Sol high is used only if E1 exposes an inseparable semantic/identity/native-
+port kernel issue.
+
+The focused closure matrix must include importable typed LanPaint wrappers,
+exact field order and output slots, omission/forwarding behavior, dynamic
+choice non-fabrication, complete emitter imports, an exact residual raw-call
+allowlist, malformed/conflicting schema refusal with unchanged bytes, all
+finalizer variants, and fresh H3/corpus lifecycle plus deterministic
+regeneration. Existing green historical suite and H3 artifacts remain
+historical until this amendment's fresh evidence is recorded.
+
 ## Latest corpus-completeness amendment — 2026-09-12
 
 The user has amended the completion target: the 20-workflow corpus must work
