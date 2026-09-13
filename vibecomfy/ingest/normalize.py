@@ -1188,6 +1188,23 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
             incoming[str(edge.to_node)].append(edge)
             outgoing[str(edge.from_node)].append(edge)
 
+        # A schema-less node may not have a native output roster, but an
+        # authored edge is still direct source evidence for the numeric slot
+        # it consumes.  Preserve those witnesses for the shared virtual-wire
+        # resolver; this does not invent names or slots and leaves named
+        # rosters authoritative when present.
+        for node_id, node in by_id.items():
+            if getattr(node, "native_output_slots", None) is not None:
+                continue
+            witnessed = {
+                int(edge.from_output.strip())
+                for edge in outgoing[node_id]
+                if isinstance(edge.from_output, str)
+                and edge.from_output.strip().isdigit()
+            }
+            if witnessed:
+                node.native_output_slots = sorted(witnessed)
+
         def terminal_targets(node_id: str, input_name: str, seen: frozenset[str] = frozenset()) -> list[tuple[str, str]]:
             """Resolve a consumer through transparent route fan-out.
 

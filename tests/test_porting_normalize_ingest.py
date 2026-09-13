@@ -44,6 +44,8 @@ def _t06_recursive_graph(*, links=None, **extra):
 
 def test_bundle_source_kind_classification_stays_at_ingest_door() -> None:
     assert door_import_source_kind({"nodes": []}) == "ui"
+
+
     assert door_import_source_kind(
         {"vibecomfy_format_version": "1.0", "nodes": {}}
     ) == "envelope"
@@ -62,6 +64,29 @@ def test_bundle_source_kind_classification_stays_at_ingest_door() -> None:
     assert door_import_source_kind(
         {"nodes": {}, "prompt": {"nodes": []}}
     ) == "api"
+
+
+@pytest.mark.parametrize(
+    ("fixture", "channel", "producer", "slot"),
+    [
+        ("1cc45704dcffe34a", "FPS", "513", "2"),
+        ("430a3f936f6235f5", "instrumental", "153", "1"),
+        ("506ebdde037e22d8", "BG", "54", "0"),
+        ("673197a9269d00f8", "cond_negative", "266", "0"),
+    ],
+)
+def test_corpus_virtual_wire_capture_preserves_numeric_source_slots(
+    fixture: str, channel: str, producer: str, slot: str
+) -> None:
+    """Authored Set/Get channels may witness slots without a schema roster."""
+    path = Path(__file__).parent / "fixtures/live_agentic_corpus/corpus" / f"{fixture}.json"
+    workflow = from_envelope(json.loads(path.read_text(encoding="utf-8")))
+
+    legs = workflow.virtual_wires[channel]["legs"]
+    assert legs
+    assert all(leg["from_node"] == producer for leg in legs)
+    assert all(leg["from_output"] == slot for leg in legs)
+    assert int(slot) in workflow.nodes[producer].native_output_slots
 
 
 def test_api_import_recognizes_legacy_numeric_scoped_links() -> None:
