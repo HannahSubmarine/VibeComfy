@@ -1,0 +1,88 @@
+{
+  "LanPaint_AVDecode": {
+    "pack": "LanPaint",
+    "pack_version": "2.1.0",
+    "python_module": "LanPaint.src.LanPaint.nodes",
+    "category": "video",
+    "name": "LanPaint_AVDecode",
+    "display_name": "LanPaint_AVDecode",
+    "description": "Decode a nested AV latent and merge the inpainted video and audio with the original.",
+    "inputs": {
+      "required": {
+        "samples": ["LATENT"],
+        "video": ["VIDEO"],
+        "vae": ["VAE"],
+        "audio_vae": ["VAE"],
+        "mask": ["MASK"],
+        "audio_mask": ["MASK"],
+        "blend_overlap": ["INT", {"default": 11, "min": 1, "max": 51, "step": 2}],
+        "audio_crossfade": ["FLOAT", {"default": 0.02, "min": 0.0, "max": 1.0, "step": 0.005}]
+      }
+    },
+    "input_order": {"required": ["samples", "video", "vae", "audio_vae", "mask", "audio_mask", "blend_overlap", "audio_crossfade"]},
+    "input_order_all": ["samples", "video", "vae", "audio_vae", "mask", "audio_mask", "blend_overlap", "audio_crossfade"],
+    "object_info_widget_order": ["blend_overlap", "audio_crossfade"],
+    "outputs": [{"type": "VIDEO", "name": "video", "is_list": false}, {"type": "AUDIO", "name": "audio", "is_list": false}],
+    "function": "decode",
+    "source_sha256": "d9bf9bccbb68ad0504b4be753c4dcb61164b0cf342dc59f1f87f0f0040f80334"
+  },
+  "LanPaint_AVEncode": {
+    "pack": "LanPaint",
+    "pack_version": "2.1.0",
+    "python_module": "LanPaint.src.LanPaint.nodes",
+    "category": "video",
+    "name": "LanPaint_AVEncode",
+    "display_name": "LanPaint_AVEncode",
+    "description": "Encode a video's frames and audio into a nested AV latent with per-stream masks.",
+    "inputs": {"required": {"video": ["VIDEO"], "vae": ["VAE"], "audio_vae": ["VAE"], "mask": ["MASK"], "audio_mask": ["MASK"]}},
+    "input_order": {"required": ["video", "vae", "audio_vae", "mask", "audio_mask"]},
+    "input_order_all": ["video", "vae", "audio_vae", "mask", "audio_mask"],
+    "object_info_widget_order": [],
+    "outputs": [{"type": "LATENT", "name": "latent", "is_list": false}],
+    "function": "encode",
+    "source_sha256": "d9bf9bccbb68ad0504b4be753c4dcb61164b0cf342dc59f1f87f0f0040f80334"
+  },
+  "LanPaint_SamplerCustomAdvanced": {
+    "pack": "LanPaint",
+    "pack_version": "2.1.0",
+    "python_module": "LanPaint.src.LanPaint.nodes",
+    "category": "sampling/custom_sampling",
+    "name": "LanPaint_SamplerCustomAdvanced",
+    "display_name": "LanPaint_SamplerCustomAdvanced",
+    "description": "LanPaint custom sampler with advanced controls.",
+    "inputs": {"required": {
+      "noise": ["NOISE"], "guider": ["GUIDER"], "sampler": ["SAMPLER"], "sigmas": ["SIGMAS"], "latent_image": ["LATENT"],
+      "LanPaint_NumSteps": ["INT", {"default": 5, "min": 0, "max": 100}],
+      "LanPaint_Lambda": ["FLOAT", {"default": 5.0, "min": 0.1, "max": 50.0, "step": 0.1}],
+      "LanPaint_StepSize": ["FLOAT", {"default": 0.2, "min": 0.0001, "max": 1.0, "step": 0.01}],
+      "LanPaint_PromptMode": [["Image First", "Prompt First"]],
+      "LanPaint_Info": ["STRING", {"default": "LanPaint Custom Sampler Adv."}]
+    }},
+    "input_order": {"required": ["noise", "guider", "sampler", "sigmas", "latent_image", "LanPaint_NumSteps", "LanPaint_Lambda", "LanPaint_StepSize", "LanPaint_PromptMode", "LanPaint_Info"]},
+    "input_order_all": ["noise", "guider", "sampler", "sigmas", "latent_image", "LanPaint_NumSteps", "LanPaint_Lambda", "LanPaint_StepSize", "LanPaint_PromptMode", "LanPaint_Info"],
+    "object_info_widget_order": ["LanPaint_NumSteps", "LanPaint_Lambda", "LanPaint_StepSize", "LanPaint_PromptMode", "LanPaint_Info", null],
+    "outputs": [{"type": "LATENT", "name": "output", "is_list": false}, {"type": "LATENT", "name": "denoised_output", "is_list": false}],
+    "function": "sample",
+    "source_sha256": "d9bf9bccbb68ad0504b4be753c4dcb61164b0cf342dc59f1f87f0f0040f80334"
+  },
+  "LanPaint_VideoMaskEditor": {
+    "pack": "LanPaint",
+    "pack_version": "2.1.0",
+    "python_module": "LanPaint.src.LanPaint.nodes",
+    "category": "video",
+    "name": "LanPaint_VideoMaskEditor",
+    "display_name": "LanPaint_VideoMaskEditor",
+    "description": "Loads a video and outputs video and audio inpainting masks.",
+    "inputs": {"required": {
+      "video": ["VIDEO"],
+      "keyframes": ["STRING", {"default": "{}", "multiline": true}],
+      "audio_mask": ["STRING", {"default": "[]", "multiline": true}]
+    }},
+    "input_order": {"required": ["video", "keyframes", "audio_mask"]},
+    "input_order_all": ["video", "keyframes", "audio_mask"],
+    "object_info_widget_order": ["video", "keyframes", "audio_mask", null, null],
+    "outputs": [{"type": "VIDEO", "name": "video", "is_list": false}, {"type": "MASK", "name": "mask", "is_list": false}, {"type": "MASK", "name": "audio_mask", "is_list": false}],
+    "function": "run",
+    "source_sha256": "d9bf9bccbb68ad0504b4be753c4dcb61164b0cf342dc59f1f87f0f0040f80334"
+  }
+}
