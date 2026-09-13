@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-pytest_plugins = ("vibecomfy.testing._pytest_plugin",)
-
 import vibecomfy.testing as testing
 from vibecomfy.handles import Handle
 from vibecomfy.runtime.session import RunResult
