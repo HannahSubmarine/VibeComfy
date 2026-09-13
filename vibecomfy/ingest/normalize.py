@@ -1623,6 +1623,16 @@ def _promote_ui_native_port_carriers(
                 node[field_name] = value
 
 
+def _node_ui_carrier(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """Return the supported LiteGraph furniture carrier for an API node."""
+    direct = node.get("_ui")
+    if isinstance(direct, Mapping):
+        return direct
+    metadata = node.get("metadata")
+    nested = metadata.get("_ui") if isinstance(metadata, Mapping) else None
+    return nested if isinstance(nested, Mapping) else None
+
+
 def _native_input_asset_kinds(
     node: Mapping[str, Any],
     schema_provider: SchemaProvider | None,
@@ -1833,6 +1843,10 @@ def _merge_vibe_node_widget_evidence(raw: dict[str, Any], api: dict[str, Any]) -
             api_node.setdefault("_raw_widgets", deepcopy(raw_widgets))
         metadata = rich_node.get("metadata")
         raw_ui = metadata.get("_ui") if isinstance(metadata, dict) else rich_node.get("_ui")
+        if isinstance(raw_ui, dict):
+            api_node.setdefault("metadata", {})
+            if isinstance(api_node["metadata"], dict):
+                api_node["metadata"].setdefault("_ui", deepcopy(raw_ui))
         if (
             isinstance(raw_widgets, dict)
             and bool(raw_widgets.get("has_dict_rows"))
@@ -2176,6 +2190,10 @@ def _decode_serialized_vibe(
     )
 
     # ── nodes ──────────────────────────────────────────────────────────────
+    captures_virtual_wires = any(
+        isinstance(entry, dict) and entry.get("class_type") in {"SetNode", "GetNode"}
+        for entry in nodes_raw.values()
+    )
     for key, entry in nodes_raw.items():
         node_id = entry.get("id")
         if not isinstance(node_id, str) or not node_id.strip():
@@ -2238,6 +2256,14 @@ def _decode_serialized_vibe(
         # decoded node is tagged untrusted_source. Unconditional set — never
         # `setdefault` — so hostile JSON cannot pre-declare itself trusted.
         node_metadata[PROVENANCE_KEY] = "untrusted_source"
+        # Rich envelopes retain the LiteGraph roster canonically under the
+        # node metadata. Promote only absent execution carriers before the
+        # virtual-wire capture pass; explicit entry values stay authoritative.
+        if captures_virtual_wires:
+            _promote_ui_native_port_carriers(
+                entry,
+                _node_ui_carrier({"metadata": node_metadata, "_ui": entry.get("_ui")}),
+            )
         # Mode is first-class: prefer the serialized node-level ``mode`` field
         # (written by to_envelope's dataclass walk), falling back to the legacy
         # ``_ui.mode`` / ``metadata["mode"]`` locations for old envelopes.
@@ -2733,7 +2759,7 @@ def _from_api_impl(
         if not isinstance(node, dict):
             continue
         _promote_ui_native_port_carriers(
-            node, node.get("_ui") if isinstance(node.get("_ui"), Mapping) else None
+            node, _node_ui_carrier(node)
         )
         raw_inputs = dict(node.get("inputs", {}))
         input_provenance = (

@@ -24,8 +24,9 @@ from vibecomfy.ingest.normalize import (
     ingest_workflow_and_ui,
     normalize_to_api,
 )
+from vibecomfy.cli_loader import load_workflow_any
 from vibecomfy.porting.emit.ui import emit_ui_json
-from vibecomfy.workflow import VibeEdge
+from vibecomfy.workflow import VibeEdge, WorkflowCompileError
 
 
 def _t06_recursive_graph(*, links=None, **extra):
@@ -69,13 +70,13 @@ def test_bundle_source_kind_classification_stays_at_ingest_door() -> None:
 @pytest.mark.parametrize(
     ("fixture", "channel", "producer", "slot"),
     [
-        ("1cc45704dcffe34a", "FPS", "513", "2"),
-        ("430a3f936f6235f5", "instrumental", "153", "1"),
-        ("506ebdde037e22d8", "BG", "54", "0"),
-        ("673197a9269d00f8", "cond_negative", "266", "0"),
+        ("1cc45704dcffe34a", "FPS", "513", "fps"),
+        ("430a3f936f6235f5", "instrumental", "153", "instruments"),
+        ("506ebdde037e22d8", "BG", "54", "IMAGE"),
+        ("673197a9269d00f8", "cond_negative", "266", "CONDITIONING"),
     ],
 )
-def test_corpus_virtual_wire_capture_preserves_numeric_source_slots(
+def test_corpus_virtual_wire_capture_resolves_rostered_source_slots(
     fixture: str, channel: str, producer: str, slot: str
 ) -> None:
     """Authored Set/Get channels may witness slots without a schema roster."""
@@ -86,7 +87,7 @@ def test_corpus_virtual_wire_capture_preserves_numeric_source_slots(
     assert legs
     assert all(leg["from_node"] == producer for leg in legs)
     assert all(leg["from_output"] == slot for leg in legs)
-    assert int(slot) in workflow.nodes[producer].native_output_slots
+    assert slot in (workflow.nodes[producer].native_output_names or [])
 
 
 def test_api_import_recognizes_legacy_numeric_scoped_links() -> None:
@@ -498,21 +499,29 @@ def test_ui_witness_hydrates_only_absent_native_port_carriers() -> None:
 
 
 @pytest.mark.parametrize(
-    "workflow_id",
+    ("workflow_id", "producer", "channel"),
     [
-        "1cc45704dcffe34a",
-        "430a3f936f6235f5",
-        "506ebdde037e22d8",
-        "673197a9269d00f8",
+        ("1cc45704dcffe34a", "513", "FPS"),
+        ("430a3f936f6235f5", "153", "instrumental"),
+        ("506ebdde037e22d8", "54", "BG"),
+        ("673197a9269d00f8", "266", "cond_negative"),
     ],
 )
-def test_named_channel_corpus_import_promotes_exact_output_rosters(workflow_id: str) -> None:
-    """The normal envelope import captures the named channel without ambiguity."""
-    raw = json.loads(
-        (Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json").read_text()
-    )
-    workflow = from_envelope(raw)
-    assert workflow.virtual_wires
+def test_named_channel_corpus_cli_import_compiles(
+    workflow_id: str, producer: str, channel: str
+) -> None:
+    """The real CLI envelope path hydrates and compiles each named channel."""
+    path = Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json"
+    workflow = load_workflow_any(str(path))
+    assert producer in workflow.nodes
+    assert channel in workflow.virtual_wires
+    if workflow_id == "506ebdde037e22d8":
+        # This fixture deliberately retains an ambiguous bypass presentation
+        # path; the existing fail-closed bypass contract remains authoritative.
+        with pytest.raises(WorkflowCompileError, match="not executable|bypass_ambiguous"):
+            workflow.compile("api")
+    else:
+        assert workflow.compile("api")
 
 
 @pytest.mark.parametrize("workflow_id", ["00444a9409f56c07", "78afac42baf0a381"])
