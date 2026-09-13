@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import subprocess
 import sys
@@ -800,13 +801,28 @@ def build():
 
     payload = json.loads(capsys.readouterr().out)
     text = out.read_text(encoding="utf-8")
+    companion = json.loads(out.with_suffix(".vibe.json").read_text(encoding="utf-8"))
     assert "READY_METADATA =" in text
-    assert "template_id='image/ported'" not in text
-    provenance = _load_emitted_provenance(out)
-    assert provenance["ready_id"] == "image/ported"
-    assert provenance["source_hash"] == payload["report"]["source_hash"]
-    assert provenance["workflow_shape"] == payload["report"]["workflow_shape"]
-    assert provenance["output_mode"] == "ready_template"
+    assert "CANONICAL_CUSTODY" not in text
+    assert "HELPER_CUSTODY" not in text
+    assert "wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
+    assert set(companion) == {"format_version", "bind", "custody", "presentation"}
+    assert companion["bind"]["workflow_identity"] == "image/ported"
+    assert companion["presentation"] == {
+        "nodes": {}, "links": [], "groups": [], "canvas": {}, "annotations": []
+    }
+    assert not out.with_suffix(".layout.json").exists()
+    assert "template_id='image/ported'" in text
+    assert "ready_id='image/ported'" in text
+    spec = importlib.util.spec_from_file_location("test_ready_pair", out)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    metadata = module.build().metadata
+    assert metadata["ready_id"] == "image/ported"
+    assert metadata["source_hash"] == payload["report"]["source_hash"]
+    assert metadata["workflow_shape"] == payload["report"]["workflow_shape"]
+    assert metadata["output_mode"] == "ready_template"
 
 
 def test_port_convert_diff_implies_dry_run_and_preserves_target(

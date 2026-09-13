@@ -14,7 +14,6 @@ from vibecomfy.porting.convert import (
     port_convert_and_write,
     port_convert_workflow,
 )
-from vibecomfy.porting.layout_store import write_layout
 from vibecomfy.porting.workbench import analyze_source, load_port_source
 from vibecomfy.porting.import_errors import native_boundary_recovery
 from vibecomfy.workflow_bundle import WorkflowBundleError
@@ -162,7 +161,7 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        if not dry_run and not diff_mode and args.ready_id is None:
+        if not dry_run and not diff_mode:
             # The default conversion path publishes the same canonical pair as
             # SDK/canvas capture: readable Python plus its required v2
             # companion.  ``port_convert_workflow`` remains the diagnostic and
@@ -186,6 +185,14 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             # shared with the successful preflight rather than re-admitting
             # the raw importer graph at the bundle boundary.
             bundle_workflow = _build_emitted_workflow_from_text(result.text)
+            if args.ready_id:
+                # A ready promotion changes the published workflow identity
+                # to its namespaced registry id.  The diagnostic conversion
+                # was deliberately built from the source workflow id; rebind
+                # that detached candidate before the shared pair writer so
+                # Python, READY_METADATA, and the companion agree.
+                bundle_workflow.id = str(args.ready_id)
+                bundle_workflow.source.id = str(args.ready_id)
             ui_candidate = (
                 loaded.raw_workflow
                 if isinstance(loaded.raw_workflow, dict)
@@ -210,9 +217,10 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
                 | {
                     "source_hash": report.source_hash,
                     "workflow_shape": report.workflow_shape,
-                    "output_mode": "scratchpad",
+                    "output_mode": "ready_template" if args.ready_id else "scratchpad",
                     "source_type": str(loaded.workflow.source.source_type),
                 },
+                source_format="ready_template" if args.ready_id else "scratchpad",
             )
             write_result = {
                 "written": True,
@@ -279,20 +287,6 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         _attach_contract_fields(payload["report"])
         _emit_convert_payload(payload, json_output=args.json)
         return 1
-
-    # Canonical v2 conversion publishes exactly the Python/companion pair.
-    # The legacy layout store remains a separate explicit export concern; a
-    # sibling .layout.json would make the canonical loader reject an otherwise
-    # valid pair as a mixed-generation source.
-    if not dry_run and not diff_mode and args.ready_id is not None:
-        try:
-            write_layout(out, loaded.workflow)
-        except Exception as exc:
-            # Legacy .layout.json is transient evidence, never an approval
-            # source.  Do not claim a successful publication when its write
-            # failed; surface the error to the caller.
-            print(f"port convert failed writing legacy layout evidence: {exc}", file=sys.stderr)
-            return 1
 
     payload = {
         "status": "ok" if write_result["written"] or write_result["dry_run"] else "error",

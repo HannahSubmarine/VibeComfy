@@ -2852,8 +2852,15 @@ def emit_bundle_with_candidate(
     parent_evidence: Mapping[str, Any] | None = None,
     operation: str = "authored",
     source_provenance: Mapping[str, Any] | None = None,
+    source_format: str = "scratchpad",
 ) -> WorkflowBundle:
-    """Internal shared writer for emit/capture candidate bundles."""
+    """Internal shared writer for emit/capture candidate bundles.
+
+    ``source_format`` only selects the existing canonical renderer.  Pair
+    construction, custody, validation, and publication stay shared.
+    """
+    if source_format not in {"scratchpad", "ready_template"}:
+        raise ValueError(f"unsupported canonical source format {source_format!r}")
     path = _destination_path(destination, workflow)
     # A UI candidate is the only source-backed witness available to bridge the
     # temporary generated-Python ids back to the captured graph.  Perform the
@@ -2896,15 +2903,62 @@ def emit_bundle_with_candidate(
     path.parent.mkdir(parents=True, exist_ok=True)
     emitted_workflow = workflow.copy()
     emitted_workflow.metadata["source_bundle"] = _v2_marker(sidecar)
-    _atomic_publish_pair(
-        path,
-        emit_scratchpad_python(
+    if source_format == "ready_template":
+        from vibecomfy.porting.convert import _ready_requirements
+        from vibecomfy.porting.emit.emit_ready import emit_ready_template_python
+
+        # Ready promotion uses the namespaced id as the published workflow
+        # identity. Keep the source workflow id as upstream provenance while
+        # aligning the compatibility projection that ReadyMetadata.build()
+        # exposes at both the root and nested provenance levels.
+        ready_metadata = dict(emitted_workflow.metadata)
+        previous_template_id = ready_metadata.get("ready_template")
+        if ready_metadata.get("output_prefix") in {
+            previous_template_id,
+            emitted_workflow.id,
+        }:
+            ready_metadata["output_prefix"] = emitted_workflow.id
+        ready_provenance = ready_metadata.get("provenance")
+        if isinstance(ready_provenance, Mapping):
+            ready_provenance = dict(ready_provenance)
+            ready_id = ready_provenance.get("ready_id")
+            if ready_id is None and isinstance(source_provenance, Mapping):
+                ready_id = source_provenance.get("ready_id")
+            ready_provenance["source_id"] = emitted_workflow.id
+            if ready_id is not None:
+                ready_provenance["ready_id"] = str(ready_id)
+            ready_metadata["provenance"] = ready_provenance
+            # ReadyMetadata.build() also publishes provenance fields at the
+            # metadata root for legacy consumers. Keep that compatibility
+            # projection aligned with the v2 pair identity.
+            ready_metadata["source_id"] = emitted_workflow.id
+            if ready_id is not None:
+                ready_metadata["ready_id"] = str(ready_id)
+
+        source = emit_ready_template_python(
+            emitted_workflow,
+            ready_metadata=ready_metadata,
+            ready_requirements=_ready_requirements(emitted_workflow),
+            template_id=str(
+                emitted_workflow.metadata.get("ready_template") or emitted_workflow.id
+            ),
+            registered_inputs={
+                str(name): (str(item.node_id), str(item.field))
+                for name, item in emitted_workflow.inputs.items()
+            },
+            external_custody=True,
+        )
+    else:
+        source = emit_scratchpad_python(
             emitted_workflow,
             workflow_id=workflow.id,
             source_path=str(path),
             provenance=_source_provenance(source_provenance or bundle.provenance),
             external_custody=True,
-        ),
+        )
+    _atomic_publish_pair(
+        path,
+        source,
         bundle.ui_sidecar,
         expected=bundle,
     )
