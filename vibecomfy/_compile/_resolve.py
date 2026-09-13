@@ -420,6 +420,20 @@ def _phase_c_value_primitives(
         {nid: node for nid, node in nodes.items() if nid in value_prim_ids}
     ):
         outbound = _sorted_edges([edge for edge in edges if edge.from_node == node_id])
+        if node.class_type == "PrimitiveStringMultiline":
+            inbound = _sorted_edges([edge for edge in edges if edge.to_node == node_id])
+            if len(inbound) == 1:
+                _pass_through_multiline_primitive(nodes, edges, node_id, inbound[0], make_error)
+                changed = True
+                continue
+            if len(inbound) > 1:
+                raise make_error(
+                    HelperResolveErrorSpec(
+                        f"PrimitiveStringMultiline node {node_id!r} has multiple inbound sources",
+                        next_action="Keep exactly one inbound source for the multiline primitive.",
+                        code="helper_edge_ambiguous",
+                    )
+                )
         if not outbound:
             continue
 
@@ -464,6 +478,69 @@ def _phase_c_value_primitives(
         changed = True
 
     return changed
+
+
+def _pass_through_multiline_primitive(
+    nodes: Mapping[str, Any], edges: list[Any], node_id: str, inbound_edge: Any, make_error: ErrorFactory
+) -> None:
+    """Replace a linked multiline helper with its single typed source.
+
+    A linked multiline widget is a UI wrapper, not a literal override.  Rewrite
+    every outgoing edge in place so a source with fanout remains a fanout after
+    the wrapper is removed.  Unknown socket metadata is tolerated for corpus
+    nodes, but a known mismatch is rejected before any mutation.
+    """
+    source_node = nodes.get(str(inbound_edge.from_node))
+    if source_node is None:
+        raise make_error(
+            HelperResolveErrorSpec(
+                f"PrimitiveStringMultiline source node {inbound_edge.from_node!r} not found",
+                code="helper_edge_unresolved",
+            )
+        )
+    source_type = _node_port_type(source_node, inbound_edge.from_output, output=True)
+    from vibecomfy.schema import socket_types_compatible
+
+    if source_type is not None and not socket_types_compatible(source_type, "STRING"):
+        raise make_error(
+            HelperResolveErrorSpec(
+                f"PrimitiveStringMultiline node {node_id!r} source type {source_type!r} is not STRING",
+                next_action="Connect a STRING-producing source to the multiline primitive.",
+                code="helper_type_mismatch",
+            )
+        )
+    for edge in _sorted_edges([edge for edge in edges if edge.from_node == node_id]):
+        target_node = nodes.get(str(edge.to_node))
+        target_type = _node_port_type(target_node, edge.to_input, output=False) if target_node else None
+        if target_type is not None and not socket_types_compatible("STRING", target_type):
+            raise make_error(
+                HelperResolveErrorSpec(
+                    f"PrimitiveStringMultiline node {node_id!r} target type {target_type!r} is not STRING",
+                    next_action="Connect the multiline primitive to a STRING input.",
+                    code="helper_type_mismatch",
+                )
+            )
+        edge.from_node = str(inbound_edge.from_node)
+        edge.from_output = str(inbound_edge.from_output)
+
+
+def _node_port_type(node: Any, port: Any, *, output: bool) -> str | None:
+    if node is None:
+        return None
+    names = getattr(node, "native_output_names" if output else "native_input_names", None)
+    types = getattr(node, "native_output_types" if output else "native_input_types", None)
+    if not isinstance(types, (list, tuple)):
+        return None
+    try:
+        index = int(port)
+    except (TypeError, ValueError):
+        if not isinstance(names, (list, tuple)) or port not in names:
+            return None
+        index = list(names).index(port)
+    if index < 0 or index >= len(types):
+        return None
+    value = types[index]
+    return str(value) if value is not None else None
 
 
 def _missing_consumer_spec(node_id: str, class_type: str, consumer_id: str) -> HelperResolveErrorSpec:
