@@ -203,3 +203,20 @@ artifact metadata, empty outputs and ordered multi-output declarations. No new
 task IDs, review stage, runtime wrapper synthesis, all-pack generation or
 second representation is added. Historical green evidence does not close
 this amendment; fresh focused evidence is required.
+
+## Execution completion receipt — 2026-09-13
+
+All existing task IDs C0/T0–T4 and E0/E1/E2 have been executed in the isolated
+candidate. The final local candidate is
+`e81239c9540aa47c117c4238eb0c97b3690ea2b9`; normal implementation used the
+configured Luna path and the recursive kernel retained its configured Sol XHARD
+assignment. No new review/oracle call was made after the configured lifetime
+ceilings were exhausted.
+
+| Completion item | Evidence/result |
+| --- | --- |
+| Full final gate | `10,603 passed, 0 failed, 195 skipped, 35 deselected, 2 xfailed`, exit `0`; `evidence/full-suite-final-green-attempt-20260913/` |
+| Final affected lane | `240 passed, 6 skipped, 0 failed`; `evidence/affected-suites-post-fix-20260913/` |
+| H3 canonical lifecycle | Fresh typed base pair, edited companion-preserving pair, exact exported graph, inspection and deterministic pair evidence under `evidence/h3-final-e81239c9-20260913/` |
+| Additional corpus | 30 reproducible pseudo-random Hivemind-derived sources: 27 complete pairs, 3 justified source refusals, 0 partial outputs; `evidence/hivemind-workflow-corpus-30-random-e81239c9-20260913/` |
+| Scope boundary | Receiving checkout preserved; no push, PR, merge, deployment, model download, GPU execution or production cutover |

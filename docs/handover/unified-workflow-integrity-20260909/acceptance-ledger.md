@@ -254,3 +254,33 @@ graph. Add or extend existing tests only; no new task ID or review stage.
 Closure requires the current implementation plus fresh evidence for all three
 end-state fixes together: typed custom-node imports, elimination of avoidable
 raw calls, and a clean semantics-aware finalizer.
+
+## Final implementation and validation evidence — 2026-09-13
+
+The latest exact candidate is
+`e81239c9540aa47c117c4238eb0c97b3690ea2b9`. This section supersedes earlier
+`NOT RUN / MISSING` snapshots for implementation evidence while preserving
+their historical record. It does not manufacture a reviewer PASS after the
+configured review ceiling.
+
+| Scope | Result | Evidence |
+| --- | --- | --- |
+| I1–I9 implementation and regression coverage | Green: 10,603 passed, 195 skipped, 35 deselected, 2 xfailed, 0 failed | `evidence/full-suite-final-green-attempt-20260913/`; affected lane 240 passed / 6 skipped |
+| I8 source cleanliness | Green on fresh H3 source: typed wrapper imports, zero `raw_call(` calls, no custody/replay/`wf.connect`/direct graph restoration, concise finalizer | `evidence/h3-final-e81239c9-20260913/h3.py`, `edited/preserved-inspection.txt` |
+| I9 identity, presentation and atomic lifecycle | Green for edited H3 pair: 20 nodes, 25 links, unique UIDs, four Markdown-note annotations, seven presentation records, canonical pair reload | `evidence/h3-final-e81239c9-20260913/edited/h3-edited-preserved.*` |
+| I10 exact H3 rehearsal | Green locally for convert → edit → bundle rebuild → save/reload → UI export → exact inspection → deterministic regeneration | `evidence/h3-final-e81239c9-20260913/` |
+| Corpus extension | 30 additional deterministic pseudo-random Hivemind-derived sources: 27 complete pairs, 3 source-level refusals, 0 partial outputs | `evidence/hivemind-workflow-corpus-30-random-e81239c9-20260913/summary.json` and `selection.json` |
+
+The final full-suite command exited `0` with **10,603 passed and 0 failed**;
+warnings/skips/deselections remain reported rather than hidden. The original
+50-source replay remains **46 successful pairs and 4 source-level refusals**;
+the additional 30-source sample reproduces three of those known refusal
+classes (`bypass_no_match`, duplicate `seed_override`, `bypass_ambiguous`) and
+adds no new failure class. No claim is made that malformed or semantically
+ambiguous source bytes should be force-repaired.
+
+The final evidence is implementation-complete but not a new independent review
+PASS. Historical final-review `REWORK` and exhausted review/oracle ceilings
+remain preserved. Live GPU/media execution and the unavailable frontend/
+ComfyUI boundary remain explicit environment blockers, not skipped acceptance
+claims.

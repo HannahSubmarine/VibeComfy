@@ -164,3 +164,58 @@ on this commit is **10,562 passed, 195 skipped, 35 deselected, 1 xfailed,
 0 failed**; stderr is empty. The authoritative receipts are under the active
 run’s `evidence/` directory. The review ceiling is exhausted, so this records
 implementation closure without claiming a new Astra approval.
+
+## Final execution evidence — `e81239c9540aa47c117c4238eb0c97b3690ea2b9` — 2026-09-13
+
+The active isolated implementation checkout is complete through implementation
+and validation at `e81239c9540aa47c117c4238eb0c97b3690ea2b9`. The branch is
+`otto/unified-workflow-integrity-20260909`, 64 commits ahead of `origin/main`.
+The receiving checkout remains protected at its recorded baseline with its
+pre-existing unrelated dirty files; no push, merge, PR, deployment or cutover
+was performed.
+
+Authoritative final test evidence:
+
+- Full configured pytest gate: **10,603 passed, 0 failed, 195 skipped, 35
+  deselected, 2 xfailed**, exit `0`, in
+  `evidence/full-suite-final-green-attempt-20260913/`. The run took
+  `2602.56s`; it recorded `7803` warnings and no unexpected or quarantined
+  failures.
+- Final affected implementation lane: **240 passed, 6 skipped, 0 failed** in
+  `evidence/affected-suites-post-fix-20260913/`.
+- Exact five-test regression lane after the final envelope-door fix: **5
+  passed, 0 failed**.
+- Additional reproducible pseudo-random Hivemind-derived sample of 30 sources:
+  **27 complete pairs, 3 contextual refusals, 0 partial outputs**. The three
+  source-backed refusals are `bypass_no_match`, duplicate `seed_override`, and
+  `bypass_ambiguous`; details and every case receipt are in
+  `evidence/hivemind-workflow-corpus-30-random-e81239c9-20260913/`.
+
+Fresh H3 evidence is in
+`evidence/h3-final-e81239c9-20260913/`. The base generated Python imports the
+typed MiniMax and LanPaint wrappers, has zero `raw_call(` occurrences, no
+`CANONICAL_CUSTODY`, `HELPER_CUSTODY`, `wf.connect(`, replay tail or direct
+node-table restoration, and uses the concise `wf.finalize(...)
+outputs=[OutputSpec(node=savevideo)])` form. The edited companion-preserving
+pair reloads as 20 nodes and 25 links with unique UIDs and retains four
+Markdown-note annotations plus seven presentation node records. The edited
+controls are seed `123`, steps `31`, duration input `7`, LanPaint steps `9`,
+edited model/source/mask values, and the prompt suffix. Deterministic
+regeneration produces byte-identical Python and companion files.
+
+Inspectable artifacts:
+
+- `evidence/h3-final-e81239c9-20260913/h3.py`
+- `evidence/h3-final-e81239c9-20260913/h3.vibe.json`
+- `evidence/h3-final-e81239c9-20260913/edited/h3-edited-preserved.py`
+- `evidence/h3-final-e81239c9-20260913/edited/h3-edited-preserved.vibe.json`
+- `evidence/h3-final-e81239c9-20260913/edited/h3-edited-preserved.exported.json`
+- `evidence/h3-final-e81239c9-20260913/edited/preserved-inspection.txt`
+- `evidence/h3-final-e81239c9-20260913/determinism-preserved/summary.json`
+
+The implementation/test work is complete. No new reviewer or oracle result is
+claimed: the configured lifetime review/oracle ceilings were already exhausted
+by the preserved historical and correction rounds. Remaining environment or
+source boundaries are explicit: the four refusals in the 50-source corpus are
+genuine malformed/ambiguous inputs, and GPU/media execution plus the live
+frontend/ComfyUI boundary were not available locally.
