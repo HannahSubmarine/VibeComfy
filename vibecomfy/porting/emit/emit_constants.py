@@ -137,6 +137,7 @@ _STATIC_WRAPPER_MODULES: tuple[str, ...] = (
     "gimm_vfi",
     "melbandroformer",
     "vibecomfy_internal",
+    "lanpaint",
 )
 
 _CURATED_SCHEMA_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -163,13 +164,16 @@ LTX2_3_TAIL_PATCHES: tuple[str, ...] = (
 
 _WRAPPER_CLASS_TO_MODULE: dict[str, str] | None = None
 _WRAPPER_CLASS_TO_SYMBOL: dict[str, str] | None = None
+_WRAPPER_MODULE_SIGNATURE: tuple[str, ...] | None = None
 
 
 def _wrapper_modules() -> tuple[str, ...]:
     try:
         nodes = importlib.import_module("vibecomfy.nodes")
-    except ImportError:
-        return _STATIC_WRAPPER_MODULES
+    except ImportError as exc:
+        raise RuntimeError(
+            "registered_wrapper_import_failed: could not import vibecomfy.nodes"
+        ) from exc
     modules = getattr(nodes, "MODULES", None)
     if isinstance(modules, (list, tuple)):
         return tuple(str(module) for module in modules if isinstance(module, str) and module)
@@ -177,24 +181,54 @@ def _wrapper_modules() -> tuple[str, ...]:
 
 
 def _wrapper_class_to_module() -> dict[str, str]:
-    global _WRAPPER_CLASS_TO_MODULE, _WRAPPER_CLASS_TO_SYMBOL
-    if _WRAPPER_CLASS_TO_MODULE is not None:
+    global _WRAPPER_CLASS_TO_MODULE, _WRAPPER_CLASS_TO_SYMBOL, _WRAPPER_MODULE_SIGNATURE
+    module_names = _wrapper_modules()
+    if (
+        _WRAPPER_CLASS_TO_MODULE is not None
+        and _WRAPPER_CLASS_TO_SYMBOL is not None
+        and _WRAPPER_MODULE_SIGNATURE == module_names
+    ):
         return _WRAPPER_CLASS_TO_MODULE
     module_mapping: dict[str, str] = {}
     symbol_mapping: dict[str, str] = {}
-    for module_name in _wrapper_modules():
+    for module_name in module_names:
         try:
             module = importlib.import_module(f"vibecomfy.nodes.{module_name}")
-        except ImportError:
-            continue
+        except ImportError as exc:
+            raise RuntimeError(
+                "registered_wrapper_import_failed: "
+                f"could not import vibecomfy.nodes.{module_name}"
+            ) from exc
         exported = getattr(module, "__all__", ())
         for name in exported:
-            if isinstance(name, str):
-                class_type = _wrapper_class_type_for_symbol(module, name)
-                module_mapping.setdefault(class_type, module_name)
-                symbol_mapping.setdefault(class_type, name)
+            if not isinstance(name, str) or not name:
+                raise RuntimeError(
+                    "registered_wrapper_invalid_export: "
+                    f"vibecomfy.nodes.{module_name} contains a non-string __all__ entry"
+                )
+            if not callable(getattr(module, name, None)):
+                raise RuntimeError(
+                    "registered_wrapper_invalid_export: "
+                    f"vibecomfy.nodes.{module_name}.{name} is not callable"
+                )
+            class_type = _wrapper_class_type_for_symbol(module, name)
+            previous = (
+                module_mapping.get(class_type),
+                symbol_mapping.get(class_type),
+            )
+            current = (module_name, name)
+            if previous != (None, None) and previous != current:
+                raise RuntimeError(
+                    "registered_wrapper_conflict: "
+                    f"{class_type!r} is exported by both "
+                    f"vibecomfy.nodes.{previous[0]}.{previous[1]} and "
+                    f"vibecomfy.nodes.{module_name}.{name}"
+                )
+            module_mapping[class_type] = module_name
+            symbol_mapping[class_type] = name
     _WRAPPER_CLASS_TO_MODULE = module_mapping
     _WRAPPER_CLASS_TO_SYMBOL = symbol_mapping
+    _WRAPPER_MODULE_SIGNATURE = module_names
     return module_mapping
 
 

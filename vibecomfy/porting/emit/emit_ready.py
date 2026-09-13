@@ -1704,10 +1704,11 @@ def _v2_output_args(
             and item.name is None
             and item.artifact_kind == derived_kind
             and item.mime_type is None
-            and (
-                item.filename_prefix is None
-                or item.filename_prefix == metadata.get("output_prefix")
-            )
+            # wf.finalize(..., output_node=...) injects READY_METADATA's
+            # output_prefix.  Compact only when that is already the exact
+            # declared value; an explicit null prefix must remain an
+            # OutputSpec rather than acquire inferred metadata on rebuild.
+            and item.filename_prefix == metadata.get("output_prefix")
             and item.expected_cardinality is None
         ):
             return f", output_node={binding(item)}"
