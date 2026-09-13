@@ -234,3 +234,10 @@ and the normal worker correction landed in `baff8dc932a2afaba71fbea5cd18b00348ab
 | Full final suite | 10,608 passed, 195 skipped, 35 deselected, 1 xfailed, 0 failed/errors |
 | Artifact receipt | `evidence/requirement-reconciliation-20260913/receipt.md` |
 | Remaining boundary | No new formal review/oracle call; historical review accounting preserved |
+
+## Publication receipt — 2026-09-13
+
+The clean validated branch is pushed to `HannahSubmarine/VibeComfy` as
+`otto/unified-workflow-integrity-20260909`, and the requested PR is open at
+[peteromallet/VibeComfy#157](https://github.com/peteromallet/VibeComfy/pull/157).
+No merge, deployment or production cutover was performed.

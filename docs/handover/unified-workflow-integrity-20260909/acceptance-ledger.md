@@ -304,3 +304,11 @@ names, adds inferred names once, and preserves explicit empty requirements.
 
 This is implementation evidence, not a new formal reviewer PASS. The existing
 historical review dispositions and exhausted lifetime ceilings remain intact.
+
+## Publication receipt — 2026-09-13
+
+The validated implementation branch is published to the authorized fork
+`HannahSubmarine/VibeComfy` at `otto/unified-workflow-integrity-20260909`, with
+open PR [#157](https://github.com/peteromallet/VibeComfy/pull/157) targeting
+`main`. Publication is complete; merge, deployment and production cutover
+remain outside scope.

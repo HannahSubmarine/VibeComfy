@@ -247,3 +247,16 @@ claimed; the correction used the user-authorized Astra adjudication and
 preserves the existing review/oracle accounting. The branch is now ready for
 the authorized fork publication step; merge, deployment and cutover remain
 out of scope.
+
+## Fork publication receipt — 2026-09-13
+
+The implementation branch was pushed to the authorized fork
+`HannahSubmarine/VibeComfy` as
+`otto/unified-workflow-integrity-20260909`. The final pushed documentation
+head is recorded locally after this receipt is committed and pushed. An open
+pull request targets `peteromallet/VibeComfy:main`:
+
+[VibeComfy PR #157](https://github.com/peteromallet/VibeComfy/pull/157)
+
+This publication does not merge, deploy, cut over production, download model
+weights, or claim live GPU/frontend execution.
