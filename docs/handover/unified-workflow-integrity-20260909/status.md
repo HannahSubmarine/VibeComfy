@@ -219,3 +219,31 @@ by the preserved historical and correction rounds. Remaining environment or
 source boundaries are explicit: the four refusals in the 50-source corpus are
 genuine malformed/ambiguous inputs, and GPU/media execution plus the live
 frontend/ComfyUI boundary were not available locally.
+
+## Post-audit requirement correction — `baff8dc932a2afaba71fbea5cd18b00348abe16b` — 2026-09-13
+
+The exact 30-workflow Luna audit identified two non-blocking but real generator
+defects: duplicate inferred model names in cases `17dc9bc3ed806c24` and
+`62682a77ae33b43a`. Astra’s user-authorized adjudication required a bounded
+reconciliation helper, not blanket deduplication. The correction preserves
+authored order and multiplicity, removes stale names after picker edits, adds
+new inferred names once with rich metadata, and preserves explicit empty model
+requirements. It is committed as `baff8dc9`.
+
+Fresh correction evidence is recorded in
+`evidence/requirement-reconciliation-20260913/receipt.md`:
+
+- Focused core matrix: **338 passed, 0 failed**.
+- Exact 30-case replay: **27 complete pairs, 3 source-level refusals, 0
+  unexpected results, 0 partial outputs**.
+- Final complete suite with `PYTHONHASHSEED=0`, normal project plugin
+  discovery, rerun plugin disabled for the host socket limitation, and a
+  bounded 120-second timeout: **10,608 passed, 195 skipped, 35 deselected,
+  1 xfailed, 0 failed/errors**, exit `0`.
+
+The default-60 targeted replay of the formerly slow Hypothesis case also
+passed (`1 passed` in 42.44s). No new formal review or oracle result is
+claimed; the correction used the user-authorized Astra adjudication and
+preserves the existing review/oracle accounting. The branch is now ready for
+the authorized fork publication step; merge, deployment and cutover remain
+out of scope.

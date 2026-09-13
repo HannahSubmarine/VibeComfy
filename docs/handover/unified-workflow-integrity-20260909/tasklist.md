@@ -220,3 +220,17 @@ ceilings were exhausted.
 | H3 canonical lifecycle | Fresh typed base pair, edited companion-preserving pair, exact exported graph, inspection and deterministic pair evidence under `evidence/h3-final-e81239c9-20260913/` |
 | Additional corpus | 30 reproducible pseudo-random Hivemind-derived sources: 27 complete pairs, 3 justified source refusals, 0 partial outputs; `evidence/hivemind-workflow-corpus-30-random-e81239c9-20260913/` |
 | Scope boundary | Receiving checkout preserved; no push, PR, merge, deployment, model download, GPU execution or production cutover |
+
+## Post-audit correction receipt — 2026-09-13
+
+After the completion receipt above, Luna audited all 30 additional selected
+workflows. Astra adjudicated the two duplicate inferred model requirements,
+and the normal worker correction landed in `baff8dc932a2afaba71fbea5cd18b00348abe16b`.
+
+| Task evidence | Result |
+| --- | --- |
+| Correction tests | 338 passed, 0 failed |
+| Exact corpus replay | 27 complete pairs, 3 justified source refusals, 0 partial outputs |
+| Full final suite | 10,608 passed, 195 skipped, 35 deselected, 1 xfailed, 0 failed/errors |
+| Artifact receipt | `evidence/requirement-reconciliation-20260913/receipt.md` |
+| Remaining boundary | No new formal review/oracle call; historical review accounting preserved |

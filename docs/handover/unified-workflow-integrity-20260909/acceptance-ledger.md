@@ -284,3 +284,23 @@ PASS. Historical final-review `REWORK` and exhausted review/oracle ceilings
 remain preserved. Live GPU/media execution and the unavailable frontend/
 ComfyUI boundary remain explicit environment blockers, not skipped acceptance
 claims.
+
+## Post-audit correction evidence — 2026-09-13
+
+The exact 30-case Luna audit and the user-authorized Astra adjudication found
+two generator-produced duplicate model requirement names. Correction commit
+`baff8dc932a2afaba71fbea5cd18b00348abe16b` adds shared reconciliation across
+conversion, ready-template finalization and v2 pair canonicalization. It keeps
+authored duplicates when they are part of the contract, removes stale edited
+names, adds inferred names once, and preserves explicit empty requirements.
+
+| Scope | Result | Evidence |
+| --- | --- | --- |
+| Focused correction matrix | 338 passed, 0 failed | `evidence/requirement-reconciliation-20260913/receipt.md` |
+| Exact 30-source replay after correction | 27 complete pairs, 3 source-level refusals, 0 unexpected results, 0 partial outputs | `evidence/hivemind-workflow-corpus-30-post-requirement-fix-20260913/` |
+| Case `17dc9bc3ed806c24` | `BerrysMix.vae.safetensors` emitted once | `evidence/luna-model-requirements-20260913/17dc9bc3ed806c24/canonical.py` |
+| Case `62682a77ae33b43a` | Five distinct model names emitted once each | `evidence/luna-model-requirements-20260913/62682a77ae33b43a/canonical.py` |
+| Full suite | 10,608 passed, 195 skipped, 35 deselected, 1 xfailed, 0 failed/errors | `evidence/requirement-reconciliation-20260913/receipt.md` |
+
+This is implementation evidence, not a new formal reviewer PASS. The existing
+historical review dispositions and exhausted lifetime ceilings remain intact.
