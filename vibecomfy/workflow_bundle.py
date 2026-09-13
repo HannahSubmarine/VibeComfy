@@ -35,6 +35,7 @@ from vibecomfy.workflow import (
     _resolve_virtual_wire_legs,
     canonical_ir_projection,
 )
+from vibecomfy.model_assets import reconcile_model_requirements
 
 
 class WorkflowBundleError(ValueError):
@@ -1536,7 +1537,10 @@ def _canonicalize_for_v2_pair(
             if isinstance(item, Mapping) and item.get("value")
         ]
         if expected_models:
-            expected_workflow.requirements.models = expected_models
+            expected_workflow.requirements.models = reconcile_model_requirements(
+                expected_workflow.requirements.models,
+                expected_models,
+            )
     expected_semantic_digest = expected_workflow.semantic_digest()
     from vibecomfy.porting.emit import emit_scratchpad_python
     from vibecomfy.scratchpad_loader import load_scratchpad

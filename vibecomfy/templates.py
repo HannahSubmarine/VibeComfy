@@ -24,6 +24,7 @@ from vibecomfy.ingest.normalize import (
     door_setdefault_links,
     door_setdefault_nodes,
 )
+from vibecomfy.model_assets import reconcile_model_requirements
 
 
 _COMPANION_SCOPE_NODES_KEY = "nodes"
@@ -1635,8 +1636,23 @@ def _finalize_impl(
         ]
         if current_models and isinstance(existing_models, (list, tuple)) and existing_models:
             requirements = dict(requirements)
-            requirements["models"] = current_models
-    requirements = _requirements_with_models(requirements, metadata.get("model_assets", []))
+            requirements["models"] = reconcile_model_requirements(
+                existing_models,
+                current_models,
+            )
+    derived_model_assets = metadata.get("model_assets", [])
+    if external_custody is not None and isinstance(requirements, Mapping):
+        current_names = {
+            str(item["value"])
+            for item in _referenced_model_values(wf)
+            if isinstance(item, Mapping) and item.get("value")
+        }
+        derived_model_assets = [
+            item for item in derived_model_assets
+            if isinstance(item, Mapping)
+            and str(item.get("name", item.get("filename", ""))) in current_names
+        ]
+    requirements = _requirements_with_models(requirements, derived_model_assets)
     if canonical_custody is None or wf.nodes:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
@@ -1920,8 +1936,11 @@ def _requirements_with_models(
     merged: dict[str, Any] = dict(requirements or {})
     merged, _warnings = normalize_custom_node_requirements(merged)
     existing_models = merged.get("models")
+    if "models" in merged and existing_models == []:
+        return merged
     if existing_models and derived_models:
         _warn_on_model_requirement_disagreement(existing_models, derived_models)
+        merged["models"] = reconcile_model_requirements(existing_models, derived_models)
     elif derived_models:
         merged["models"] = derived_models
     return merged

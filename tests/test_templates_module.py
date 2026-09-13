@@ -505,7 +505,9 @@ def test_ready_metadata_build_appends_edit_guide_extra_and_warns_once_on_model_d
         )
 
     assert metadata["edit_guide"] == "Public inputs:\n- prompt: Text prompt.\nUse short prompts for smoke tests."
-    assert metadata["requirements"]["models"] == [{"name": "different.safetensors", "url": "", "subdir": "checkpoints"}]
+    assert metadata["requirements"]["models"] == [
+        {"name": "model.safetensors", "url": "https://example.test/model.safetensors", "subdir": "checkpoints"},
+    ]
     assert len(caught) == 1
     assert "differs from MODELS-derived" in str(caught[0].message)
 

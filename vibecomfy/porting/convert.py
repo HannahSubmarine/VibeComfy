@@ -37,6 +37,7 @@ from vibecomfy.porting.strict_ready import (
 from vibecomfy.porting.widgets.aliases import widget_alias_analysis
 from vibecomfy.utils import repo_relative_path
 from vibecomfy.workflow import ValidationIssue, ValidationReport, VibeWorkflow
+from vibecomfy.model_assets import reconcile_model_requirements
 
 # -- model-like value detection ----------------------------------------------
 
@@ -296,19 +297,9 @@ def port_convert_workflow(
         # an avoidable semantic-digest mismatch for workflows whose source
         # requirements list omits one or more picker values.
         emission_workflow = workflow
-        model_names: list[str] = []
-        for item in _referenced_model_values_for_workflow(workflow):
-            if not isinstance(item, Mapping) or not item.get("value"):
-                continue
-            name = str(item["value"])
-            # Keep the same occurrence order as the external v2 rebuild. Its
-            # model requirement witness is intentionally per picker occurrence
-            # so the staged and companion-backed constructors have one exact
-            # semantic projection (including repeated use of one model).
-            model_names.append(name)
-        if model_names and workflow.requirements.models:
+        if workflow.requirements.models:
             emission_workflow = workflow.copy()
-            emission_workflow.requirements.models = model_names
+            emission_workflow.requirements.models = _ready_requirements(workflow)["models"]
         text = emit_scratchpad_python(
             emission_workflow,
             workflow_id=workflow.id,
@@ -743,28 +734,30 @@ def _repo_relative_provenance_path(path: str) -> str:
 
 def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     model_assets = workflow.metadata.get("model_assets")
+    references = _referenced_model_values_for_workflow(workflow)
     current_model_names: list[str] = []
     seen_names: set[str] = set()
-    for item in _referenced_model_values_for_workflow(workflow):
+    for item in references:
         if not isinstance(item, Mapping) or not item.get("value"):
             continue
         name = str(item["value"])
         if name not in seen_names:
             seen_names.add(name)
             current_model_names.append(name)
-    if isinstance(model_assets, list):
-        rich = [
-            item for item in model_assets
-            if isinstance(item, Mapping)
-            and str(item.get("name", item.get("filename", ""))) in seen_names
-        ]
-        by_name = {
+    if current_model_names:
+        rich_by_name = {
             str(item.get("name", item.get("filename", ""))): item
-            for item in rich
+            for item in (model_assets or [])
+            if isinstance(item, Mapping)
         }
-        models = [by_name.get(name, name) for name in current_model_names]
-        if not current_model_names:
-            models = []
+        inferred = [rich_by_name.get(name, name) for name in current_model_names]
+        models = (
+            reconcile_model_requirements(workflow.requirements.models, inferred)
+            if workflow.requirements.models
+            else inferred
+        )
+    elif isinstance(model_assets, list):
+        models = []
     else:
         models = list(current_model_names)
     # Empty model references retain the historical requirements witness. This

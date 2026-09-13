@@ -133,6 +133,47 @@ def test_ready_requirements_refreshes_mixed_models_without_stale_assets() -> Non
     }]
 
 
+def test_ready_requirements_collapses_duplicate_inferred_picker_names() -> None:
+    wf = _wf("shared-picker-model")
+    for node_id in ("1", "2"):
+        wf.nodes[node_id] = _regular_node(node_id, "CheckpointLoaderSimple")
+        wf.nodes[node_id].inputs["ckpt_name"] = "shared.safetensors"
+
+    assert convert_module._ready_requirements(wf)["models"] == ["shared.safetensors"]
+
+
+def test_ready_requirements_preserves_authored_duplicates_and_adds_new_names_once() -> None:
+    wf = _wf("authored-duplicate-model")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "shared.safetensors"
+    wf.nodes["2"] = _regular_node("2", "CheckpointLoaderSimple")
+    wf.nodes["2"].inputs["ckpt_name"] = "new.safetensors"
+    wf.requirements.models = ["shared.safetensors", "shared.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == [
+        "shared.safetensors", "shared.safetensors", "new.safetensors",
+    ]
+
+
+def test_ready_requirements_refreshes_one_of_two_shared_loaders() -> None:
+    wf = _wf("edited-shared-picker-model")
+    for node_id, value in (("1", "old.safetensors"), ("2", "new.safetensors")):
+        wf.nodes[node_id] = _regular_node(node_id, "CheckpointLoaderSimple")
+        wf.nodes[node_id].inputs["ckpt_name"] = value
+    wf.requirements.models = ["old.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == [
+        "old.safetensors", "new.safetensors",
+    ]
+
+
+def test_ready_requirements_keeps_no_picker_fallback() -> None:
+    wf = _wf("no-picker-fallback")
+    wf.requirements.models = ["authored.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == ["authored.safetensors"]
+
+
 def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
     tmp_path,
 ) -> None:
@@ -166,9 +207,8 @@ def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
     emit_bundle_with_candidate(staged, destination, {"operation": "authored"}, None)
     reloaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow
     assert reloaded.requirements.models == [
-        "repeated.safetensors",
-        "repeated.safetensors",
-        "second.safetensors",
+        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints"},
+        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints"},
     ]
 
 

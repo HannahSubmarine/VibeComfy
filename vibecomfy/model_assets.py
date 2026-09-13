@@ -215,6 +215,46 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
     return references
 
 
+def reconcile_model_requirements(
+    authored: Sequence[Any] | None,
+    inferred: Sequence[Any],
+) -> list[Any]:
+    """Refresh inferred requirements without erasing authored multiplicity.
+
+    Entries whose names are no longer referenced are stale and are removed;
+    matching authored entries keep their original order and multiplicity,
+    while each newly referenced name is appended once with its rich metadata.
+    """
+    authored_entries = list(authored or [])
+    if authored_entries == []:
+        return []
+
+    inferred_names: list[str] = []
+    inferred_by_name: dict[str, Any] = {}
+    for item in inferred:
+        name = (
+            str(item.get("name", item.get("filename", "")))
+            if isinstance(item, Mapping)
+            else str(item)
+        )
+        if name and name not in inferred_by_name:
+            inferred_names.append(name)
+            inferred_by_name[name] = item
+
+    def entry_name(item: Any) -> str:
+        if isinstance(item, Mapping):
+            return str(item.get("name", item.get("filename", "")))
+        return str(item)
+
+    result = [item for item in authored_entries if entry_name(item) in inferred_names]
+    retained_names = {entry_name(item) for item in result}
+    for name in inferred_names:
+        if name not in retained_names:
+            result.append(inferred_by_name[name])
+            retained_names.add(name)
+    return result
+
+
 def _subdir_for_model_reference(class_type: str, field: str) -> str | None:
     return _CLASS_FIELD_SUBDIRS.get((class_type, field), _MODEL_INPUT_SUBDIRS.get(field))
 
