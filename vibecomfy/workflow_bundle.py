@@ -1491,6 +1491,29 @@ def _canonicalize_for_v2_pair(
                 continue
             node.widgets[alias] = node.widgets.pop(key)
 
+    # A linked Preview3D model is authoritative over the UI's positional
+    # preview payload. The normal scratchpad loader already drops those
+    # duplicate/opaque slots; mirror that one proven source-backed rule in
+    # the expectation so admission compares the same semantics. Unlinked
+    # previews and unknown node classes remain fail-closed.
+    node_ids = {str(node_id) for node_id in expected_workflow.nodes}
+    linked_preview_models = {
+        str(edge.to_node)
+        for edge in expected_workflow.edges
+        if str(edge.to_input) == "model_file" and str(edge.to_node) in node_ids
+    }
+    for node_id, node in expected_workflow.nodes.items():
+        if str(node_id) not in linked_preview_models:
+            continue
+        if str(getattr(node, "class_type", "")) != "Preview3D":
+            continue
+        # The linked model collision makes the positional preview payload
+        # non-authoritative; the loader retains only the empty camera slot.
+        node.inputs["camera_info"] = ""
+        for key in list(node.inputs):
+            if key.startswith("widget_"):
+                node.inputs.pop(key)
+
     for detail in _embedded_api_link_details(expected_workflow):
         if detail["edge_collision"] != "identical":
             raise WorkflowBundleError(

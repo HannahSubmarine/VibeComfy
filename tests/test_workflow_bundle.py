@@ -81,6 +81,53 @@ def test_reemitting_a_loaded_pair_is_byte_deterministic(tmp_path: Path) -> None:
     assert (first_dir / "workflow.vibe.json").read_bytes() == (second_dir / "workflow.vibe.json").read_bytes()
 
 
+@pytest.mark.parametrize("corpus_id", ["352066ccef9dbe37", "8800a945cff8d090"])
+def test_cli_convert_corpus_pair_admits_through_real_loader_path(
+    corpus_id: str, tmp_path: Path
+) -> None:
+    """The CLI loader/converter path must pass v2 first-build admission."""
+    from tests.live_agentic_harness.source_layouts import resolve_corpus_record_path
+    from vibecomfy.porting.convert import (
+        _build_emitted_workflow_from_text,
+        port_convert_workflow,
+    )
+    from vibecomfy.porting.workbench import analyze_source, load_port_source
+
+    source = resolve_corpus_record_path(
+        f"tests/fixtures/live_agentic_corpus/corpus/{corpus_id}.json"
+    )
+    assert source is not None and source.is_file()
+    loaded = load_port_source(str(source), use_comfy_converter=False)
+    report = analyze_source(str(source), loaded_source=loaded, mode="auto")
+    result = port_convert_workflow(
+        loaded.workflow,
+        source_path=loaded.source_path,
+        provenance=report.provenance,
+        source_hash=report.source_hash,
+        workflow_shape=report.workflow_shape,
+        registered_inputs={},
+        schema_provider=None,
+        keep_virtual_wires=False,
+        preserve_node_ids=True,
+    )
+    emitted = _build_emitted_workflow_from_text(result.text)
+
+    bundle = emit_bundle_with_candidate(
+        emitted,
+        tmp_path / f"{corpus_id}.py",
+        report.provenance,
+        None,
+        operation="authored",
+        source_provenance={
+            "source_hash": report.source_hash,
+            "workflow_shape": report.workflow_shape,
+            "source_type": loaded.source_kind,
+        },
+        source_format="scratchpad",
+    )
+    assert bundle.semantic_digest
+
+
 def test_provenance_is_closed_and_excludes_operational_fields() -> None:
     filtered = filter_provenance(
         {
