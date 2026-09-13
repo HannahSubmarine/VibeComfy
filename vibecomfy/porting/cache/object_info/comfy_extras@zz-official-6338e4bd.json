@@ -1,0 +1,28 @@
+{
+  "MiniMaxH3ImageToVideo": {
+    "category": "model/conditioning/minimax",
+    "description": "t2va and fl2va: prompt (+ optional first/last keyframes) -> conditioning + AV latent.",
+    "display_name": "MiniMax H3 Image to Video",
+    "function": "execute",
+    "input_order": {"required": ["clip", "vae", "prompt", "width", "height", "length"], "optional": ["first_frame", "last_frame"]},
+    "input_order_all": ["clip", "vae", "prompt", "width", "height", "length", "first_frame", "last_frame"],
+    "inputs": {
+      "required": {
+        "clip": ["CLIP"], "vae": ["VAE"],
+        "prompt": ["STRING", {"dynamicPrompts": true, "multiline": true}],
+        "width": ["INT", {"default": 1344, "min": 32, "step": 32}],
+        "height": ["INT", {"default": 768, "min": 32, "step": 32}],
+        "length": ["INT", {"default": 124, "max": 3600, "min": 5, "step": 17}]
+      },
+      "optional": {"first_frame": ["IMAGE"], "last_frame": ["IMAGE"]}
+    },
+    "name": "MiniMaxH3ImageToVideo",
+    "object_info_widget_order": ["prompt", "width", "height", "length"],
+    "outputs": [{"is_list": false, "name": "positive", "type": "CONDITIONING"}, {"is_list": false, "name": "LATENT", "type": "LATENT"}],
+    "pack": "comfy_extras",
+    "pack_version": "zz-official-6338e4bd",
+    "python_module": "comfy_extras.nodes_minimax_h3",
+    "source_commit": "6338e4bd428247a4a8843496aa98fb7f2a9d3632",
+    "source_sha256": "62ec72d4f3b879640dbd41b959a6c1112a82b77478509323094f49dae17fffdb"
+  }
+}

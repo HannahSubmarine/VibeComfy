@@ -138,7 +138,7 @@ def test_registered_wrapper_preserves_nonzero_slot_identity_and_native_ports(
     assert rebuilt.edges[0].from_output == "1"
 
 
-def test_exact_h3_uses_lanpaint_wrappers_with_only_minimax_raw() -> None:
+def test_exact_h3_uses_lanpaint_and_minimax_wrappers_without_raw_calls() -> None:
     source_path = Path(
         "docs/handover/unified-workflow-integrity-20260909/assets/h3/"
         "MiniMax_H3_AV_EncodeDecode_Inpaint.json"
@@ -204,16 +204,27 @@ def test_exact_h3_uses_lanpaint_wrappers_with_only_minimax_raw() -> None:
     }
     assert imports == lanpaint_classes
     assert calls == lanpaint_classes
-    assert raw_calls == {"MiniMaxH3ImageToVideo"}
+    assert raw_calls == set()
 
     unresolved = [
         issue
         for issue in result.validation.issues
         if issue.code == "unknown_class_type"
     ]
-    assert len(unresolved) == 1
-    assert unresolved[0].detail["class_type"] == "MiniMaxH3ImageToVideo"
-    assert provider.get_schema("MiniMaxH3ImageToVideo") is None
+    assert unresolved == []
+    assert provider.get_schema("MiniMaxH3ImageToVideo") is not None
+
+    minimax_call = next(
+        call
+        for call in ast.walk(tree)
+        if isinstance(call, ast.Call)
+        and isinstance(call.func, ast.Name)
+        and call.func.id == "MiniMaxH3ImageToVideo"
+    )
+    assert {keyword.arg for keyword in minimax_call.keywords} == {
+        "clip", "vae", "prompt", "width", "height", "length"
+    }
+    assert "out('LATENT')" in result.text
 
     sampler_call = next(
         call

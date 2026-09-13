@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-MODULES = ['core', 'kjnodes', 'ltxvideo', 'videohelpersuite', 'controlnet_aux', 'depthanythingv2', 'wanvideowrapper', 'qwentts', 'qwen3tts', 'gguf', 'rgthree', 'sam2', 'wananimatepreprocess', 'ailab_audioduration', 'custom_scripts', 'florence2', 'gimm_vfi', 'melbandroformer', 'vibecomfy_internal', 'lanpaint']
+MODULES = ['core', 'kjnodes', 'ltxvideo', 'videohelpersuite', 'controlnet_aux', 'depthanythingv2', 'wanvideowrapper', 'qwentts', 'qwen3tts', 'gguf', 'rgthree', 'sam2', 'wananimatepreprocess', 'ailab_audioduration', 'custom_scripts', 'florence2', 'gimm_vfi', 'melbandroformer', 'vibecomfy_internal', 'lanpaint', 'comfy_extras']
 
 
 def _load_exports() -> list[str]:

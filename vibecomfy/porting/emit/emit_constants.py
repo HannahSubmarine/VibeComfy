@@ -138,6 +138,7 @@ _STATIC_WRAPPER_MODULES: tuple[str, ...] = (
     "melbandroformer",
     "vibecomfy_internal",
     "lanpaint",
+    "comfy_extras",
 )
 
 _CURATED_SCHEMA_DEFAULTS: dict[str, dict[str, Any]] = {
