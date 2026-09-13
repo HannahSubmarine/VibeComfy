@@ -455,6 +455,75 @@ def test_ui_ingest_captures_exact_native_socket_rosters() -> None:
     assert "inputs" not in node.native_input_names
 
 
+def test_ui_witness_hydrates_only_absent_native_port_carriers() -> None:
+    from vibecomfy.workflow import VibeNode
+
+    ui = {
+        "inputs": [
+            {"name": "required", "type": "IMAGE"},
+            None,
+            {"name": "optional", "shape": 7, "type": "MASK"},
+        ],
+        "outputs": [{"name": "IMAGE", "type": "IMAGE"}, None],
+    }
+    node_data = {"class_type": "Witnessed", "inputs": {}, "_ui": ui}
+    from vibecomfy.ingest.normalize import _promote_ui_native_port_carriers
+
+    _promote_ui_native_port_carriers(node_data, ui)
+    assert node_data["native_input_names"] == ["required", None, "optional"]
+    assert node_data["native_input_types"] == ["IMAGE", None, "MASK"]
+    assert node_data["native_input_optional"] == [False, False, True]
+    assert node_data["native_output_names"] == ["IMAGE", None]
+    assert node_data["native_output_types"] == ["IMAGE", None]
+
+    # Explicit top-level carriers, especially an empty roster, are data rather
+    # than missing values and must remain authoritative.
+    explicit = {
+        **node_data,
+        "native_input_names": [],
+        "native_input_types": [],
+        "native_input_optional": [],
+        "native_output_names": [],
+        "native_output_types": [],
+    }
+    _promote_ui_native_port_carriers(explicit, ui)
+    assert explicit["native_input_names"] == []
+    assert explicit["native_output_names"] == []
+    assert VibeNode("1", "Witnessed", **{
+        key: explicit[key] for key in (
+            "native_input_names", "native_input_types", "native_input_optional",
+            "native_output_names", "native_output_types",
+        )
+    }).native_input_names == []
+
+
+@pytest.mark.parametrize(
+    "workflow_id",
+    [
+        "1cc45704dcffe34a",
+        "430a3f936f6235f5",
+        "506ebdde037e22d8",
+        "673197a9269d00f8",
+    ],
+)
+def test_named_channel_corpus_import_promotes_exact_output_rosters(workflow_id: str) -> None:
+    """The normal envelope import captures the named channel without ambiguity."""
+    raw = json.loads(
+        (Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json").read_text()
+    )
+    workflow = from_envelope(raw)
+    assert workflow.virtual_wires
+
+
+@pytest.mark.parametrize("workflow_id", ["00444a9409f56c07", "78afac42baf0a381"])
+def test_bypass_roster_corpus_import_is_not_ambiguous(workflow_id: str) -> None:
+    raw = json.loads(
+        (Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json").read_text()
+    )
+    workflow = from_envelope(raw)
+    assert workflow.virtual_wires == {}
+
+
 # ── Case 1a: 'randomize' captured from named inputs dict ─────────────────────
 
 

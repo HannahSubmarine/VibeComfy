@@ -1596,6 +1596,33 @@ def _native_input_optionality(node: Mapping[str, Any]) -> list[bool] | None:
     return optional
 
 
+def _promote_ui_native_port_carriers(
+    node: dict[str, Any], ui_node: Mapping[str, Any] | None
+) -> None:
+    """Fill absent canonical native-port carriers from exact LiteGraph evidence.
+
+    Carrier presence is authoritative: an explicitly supplied value, including
+    ``None`` or an empty roster, is never replaced by the UI witness.  The
+    existing extraction/constructor validators remain responsible for rejecting
+    malformed names, duplicate names, holes with misaligned companion rosters,
+    and other conflicts.
+    """
+    if not isinstance(ui_node, Mapping):
+        return
+    extractors = {
+        "native_input_names": lambda: _native_port_names(ui_node, "inputs"),
+        "native_output_names": lambda: _native_port_names(ui_node, "outputs"),
+        "native_input_types": lambda: _native_port_types(ui_node, "inputs"),
+        "native_output_types": lambda: _native_port_types(ui_node, "outputs"),
+        "native_input_optional": lambda: _native_input_optionality(ui_node),
+    }
+    for field_name, extract in extractors.items():
+        if field_name not in node:
+            value = extract()
+            if value is not None:
+                node[field_name] = value
+
+
 def _native_input_asset_kinds(
     node: Mapping[str, Any],
     schema_provider: SchemaProvider | None,
@@ -1886,11 +1913,7 @@ def _merge_slim_ui(
                     if _f in raw_node:
                         slim[_f] = raw_node[_f]
                 node_data.setdefault("_ui", slim)
-                node_data["native_input_names"] = _native_port_names(raw_node, "inputs")
-                node_data["native_output_names"] = _native_port_names(raw_node, "outputs")
-                node_data["native_input_types"] = _native_port_types(raw_node, "inputs")
-                node_data["native_output_types"] = _native_port_types(raw_node, "outputs")
-                node_data["native_input_optional"] = _native_input_optionality(raw_node)
+                _promote_ui_native_port_carriers(node_data, raw_node)
                 node_data["native_input_asset_kinds"] = _native_input_asset_kinds(
                     raw_node, schema_provider, str(raw_node.get("type") or raw_node.get("class_type") or "")
                 )
@@ -2709,6 +2732,9 @@ def _from_api_impl(
     for node_id, node in api_workflow.items():
         if not isinstance(node, dict):
             continue
+        _promote_ui_native_port_carriers(
+            node, node.get("_ui") if isinstance(node.get("_ui"), Mapping) else None
+        )
         raw_inputs = dict(node.get("inputs", {}))
         input_provenance = (
             node.get("_input_provenance")
