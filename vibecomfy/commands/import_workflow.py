@@ -1,9 +1,7 @@
-"""Import a ComfyUI workflow as an inspectable VibeComfy work folder."""
+"""Import a ComfyUI workflow into a canonical, inspectable work folder."""
 from __future__ import annotations
 
 import argparse
-import contextlib
-import io
 import json
 import os
 import re
@@ -16,49 +14,9 @@ from typing import Any
 
 
 def _folder_name(source: Path) -> str:
-    """Make a predictable, portable folder name from the source stem."""
+    """Make a predictable, portable folder/workflow identity from the stem."""
     name = re.sub(r"[^\w.-]+", "-", source.stem, flags=re.UNICODE).strip(".-_")
     return name or "workflow"
-
-
-def _convert(
-    source: Path,
-    python_path: Path,
-    *,
-    dry_run: bool,
-    assume_yes: bool = False,
-    non_interactive: bool = False,
-    logical_source_path: Path | None = None,
-    logical_workflow_id: str | None = None,
-) -> tuple[int, dict[str, Any], str]:
-    """Invoke the canonical port converter and capture its machine result."""
-    from vibecomfy.cli import build_parser
-
-    argv = ["port", "convert", str(source), "--out", str(python_path), "--json"]
-    if assume_yes:
-        argv.append("--yes")
-    if non_interactive:
-        argv.append("--non-interactive")
-    if dry_run:
-        argv.append("--dry-run")
-    args = build_parser().parse_args(argv)
-    if logical_source_path is not None:
-        # Internal bridge to the canonical port converter: load bytes from the
-        # staged source snapshot while recording their final logical location.
-        args._logical_source_path = str(logical_source_path)
-    if logical_workflow_id is not None:
-        args._logical_workflow_id = logical_workflow_id
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-        code = args.func(args)
-    output = stdout.getvalue()
-    try:
-        payload = json.loads(output) if output.strip() else {}
-    except json.JSONDecodeError:
-        payload = {"status": "error", "message": "The converter returned an unreadable result."}
-        code = code or 1
-    return code, payload, stderr.getvalue()
 
 
 def _emit(payload: dict[str, Any], *, json_output: bool) -> None:
@@ -70,33 +28,45 @@ def _emit(payload: dict[str, Any], *, json_output: bool) -> None:
         return
     if payload.get("status") == "preview":
         print(f"Would import {payload['source']} into {payload['folder']}/")
-        print(f"  {payload['python']}")
-        print(f"  {payload['companion']}")
-        print(f"  {payload['original']}")
+    else:
+        print(f"Imported workflow into {payload['folder']}/")
+    for label, key in (("Python", "python"), ("Companion", "companion"), ("Source", "source_copy")):
+        if payload.get(key):
+            print(f"  {label}: {payload[key]}")
+    if payload.get("report_digest"):
+        print(f"  Astrid origin report digest: {payload['report_digest']}")
+    if payload.get("status") == "preview":
         return
 
     folder = payload["folder"]
-    print(f"Imported workflow into {folder}/")
-    print(f"  Edit:     {payload['python']}")
-    print(f"  Metadata: {payload['companion']}")
-    print(f"  Original: {payload['original']}")
-    print("Edit the Python file directly, or use VibeComfy's workflow editing tools.")
-    print("Explore and check it with:")
     quoted_folder = shlex.quote(folder)
-    for command in ("inspect", "analyze info", "validate", "doctor"):
-        print(f"  vibecomfy {command} {quoted_folder}")
-    print("For node inputs, outputs, and implementation source: vibecomfy node <ClassType>")
+    tracking = payload.get("tracking", {})
+    tracking_mode = tracking.get("mode", "untracked") if isinstance(tracking, dict) else "untracked"
+    print(f"  tracking: {tracking_mode}")
+    task_id = payload.get("task_id")
+    if task_id:
+        print(f"  task: {task_id}")
+        print(f"  history: astrid tasks show {task_id}; astrid tasks events {task_id}")
+    print("Edit the Python file directly or use the typed workflow edit commands.")
+    print("Find targets and node schemas:")
+    print(f"  vibecomfy edit targets {quoted_folder}")
+    print("  vibecomfy node <ClassType>")
+    print("Edit, then validate:")
+    print(f"  vibecomfy edit {quoted_folder} set <target>.<field> <JSON_VALUE>")
+    print(f"  vibecomfy validate {quoted_folder}")
     print("Editing guide: https://github.com/peteromallet/VibeComfy/blob/main/docs/guides/workflow-onboarding.md")
     diagnostics = payload.get("diagnostics", [])
     if diagnostics:
-        print(f"Conversion reported {len(diagnostics)} diagnostic(s); inspect the JSON result or run doctor.")
+        if payload.get("report_digest"):
+            print(f"Conversion reported {len(diagnostics)} diagnostic(s); the task report is available as {payload['report_digest']}.")
+        else:
+            print(f"Conversion reported {len(diagnostics)} diagnostic(s); inspect the JSON result or run doctor.")
 
 
 def _cmd_import(args: argparse.Namespace) -> int:
     source = Path(args.source).expanduser()
     if not source.is_file():
-        payload = {"status": "error", "message": f"Source workflow is not a file: {source}"}
-        _emit(payload, json_output=args.json)
+        _emit({"status": "error", "message": f"Source workflow is not a file: {source}"}, json_output=args.json)
         return 1
 
     destination = (
@@ -105,125 +75,205 @@ def _cmd_import(args: argparse.Namespace) -> int:
         else Path.cwd() / "workflows" / _folder_name(source)
     )
     if destination.is_symlink():
-        payload = {"status": "error", "folder": str(destination), "message": f"Destination is a symbolic link: {destination}. Choose another directory with --out."}
-        _emit(payload, json_output=args.json)
+        _emit({"status": "error", "folder": str(destination), "message": f"Destination is a symbolic link: {destination}. Choose another directory with --out."}, json_output=args.json)
         return 1
     destination = destination.resolve()
-    python_path = destination / "workflow.py"
-    companion_path = destination / "workflow.vibe.json"
-    original_path = destination / "source.json"
-
     if destination.exists():
-        payload = {
-            "status": "error",
-            "folder": str(destination),
-            "message": f"Destination already exists: {destination}. Choose another directory with --out.",
-        }
-        _emit(payload, json_output=args.json)
+        _emit({"status": "error", "folder": str(destination), "message": f"Destination already exists: {destination}. Choose another directory with --out."}, json_output=args.json)
         return 1
 
-    if args.dry_run:
+    try:
+        source_bytes = source.read_bytes()
+    except OSError as exc:
+        _emit({"status": "error", "folder": str(destination), "message": str(exc)}, json_output=args.json)
+        return 1
+
+    if args.project and not args.dry_run:
         try:
-            code, converted, stderr = _convert(
-                source,
-                python_path,
-                dry_run=True,
-                assume_yes=bool(getattr(args, "assume_yes", False)),
-                non_interactive=bool(getattr(args, "non_interactive", False)),
-                logical_source_path=Path("source.json"),
-                logical_workflow_id=_folder_name(source),
-            )
+            payload = _tracked_import(args, source, source_bytes, destination)
         except Exception as exc:
-            _emit({"status": "error", "folder": str(destination), "message": str(exc)}, json_output=args.json)
+            _emit({"status": "error", "folder": str(destination), "message": f"{type(exc).__name__}: {exc}"}, json_output=args.json)
             return 1
-        if code:
-            message = converted.get("message") or stderr.strip() or "conversion preflight failed"
-            _emit({"status": "error", "folder": str(destination), "message": message, "conversion": converted}, json_output=args.json)
-            return code
-        _emit({
-            "status": "preview",
-            "source": str(source.absolute()),
-            "folder": str(destination),
-            "python": str(python_path),
-            "companion": str(companion_path),
-            "original": str(original_path),
-            "conversion": converted,
-        }, json_output=args.json)
+        _emit(payload, json_output=args.json)
         return 0
 
-    parent = destination.parent
     try:
-        parent.mkdir(parents=True, exist_ok=True)
-        if destination.exists():
-            raise FileExistsError(f"Destination already exists: {destination}")
-        staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.import-", dir=parent))
+        from vibecomfy.porting.import_service import import_workflow_bytes
+
+        artifacts = import_workflow_bytes(source_bytes, workflow_id=_folder_name(source))
+    except Exception as exc:
+        _emit({"status": "error", "folder": str(destination), "message": f"{type(exc).__name__}: {exc}"}, json_output=args.json)
+        return 1
+
+    python_path = destination / "workflow.py"
+    companion_path = destination / "workflow.vibe.json"
+    source_copy_path = destination / "source.json"
+    report = artifacts.report
+    diagnostics = report.get("diagnostics", [])
+    tracking_mode = (
+        {"mode": "astrid_preview", "astrid": False, "project": args.project}
+        if args.project
+        else {"mode": "untracked", "astrid": False}
+    )
+    payload = {
+        "status": "preview" if args.dry_run else "ok",
+        "tracking": tracking_mode,
+        "source": str(source.resolve()),
+        "folder": str(destination),
+        "python": str(python_path),
+        "companion": str(companion_path),
+        "source_copy": str(source_copy_path),
+        "workflow_id": report.get("workflow_id"),
+        "revision": report.get("revision_id"),
+        "members": report.get("members"),
+        "report": report,
+        "readiness": report.get("readiness"),
+        "diagnostics": diagnostics if isinstance(diagnostics, list) else [],
+        "next": {
+            "targets": f"vibecomfy edit targets {shlex.quote(str(destination))}",
+            "validate": f"vibecomfy validate {shlex.quote(str(destination))}",
+            "node": "vibecomfy node <ClassType>",
+        "tracking": (
+            f"preview only; would record this import in Astrid project {args.project}"
+            if args.project
+            else "untracked; pass --project <project> to record this import in Astrid"
+        ),
+        },
+    }
+    if args.dry_run:
+        _emit(payload, json_output=args.json)
+        return 0
+
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.import-", dir=destination.parent))
     except OSError as exc:
         _emit({"status": "error", "folder": str(destination), "message": str(exc)}, json_output=args.json)
         return 1
 
     try:
-        # Archive the exact bytes that will be converted. The converter reads
-        # this staged copy, so provenance hash and source.json cannot diverge.
-        staged_source = staging / "source.json"
-        shutil.copyfile(source, staged_source)
-        staged_python = staging / "workflow.py"
-        code, converted, stderr = _convert(
-            staged_source,
-            staged_python,
-            dry_run=False,
-            assume_yes=bool(getattr(args, "assume_yes", False)),
-            non_interactive=bool(getattr(args, "non_interactive", False)),
-            logical_source_path=Path("source.json"),
-            logical_workflow_id=_folder_name(source),
-        )
-        if code:
-            message = converted.get("message") or stderr.strip() or "conversion failed"
-            raise RuntimeError(message)
-        staged_companion = staging / "workflow.vibe.json"
-        if not staged_python.is_file() or not staged_companion.is_file():
-            raise RuntimeError("converter did not produce both workflow.py and workflow.vibe.json")
-        # Same-parent rename makes the complete folder visible at once.
+        (staging / "workflow.py").write_bytes(artifacts.python_bytes)
+        (staging / "workflow.vibe.json").write_bytes(artifacts.companion_bytes)
+        (staging / "source.json").write_bytes(artifacts.source_bytes)
         if destination.exists():
             raise FileExistsError(f"Destination already exists: {destination}. Choose another directory with --out.")
         os.rename(staging, destination)
     except Exception as exc:
         shutil.rmtree(staging, ignore_errors=True)
-        _emit({"status": "error", "folder": str(destination), "message": str(exc), "conversion": converted if "converted" in locals() else {}}, json_output=args.json)
+        _emit({"status": "error", "folder": str(destination), "message": str(exc)}, json_output=args.json)
         return 1
 
-    # Replace staging paths in the child result so machine consumers never see
-    # an implementation directory that disappeared during publication.
-    staging_prefix = str(staging)
-
-    def replace_path(value: Any) -> Any:
-        if isinstance(value, str):
-            if value == staging_prefix or value.startswith(staging_prefix + os.sep):
-                return str(destination) + value[len(staging_prefix):]
-            return value
-        if isinstance(value, list):
-            return [replace_path(item) for item in value]
-        if isinstance(value, dict):
-            return {key: replace_path(item) for key, item in value.items()}
-        return value
-
-    converted = replace_path(converted)
-    report = converted.get("report", {})
-    diagnostics = (
-        report.get("diagnostics", report.get("issues", []))
-        if isinstance(report, dict)
-        else []
-    )
-    _emit({
-        "status": "ok",
-        "source": str(source.absolute()),
-        "folder": str(destination),
-        "python": str(python_path),
-        "companion": str(companion_path),
-        "original": str(original_path),
-        "diagnostics": diagnostics if isinstance(diagnostics, list) else [],
-        "conversion": converted,
-    }, json_output=args.json)
+    _emit(payload, json_output=args.json)
     return 0
+
+
+def _tracked_import(args: argparse.Namespace, source: Path, source_bytes: bytes, destination: Path) -> dict[str, Any]:
+    """Admit origin through Astrid, then materialize only settled outputs."""
+    from vibecomfy.commands._astrid_workflows import (
+        create_task,
+        digest_bytes,
+        download_outputs,
+        materialize_outputs,
+        open_client,
+        report_for_outputs,
+        resolve_project,
+        save_receipt,
+        stable_idempotency_key,
+        upload_bytes,
+        wait_for_task,
+    )
+
+    workflow_id = _folder_name(source)
+    client = open_client()
+    project_id = resolve_project(client, args.project)
+    source_digest = digest_bytes(source_bytes)
+    upload = upload_bytes(
+        client,
+        project_id,
+        "source",
+        source_bytes,
+        filename="source.json",
+        key=stable_idempotency_key("vibecomfy-media-", {"project_id": project_id, "name": "source", "digest": source_digest}),
+    )
+    request = {"project_id": project_id, "workflow_id": workflow_id, "source_digest": source_digest}
+    idempotency_key = stable_idempotency_key("vibecomfy-import-", request)
+    task_id = create_task(
+        client,
+        project_id=project_id,
+        capability="vibecomfy.import",
+        workflow_id=workflow_id,
+        transition_kind="origin",
+        uploads=[upload],
+        idempotency_key=idempotency_key,
+    )
+    receipt = {
+        "schema_version": 1,
+        "task_id": task_id,
+        "project_id": project_id,
+        "project": args.project,
+        "workflow_id": workflow_id,
+        "transition_kind": "origin",
+        "idempotency_key": idempotency_key,
+        "target_path": str(destination),
+        "parent_members": None,
+        "outputs": {},
+        "report_digest": None,
+        "input_digests": {"source": source_digest},
+    }
+    save_receipt(receipt)
+    task = wait_for_task(client, task_id)
+    _task_id, outputs, manifest = download_outputs(
+        client,
+        task,
+        expected_names={"python", "companion", "source", "report"},
+    )
+    if outputs["source"] != source_bytes:
+        raise ValueError("Astrid import output source.json differs from the exact source bytes")
+    report = report_for_outputs(
+        outputs,
+        manifest,
+        workflow_id=workflow_id,
+        transition_kind="origin",
+        parent_revision=None,
+        parent_task_id=None,
+        origin_task_id=None,
+    )
+    members = {
+        "workflow.py": manifest["python"],
+        "workflow.vibe.json": manifest["companion"],
+        "source.json": manifest["source"],
+    }
+    materialize_outputs(outputs, destination)
+    receipt.update({
+        "outputs": members,
+        "report_digest": manifest["report"],
+        "revision_id": report.get("revision_id"),
+    })
+    save_receipt(receipt)
+    return {
+        "status": "ok",
+        "tracking": {"mode": "astrid", "astrid": True, "project_id": project_id},
+        "source": str(source.resolve()),
+        "folder": str(destination),
+        "python": str(destination / "workflow.py"),
+        "companion": str(destination / "workflow.vibe.json"),
+        "source_copy": str(destination / "source.json"),
+        "workflow_id": workflow_id,
+        "revision": report.get("revision_id"),
+        "task_id": task_id,
+        "report_digest": manifest["report"],
+        "members": members,
+        "report": report,
+        "readiness": report.get("readiness"),
+        "diagnostics": report.get("diagnostics", []),
+        "next": {
+            "targets": f"vibecomfy edit targets {shlex.quote(str(destination))}",
+            "validate": f"vibecomfy validate {shlex.quote(str(destination))}",
+            "node": "vibecomfy node <ClassType>",
+            "tracking": f"tracked by task {task_id}",
+            "history": f"astrid tasks show {task_id}; astrid tasks events {task_id}",
+        },
+    }
 
 
 def register(subparsers) -> None:
@@ -232,16 +282,19 @@ def register(subparsers) -> None:
         help="Import a ComfyUI workflow into an editable, inspectable folder.",
         description=(
             "Import a ComfyUI workflow into ./workflows/<name>/ with an editable Python\n"
-            "workflow, its VibeComfy companion metadata, and an unchanged source copy."
+            "workflow, VibeComfy companion, and exact source copy. The origin report is\n"
+            "returned on stdout/JSON; tracked imports also retain the immutable Astrid task report."
         ),
         epilog=(
-            "Edit workflow.py, then use 'vibecomfy validate <folder>'. "
-            "Use 'vibecomfy inspect <folder>' to explore the graph and "
-            "'vibecomfy node <ClassType>' for node inputs, outputs, and source."
+            "Edit workflow.py directly or use `vibecomfy edit`; inspect node definitions with\n"
+            "`vibecomfy node <ClassType>` and validate changes with `vibecomfy validate <folder>`.\n"
+            "Imports are local and untracked unless you explicitly pass --project."
         ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("source", help="Source ComfyUI workflow JSON file.")
     parser.add_argument("--out", help="Destination directory (defaults to ./workflows/<source-name>/).")
-    parser.add_argument("--dry-run", action="store_true", help="Check and preview the import without writing files.")
+    parser.add_argument("--project", help="Opt into recording this import as an Astrid workflow origin.")
+    parser.add_argument("--dry-run", action="store_true", help="Build a preview without writing files or contacting Astrid.")
     parser.add_argument("--json", action="store_true", help="Print a machine-readable result.")
     parser.set_defaults(func=_cmd_import)

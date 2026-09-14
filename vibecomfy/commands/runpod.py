@@ -22,7 +22,7 @@ def _runpod_lifecycle_root() -> Path:
 
 def _runpod_lifecycle_main(argv: list[str]) -> int:
     try:
-        from dotenv import load_dotenv
+        from runpod_lifecycle.config import load_runpod_env
         from runpod_lifecycle.cli import main as runpod_main
     except ImportError:
         root = _runpod_lifecycle_root()
@@ -36,13 +36,13 @@ def _runpod_lifecycle_main(argv: list[str]) -> int:
             return 1
         sys.path.insert(0, str(src))
         try:
-            from dotenv import load_dotenv
+            from runpod_lifecycle.config import load_runpod_env
             from runpod_lifecycle.cli import main as runpod_main
         except Exception as exc:
             print(f"could not import runpod-lifecycle: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 1
     root = _runpod_lifecycle_root()
-    load_dotenv(root / ".env")
+    load_runpod_env(root / ".env")
     return runpod_main(argv)
 
 

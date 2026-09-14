@@ -1,0 +1,4477 @@
+{
+  "CLIPLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Recipes:\nsd: clip-l\nstable cascade: clip-g\nsd3: t5 xxl / clip-g / clip-l\nstable audio: t5 base\nmochi: t5 xxl\ncogvideox: t5 xxl (226-token padding)\ncosmos: old t5 xxl\nlumina2: gemma 2 2B\nwan: umt5 xxl\nhidream: llama-3.1 (Recommend) or t5\nomnigen2: qwen vl 2.5 3B\njoyimage: qwen3-vl 8B\nlens: gpt-oss-20b\npixeldit: gemma 2 2B elm",
+    "display_name": "Load CLIP",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CLIPLoader",
+    "git_commit": null,
+    "input_order": {
+      "optional": [
+        "device"
+      ],
+      "required": [
+        "clip_name",
+        "type"
+      ]
+    },
+    "input_order_all": [
+      "clip_name",
+      "type",
+      "device"
+    ],
+    "inputs": {
+      "optional": {
+        "device": [
+          [
+            "default",
+            "cpu"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      },
+      "required": {
+        "clip_name": [
+          []
+        ],
+        "type": [
+          [
+            "stable_diffusion",
+            "stable_cascade",
+            "sd3",
+            "stable_audio",
+            "mochi",
+            "ltxv",
+            "pixart",
+            "cosmos",
+            "lumina2",
+            "wan",
+            "hidream",
+            "chroma",
+            "ace",
+            "omnigen2",
+            "qwen_image",
+            "hunyuan_image",
+            "flux2",
+            "ovis",
+            "longcat_image",
+            "cogvideox",
+            "lens",
+            "pixeldit",
+            "ideogram4",
+            "boogu",
+            "krea2",
+            "joyimage",
+            "mage",
+            "minimax"
+          ]
+        ]
+      }
+    },
+    "name": "CLIPLoader",
+    "object_info_widget_order": [
+      "clip_name",
+      "type",
+      "device"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "CLIPSetLastLayer": {
+    "category": "model/conditioning",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "CLIP Set Last Layer",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CLIPSetLastLayer",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "clip",
+        "stop_at_clip_layer"
+      ]
+    },
+    "input_order_all": [
+      "clip",
+      "stop_at_clip_layer"
+    ],
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP"
+        ],
+        "stop_at_clip_layer": [
+          "INT",
+          {
+            "advanced": true,
+            "default": -1,
+            "max": -1,
+            "min": -24,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "name": "CLIPSetLastLayer",
+    "object_info_widget_order": [
+      null,
+      "stop_at_clip_layer"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "CLIPTextEncode": {
+    "category": "model/conditioning",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Encodes a text prompt using a CLIP model into an embedding that can be used to guide the diffusion model towards generating specific images.",
+    "display_name": "CLIP Text Encode (Prompt)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CLIPTextEncode",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "text",
+        "clip"
+      ]
+    },
+    "input_order_all": [
+      "text",
+      "clip"
+    ],
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP",
+          {
+            "tooltip": "The CLIP model used for encoding the text."
+          }
+        ],
+        "text": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true,
+            "tooltip": "The text to be encoded."
+          }
+        ]
+      }
+    },
+    "name": "CLIPTextEncode",
+    "object_info_widget_order": [
+      "text",
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "CLIPVisionEncode": {
+    "category": "model/conditioning",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "CLIP Vision Encode",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CLIPVisionEncode",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "clip_vision",
+        "image",
+        "crop"
+      ]
+    },
+    "input_order_all": [
+      "clip_vision",
+      "image",
+      "crop"
+    ],
+    "inputs": {
+      "required": {
+        "clip_vision": [
+          "CLIP_VISION"
+        ],
+        "crop": [
+          [
+            "center",
+            "none"
+          ]
+        ],
+        "image": [
+          "IMAGE"
+        ]
+      }
+    },
+    "name": "CLIPVisionEncode",
+    "object_info_widget_order": [
+      "clip_vision",
+      null,
+      "crop"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP_VISION_OUTPUT",
+        "type": "CLIP_VISION_OUTPUT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "CLIPVisionLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load CLIP Vision",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CLIPVisionLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "clip_name"
+      ]
+    },
+    "input_order_all": [
+      "clip_name"
+    ],
+    "inputs": {
+      "required": {
+        "clip_name": [
+          []
+        ]
+      }
+    },
+    "name": "CLIPVisionLoader",
+    "object_info_widget_order": [
+      "clip_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP_VISION",
+        "type": "CLIP_VISION"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "CheckpointLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Checkpoint With Config (DEPRECATED)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CheckpointLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "config_name",
+        "ckpt_name"
+      ]
+    },
+    "input_order_all": [
+      "config_name",
+      "ckpt_name"
+    ],
+    "inputs": {
+      "required": {
+        "ckpt_name": [
+          []
+        ],
+        "config_name": [
+          [
+            "anything_v3.yaml",
+            "v1-inference.yaml",
+            "v1-inference_clip_skip_2.yaml",
+            "v1-inference_clip_skip_2_fp16.yaml",
+            "v1-inference_fp16.yaml",
+            "v1-inpainting-inference.yaml",
+            "v2-inference-v.yaml",
+            "v2-inference-v_fp32.yaml",
+            "v2-inference.yaml",
+            "v2-inference_fp32.yaml",
+            "v2-inpainting-inference.yaml"
+          ]
+        ]
+      }
+    },
+    "name": "CheckpointLoader",
+    "object_info_widget_order": [
+      "config_name",
+      "ckpt_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "CheckpointLoaderSimple": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Loads a diffusion model checkpoint, diffusion models are used to denoise latents.",
+    "display_name": "Load Checkpoint",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "CheckpointLoaderSimple",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "ckpt_name"
+      ]
+    },
+    "input_order_all": [
+      "ckpt_name"
+    ],
+    "inputs": {
+      "required": {
+        "ckpt_name": [
+          [],
+          {
+            "tooltip": "The name of the checkpoint (model) to load."
+          }
+        ]
+      }
+    },
+    "name": "CheckpointLoaderSimple",
+    "object_info_widget_order": [
+      "ckpt_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningAverage": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Average)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningAverage",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning_to",
+        "conditioning_from",
+        "conditioning_to_strength"
+      ]
+    },
+    "input_order_all": [
+      "conditioning_to",
+      "conditioning_from",
+      "conditioning_to_strength"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning_from": [
+          "CONDITIONING"
+        ],
+        "conditioning_to": [
+          "CONDITIONING"
+        ],
+        "conditioning_to_strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ConditioningAverage",
+    "object_info_widget_order": [
+      null,
+      null,
+      "conditioning_to_strength"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningCombine": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Combine)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningCombine",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning_1",
+        "conditioning_2"
+      ]
+    },
+    "input_order_all": [
+      "conditioning_1",
+      "conditioning_2"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning_1": [
+          "CONDITIONING"
+        ],
+        "conditioning_2": [
+          "CONDITIONING"
+        ]
+      }
+    },
+    "name": "ConditioningCombine",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningConcat": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Concat)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningConcat",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning_to",
+        "conditioning_from"
+      ]
+    },
+    "input_order_all": [
+      "conditioning_to",
+      "conditioning_from"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning_from": [
+          "CONDITIONING"
+        ],
+        "conditioning_to": [
+          "CONDITIONING"
+        ]
+      }
+    },
+    "name": "ConditioningConcat",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningMultiply": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Multiply)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningMultiply",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "multiplier"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "multiplier"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "multiplier": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 100.0,
+            "min": -100.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ConditioningMultiply",
+    "object_info_widget_order": [
+      null,
+      "multiplier"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningSetArea": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Set Area)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningSetArea",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "width",
+        "height",
+        "x",
+        "y",
+        "strength"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "width",
+      "height",
+      "x",
+      "y",
+      "strength"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 64,
+            "max": 16384,
+            "min": 64,
+            "step": 8
+          }
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 64,
+            "max": 16384,
+            "min": 64,
+            "step": 8
+          }
+        ],
+        "x": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "y": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "ConditioningSetArea",
+    "object_info_widget_order": [
+      null,
+      "width",
+      "height",
+      "x",
+      "y",
+      "strength"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningSetAreaPercentage": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Set Area with Percentage)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningSetAreaPercentage",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "width",
+        "height",
+        "x",
+        "y",
+        "strength"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "width",
+      "height",
+      "x",
+      "y",
+      "strength"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "height": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 1.0,
+            "min": 0,
+            "step": 0.01
+          }
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ],
+        "width": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 1.0,
+            "min": 0,
+            "step": 0.01
+          }
+        ],
+        "x": [
+          "FLOAT",
+          {
+            "default": 0,
+            "max": 1.0,
+            "min": 0,
+            "step": 0.01
+          }
+        ],
+        "y": [
+          "FLOAT",
+          {
+            "default": 0,
+            "max": 1.0,
+            "min": 0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ConditioningSetAreaPercentage",
+    "object_info_widget_order": [
+      null,
+      "width",
+      "height",
+      "x",
+      "y",
+      "strength"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningSetAreaStrength": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Set Area Strength)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningSetAreaStrength",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "strength"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "strength"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ConditioningSetAreaStrength",
+    "object_info_widget_order": [
+      null,
+      "strength"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningSetMask": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning (Set Mask)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningSetMask",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "mask",
+        "strength",
+        "set_cond_area"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "mask",
+      "strength",
+      "set_cond_area"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "mask": [
+          "MASK"
+        ],
+        "set_cond_area": [
+          [
+            "default",
+            "mask bounds"
+          ]
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ConditioningSetMask",
+    "object_info_widget_order": [
+      null,
+      null,
+      "strength",
+      "set_cond_area"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningSetTimestepRange": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "ConditioningSetTimestepRange",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningSetTimestepRange",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "start",
+        "end"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "start",
+      "end"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "end": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.001
+          }
+        ],
+        "start": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.001
+          }
+        ]
+      }
+    },
+    "name": "ConditioningSetTimestepRange",
+    "object_info_widget_order": [
+      null,
+      "start",
+      "end"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ConditioningZeroOut": {
+    "category": "model/conditioning/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Conditioning Zero Out",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ConditioningZeroOut",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning"
+      ]
+    },
+    "input_order_all": [
+      "conditioning"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ]
+      }
+    },
+    "name": "ConditioningZeroOut",
+    "object_info_widget_order": [
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ControlNetApply": {
+    "category": "model/conditioning/controlnet",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Apply ControlNet (DEPRECATED)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ControlNetApply",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "control_net",
+        "image",
+        "strength"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "control_net",
+      "image",
+      "strength"
+    ],
+    "inputs": {
+      "required": {
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "control_net": [
+          "CONTROL_NET"
+        ],
+        "image": [
+          "IMAGE"
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ControlNetApply",
+    "object_info_widget_order": [
+      null,
+      null,
+      null,
+      "strength"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ControlNetApplyAdvanced": {
+    "category": "model/conditioning/controlnet",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Apply ControlNet",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ControlNetApplyAdvanced",
+    "git_commit": null,
+    "input_order": {
+      "optional": [
+        "vae"
+      ],
+      "required": [
+        "positive",
+        "negative",
+        "control_net",
+        "image",
+        "strength",
+        "start_percent",
+        "end_percent"
+      ]
+    },
+    "input_order_all": [
+      "positive",
+      "negative",
+      "control_net",
+      "image",
+      "strength",
+      "start_percent",
+      "end_percent",
+      "vae"
+    ],
+    "inputs": {
+      "optional": {
+        "vae": [
+          "VAE"
+        ]
+      },
+      "required": {
+        "control_net": [
+          "CONTROL_NET"
+        ],
+        "end_percent": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.001
+          }
+        ],
+        "image": [
+          "IMAGE"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "positive": [
+          "CONDITIONING"
+        ],
+        "start_percent": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.001
+          }
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "ControlNetApplyAdvanced",
+    "object_info_widget_order": [
+      null,
+      null,
+      null,
+      null,
+      "strength",
+      "start_percent",
+      "end_percent",
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "positive",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "negative",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ControlNetLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load ControlNet Model",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ControlNetLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "control_net_name"
+      ]
+    },
+    "input_order_all": [
+      "control_net_name"
+    ],
+    "inputs": {
+      "required": {
+        "control_net_name": [
+          []
+        ]
+      }
+    },
+    "name": "ControlNetLoader",
+    "object_info_widget_order": [
+      "control_net_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTROL_NET",
+        "type": "CONTROL_NET"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "DiffControlNetLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load ControlNet Model (diff)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "DiffControlNetLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "model",
+        "control_net_name"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "control_net_name"
+    ],
+    "inputs": {
+      "required": {
+        "control_net_name": [
+          []
+        ],
+        "model": [
+          "MODEL"
+        ]
+      }
+    },
+    "name": "DiffControlNetLoader",
+    "object_info_widget_order": [
+      null,
+      "control_net_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONTROL_NET",
+        "type": "CONTROL_NET"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "DiffusersLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Diffusers Model (DEPRECATED)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "DiffusersLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "model_path"
+      ]
+    },
+    "input_order_all": [
+      "model_path"
+    ],
+    "inputs": {
+      "required": {
+        "model_path": [
+          []
+        ]
+      }
+    },
+    "name": "DiffusersLoader",
+    "object_info_widget_order": [
+      "model_path"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "DualCLIPLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Recipes:\nsdxl: clip-l, clip-g\nsd3: clip-l, clip-g / clip-l, t5 / clip-g, t5\nflux: clip-l, t5\nhidream: at least one of t5 or llama, recommended t5 and llama\nhunyuan_image: qwen2.5vl 7b and byt5 small\nnewbie: gemma-3-4b-it, jina clip v2",
+    "display_name": "Load CLIP (Dual)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "DualCLIPLoader",
+    "git_commit": null,
+    "input_order": {
+      "optional": [
+        "device"
+      ],
+      "required": [
+        "clip_name1",
+        "clip_name2",
+        "type"
+      ]
+    },
+    "input_order_all": [
+      "clip_name1",
+      "clip_name2",
+      "type",
+      "device"
+    ],
+    "inputs": {
+      "optional": {
+        "device": [
+          [
+            "default",
+            "cpu"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      },
+      "required": {
+        "clip_name1": [
+          []
+        ],
+        "clip_name2": [
+          []
+        ],
+        "type": [
+          [
+            "sdxl",
+            "sd3",
+            "flux",
+            "hunyuan_video",
+            "hidream",
+            "hunyuan_image",
+            "hunyuan_video_15",
+            "kandinsky5",
+            "kandinsky5_image",
+            "ltxv",
+            "newbie",
+            "ace"
+          ]
+        ]
+      }
+    },
+    "name": "DualCLIPLoader",
+    "object_info_widget_order": [
+      "clip_name1",
+      "clip_name2",
+      "type",
+      "device"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "EmptyImage": {
+    "category": "image",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Empty Image",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "EmptyImage",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "width",
+        "height",
+        "batch_size",
+        "color"
+      ]
+    },
+    "input_order_all": [
+      "width",
+      "height",
+      "batch_size",
+      "color"
+    ],
+    "inputs": {
+      "required": {
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "max": 4096,
+            "min": 1
+          }
+        ],
+        "color": [
+          "INT",
+          {
+            "default": 0,
+            "display": "color",
+            "max": 16777215,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 1,
+            "step": 1
+          }
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 1,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "name": "EmptyImage",
+    "object_info_widget_order": [
+      "width",
+      "height",
+      "batch_size",
+      "color"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "EmptyLatentImage": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Create a new batch of empty latent images to be denoised via sampling.",
+    "display_name": "Empty Latent Image",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "EmptyLatentImage",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "width",
+        "height",
+        "batch_size"
+      ]
+    },
+    "input_order_all": [
+      "width",
+      "height",
+      "batch_size"
+    ],
+    "inputs": {
+      "required": {
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "max": 4096,
+            "min": 1,
+            "tooltip": "The number of latent images in the batch."
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 16,
+            "step": 8,
+            "tooltip": "The height of the latent images in pixels."
+          }
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 16,
+            "step": 8,
+            "tooltip": "The width of the latent images in pixels."
+          }
+        ]
+      }
+    },
+    "name": "EmptyLatentImage",
+    "object_info_widget_order": [
+      "width",
+      "height",
+      "batch_size"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "GLIGENLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load GLIGEN Model",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "GLIGENLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "gligen_name"
+      ]
+    },
+    "input_order_all": [
+      "gligen_name"
+    ],
+    "inputs": {
+      "required": {
+        "gligen_name": [
+          []
+        ]
+      }
+    },
+    "name": "GLIGENLoader",
+    "object_info_widget_order": [
+      "gligen_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "GLIGEN",
+        "type": "GLIGEN"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "GLIGENTextBoxApply": {
+    "category": "model/conditioning/gligen",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Apply GLIGEN Text Box",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "GLIGENTextBoxApply",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning_to",
+        "clip",
+        "gligen_textbox_model",
+        "text",
+        "width",
+        "height",
+        "x",
+        "y"
+      ]
+    },
+    "input_order_all": [
+      "conditioning_to",
+      "clip",
+      "gligen_textbox_model",
+      "text",
+      "width",
+      "height",
+      "x",
+      "y"
+    ],
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP"
+        ],
+        "conditioning_to": [
+          "CONDITIONING"
+        ],
+        "gligen_textbox_model": [
+          "GLIGEN"
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 64,
+            "max": 16384,
+            "min": 8,
+            "step": 8
+          }
+        ],
+        "text": [
+          "STRING",
+          {
+            "dynamicPrompts": true,
+            "multiline": true
+          }
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 64,
+            "max": 16384,
+            "min": 8,
+            "step": 8
+          }
+        ],
+        "x": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "y": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "GLIGENTextBoxApply",
+    "object_info_widget_order": [
+      null,
+      null,
+      "gligen_textbox_model",
+      "text",
+      "width",
+      "height",
+      "x",
+      "y"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ImageBatch": {
+    "category": "image/batch",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Batch Images (DEPRECATED)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ImageBatch",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image1",
+        "image2"
+      ]
+    },
+    "input_order_all": [
+      "image1",
+      "image2"
+    ],
+    "inputs": {
+      "required": {
+        "image1": [
+          "IMAGE"
+        ],
+        "image2": [
+          "IMAGE"
+        ]
+      }
+    },
+    "name": "ImageBatch",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ImageInvert": {
+    "category": "image/color",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Invert Image Colors",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ImageInvert",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image"
+      ]
+    },
+    "input_order_all": [
+      "image"
+    ],
+    "inputs": {
+      "required": {
+        "image": [
+          "IMAGE"
+        ]
+      }
+    },
+    "name": "ImageInvert",
+    "object_info_widget_order": [
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ImagePadForOutpaint": {
+    "category": "image/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Pad Image for Outpainting",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ImagePadForOutpaint",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image",
+        "left",
+        "top",
+        "right",
+        "bottom",
+        "feathering"
+      ]
+    },
+    "input_order_all": [
+      "image",
+      "left",
+      "top",
+      "right",
+      "bottom",
+      "feathering"
+    ],
+    "inputs": {
+      "required": {
+        "bottom": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "feathering": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 40,
+            "max": 16384,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "image": [
+          "IMAGE"
+        ],
+        "left": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "right": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "top": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "ImagePadForOutpaint",
+    "object_info_widget_order": [
+      null,
+      "left",
+      "top",
+      "right",
+      "bottom",
+      "feathering"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ImageScale": {
+    "category": "image/upscaling",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Upscale Image",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ImageScale",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image",
+        "upscale_method",
+        "width",
+        "height",
+        "crop"
+      ]
+    },
+    "input_order_all": [
+      "image",
+      "upscale_method",
+      "width",
+      "height",
+      "crop"
+    ],
+    "inputs": {
+      "required": {
+        "crop": [
+          [
+            "disabled",
+            "center"
+          ]
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "image": [
+          "IMAGE"
+        ],
+        "upscale_method": [
+          [
+            "nearest-exact",
+            "bilinear",
+            "area",
+            "bicubic",
+            "lanczos"
+          ]
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 0,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "name": "ImageScale",
+    "object_info_widget_order": [
+      null,
+      "upscale_method",
+      "width",
+      "height",
+      "crop"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "ImageScaleBy": {
+    "category": "image/upscaling",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Upscale Image By",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "ImageScaleBy",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image",
+        "upscale_method",
+        "scale_by"
+      ]
+    },
+    "input_order_all": [
+      "image",
+      "upscale_method",
+      "scale_by"
+    ],
+    "inputs": {
+      "required": {
+        "image": [
+          "IMAGE"
+        ],
+        "scale_by": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 8.0,
+            "min": 0.01,
+            "step": 0.01
+          }
+        ],
+        "upscale_method": [
+          [
+            "nearest-exact",
+            "bilinear",
+            "area",
+            "bicubic",
+            "lanczos"
+          ]
+        ]
+      }
+    },
+    "name": "ImageScaleBy",
+    "object_info_widget_order": [
+      null,
+      "upscale_method",
+      "scale_by"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "InpaintModelConditioning": {
+    "category": "model/conditioning",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "InpaintModelConditioning",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "InpaintModelConditioning",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "positive",
+        "negative",
+        "vae",
+        "pixels",
+        "mask",
+        "noise_mask"
+      ]
+    },
+    "input_order_all": [
+      "positive",
+      "negative",
+      "vae",
+      "pixels",
+      "mask",
+      "noise_mask"
+    ],
+    "inputs": {
+      "required": {
+        "mask": [
+          "MASK"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "noise_mask": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Add a noise mask to the latent so sampling will only happen within the mask. Might improve results or completely break things depending on the model."
+          }
+        ],
+        "pixels": [
+          "IMAGE"
+        ],
+        "positive": [
+          "CONDITIONING"
+        ],
+        "vae": [
+          "VAE"
+        ]
+      }
+    },
+    "name": "InpaintModelConditioning",
+    "object_info_widget_order": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      "noise_mask"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "positive",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "negative",
+        "type": "CONDITIONING"
+      },
+      {
+        "is_list": false,
+        "name": "latent",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "KSampler": {
+    "category": "model/sampling",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Uses the provided model, positive and negative conditioning to denoise the latent image.",
+    "display_name": "KSampler",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "KSampler",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "model",
+        "seed",
+        "steps",
+        "cfg",
+        "sampler_name",
+        "scheduler",
+        "positive",
+        "negative",
+        "latent_image",
+        "denoise"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "seed",
+      "steps",
+      "cfg",
+      "sampler_name",
+      "scheduler",
+      "positive",
+      "negative",
+      "latent_image",
+      "denoise"
+    ],
+    "inputs": {
+      "required": {
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 8.0,
+            "max": 100.0,
+            "min": 0.0,
+            "round": 0.01,
+            "step": 0.1,
+            "tooltip": "The Classifier-Free Guidance scale balances creativity and adherence to the prompt. Higher values result in images more closely matching the prompt however too high values will negatively impact quality."
+          }
+        ],
+        "denoise": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.01,
+            "tooltip": "The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling."
+          }
+        ],
+        "latent_image": [
+          "LATENT",
+          {
+            "tooltip": "The latent image to denoise."
+          }
+        ],
+        "model": [
+          "MODEL",
+          {
+            "tooltip": "The model used for denoising the input latent."
+          }
+        ],
+        "negative": [
+          "CONDITIONING",
+          {
+            "tooltip": "The conditioning describing the attributes you want to exclude from the image."
+          }
+        ],
+        "positive": [
+          "CONDITIONING",
+          {
+            "tooltip": "The conditioning describing the attributes you want to include in the image."
+          }
+        ],
+        "sampler_name": [
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ],
+          {
+            "tooltip": "The algorithm used when sampling, this can affect the quality, speed, and style of the generated output."
+          }
+        ],
+        "scheduler": [
+          [
+            "simple",
+            "sgm_uniform",
+            "karras",
+            "exponential",
+            "ddim_uniform",
+            "beta",
+            "normal",
+            "linear_quadratic",
+            "kl_optimal"
+          ],
+          {
+            "tooltip": "The scheduler controls how noise is gradually removed to form the image."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "control_after_generate": true,
+            "default": 0,
+            "max": 18446744073709551615,
+            "min": 0,
+            "tooltip": "The random seed used for creating the noise."
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 20,
+            "max": 10000,
+            "min": 1,
+            "tooltip": "The number of steps used in the denoising process."
+          }
+        ]
+      }
+    },
+    "name": "KSampler",
+    "object_info_widget_order": [
+      null,
+      "seed",
+      "steps",
+      "cfg",
+      "sampler_name",
+      "scheduler",
+      null,
+      null,
+      null,
+      "denoise"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "KSamplerAdvanced": {
+    "category": "model/sampling",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "KSampler (Advanced)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "KSamplerAdvanced",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "model",
+        "add_noise",
+        "noise_seed",
+        "steps",
+        "cfg",
+        "sampler_name",
+        "scheduler",
+        "positive",
+        "negative",
+        "latent_image",
+        "start_at_step",
+        "end_at_step",
+        "return_with_leftover_noise"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "add_noise",
+      "noise_seed",
+      "steps",
+      "cfg",
+      "sampler_name",
+      "scheduler",
+      "positive",
+      "negative",
+      "latent_image",
+      "start_at_step",
+      "end_at_step",
+      "return_with_leftover_noise"
+    ],
+    "inputs": {
+      "required": {
+        "add_noise": [
+          [
+            "enable",
+            "disable"
+          ],
+          {
+            "advanced": true
+          }
+        ],
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 8.0,
+            "max": 100.0,
+            "min": 0.0,
+            "round": 0.01,
+            "step": 0.1
+          }
+        ],
+        "end_at_step": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 10000,
+            "max": 10000,
+            "min": 0
+          }
+        ],
+        "latent_image": [
+          "LATENT"
+        ],
+        "model": [
+          "MODEL"
+        ],
+        "negative": [
+          "CONDITIONING"
+        ],
+        "noise_seed": [
+          "INT",
+          {
+            "control_after_generate": true,
+            "default": 0,
+            "max": 18446744073709551615,
+            "min": 0
+          }
+        ],
+        "positive": [
+          "CONDITIONING"
+        ],
+        "return_with_leftover_noise": [
+          [
+            "disable",
+            "enable"
+          ],
+          {
+            "advanced": true
+          }
+        ],
+        "sampler_name": [
+          [
+            "euler",
+            "euler_cfg_pp",
+            "euler_ancestral",
+            "euler_ancestral_cfg_pp",
+            "heun",
+            "heunpp2",
+            "exp_heun_2_x0",
+            "exp_heun_2_x0_sde",
+            "dpm_2",
+            "dpm_2_ancestral",
+            "lms",
+            "dpm_fast",
+            "dpm_adaptive",
+            "dpmpp_2s_ancestral",
+            "dpmpp_2s_ancestral_cfg_pp",
+            "dpmpp_sde",
+            "dpmpp_sde_gpu",
+            "dpmpp_2m",
+            "dpmpp_2m_cfg_pp",
+            "dpmpp_2m_sde",
+            "dpmpp_2m_sde_gpu",
+            "dpmpp_2m_sde_heun",
+            "dpmpp_2m_sde_heun_gpu",
+            "dpmpp_3m_sde",
+            "dpmpp_3m_sde_gpu",
+            "ddpm",
+            "lcm",
+            "ipndm",
+            "ipndm_v",
+            "deis",
+            "res_multistep",
+            "res_multistep_cfg_pp",
+            "res_multistep_ancestral",
+            "res_multistep_ancestral_cfg_pp",
+            "gradient_estimation",
+            "gradient_estimation_cfg_pp",
+            "er_sde",
+            "seeds_2",
+            "seeds_3",
+            "sa_solver",
+            "sa_solver_pece",
+            "ddim",
+            "uni_pc",
+            "uni_pc_bh2"
+          ]
+        ],
+        "scheduler": [
+          [
+            "simple",
+            "sgm_uniform",
+            "karras",
+            "exponential",
+            "ddim_uniform",
+            "beta",
+            "normal",
+            "linear_quadratic",
+            "kl_optimal"
+          ]
+        ],
+        "start_at_step": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 0,
+            "max": 10000,
+            "min": 0
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 20,
+            "max": 10000,
+            "min": 1
+          }
+        ]
+      }
+    },
+    "name": "KSamplerAdvanced",
+    "object_info_widget_order": [
+      null,
+      "add_noise",
+      "noise_seed",
+      "steps",
+      "cfg",
+      "sampler_name",
+      "scheduler",
+      null,
+      null,
+      null,
+      "start_at_step",
+      "end_at_step",
+      "return_with_leftover_noise"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentBlend": {
+    "category": "experimental",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Latent Blend",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentBlend",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples1",
+        "samples2",
+        "blend_factor"
+      ]
+    },
+    "input_order_all": [
+      "samples1",
+      "samples2",
+      "blend_factor"
+    ],
+    "inputs": {
+      "required": {
+        "blend_factor": [
+          "FLOAT",
+          {
+            "default": 0.5,
+            "max": 1,
+            "min": 0,
+            "step": 0.01
+          }
+        ],
+        "samples1": [
+          "LATENT"
+        ],
+        "samples2": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "LatentBlend",
+    "object_info_widget_order": [
+      null,
+      null,
+      "blend_factor"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentComposite": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Latent Composite",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentComposite",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples_to",
+        "samples_from",
+        "x",
+        "y",
+        "feather"
+      ]
+    },
+    "input_order_all": [
+      "samples_to",
+      "samples_from",
+      "x",
+      "y",
+      "feather"
+    ],
+    "inputs": {
+      "required": {
+        "feather": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "samples_from": [
+          "LATENT"
+        ],
+        "samples_to": [
+          "LATENT"
+        ],
+        "x": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "y": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "LatentComposite",
+    "object_info_widget_order": [
+      null,
+      null,
+      "x",
+      "y",
+      "feather"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentCrop": {
+    "category": "model/latent/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Crop Latent",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentCrop",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "width",
+        "height",
+        "x",
+        "y"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "width",
+      "height",
+      "x",
+      "y"
+    ],
+    "inputs": {
+      "required": {
+        "height": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 64,
+            "step": 8
+          }
+        ],
+        "samples": [
+          "LATENT"
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 64,
+            "step": 8
+          }
+        ],
+        "x": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "y": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "LatentCrop",
+    "object_info_widget_order": [
+      null,
+      "width",
+      "height",
+      "x",
+      "y"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentFlip": {
+    "category": "model/latent/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Flip Latent",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentFlip",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "flip_method"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "flip_method"
+    ],
+    "inputs": {
+      "required": {
+        "flip_method": [
+          [
+            "x-axis: vertically",
+            "y-axis: horizontally"
+          ]
+        ],
+        "samples": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "LatentFlip",
+    "object_info_widget_order": [
+      null,
+      "flip_method"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentFromBatch": {
+    "category": "model/latent/batch",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Get Latent From Batch",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentFromBatch",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "batch_index",
+        "length"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "batch_index",
+      "length"
+    ],
+    "inputs": {
+      "required": {
+        "batch_index": [
+          "INT",
+          {
+            "default": 0,
+            "max": 16384,
+            "min": -16384
+          }
+        ],
+        "length": [
+          "INT",
+          {
+            "default": 1,
+            "max": 64,
+            "min": 1
+          }
+        ],
+        "samples": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "LatentFromBatch",
+    "object_info_widget_order": [
+      null,
+      "batch_index",
+      "length"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentRotate": {
+    "category": "model/latent/transform",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Rotate Latent",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentRotate",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "rotation"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "rotation"
+    ],
+    "inputs": {
+      "required": {
+        "rotation": [
+          [
+            "none",
+            "90 degrees",
+            "180 degrees",
+            "270 degrees"
+          ]
+        ],
+        "samples": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "LatentRotate",
+    "object_info_widget_order": [
+      null,
+      "rotation"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentUpscale": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Upscale Latent",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentUpscale",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "upscale_method",
+        "width",
+        "height",
+        "crop"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "upscale_method",
+      "width",
+      "height",
+      "crop"
+    ],
+    "inputs": {
+      "required": {
+        "crop": [
+          [
+            "disabled",
+            "center"
+          ]
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ],
+        "samples": [
+          "LATENT"
+        ],
+        "upscale_method": [
+          [
+            "nearest-exact",
+            "bilinear",
+            "area",
+            "bicubic",
+            "bislerp"
+          ]
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 512,
+            "max": 16384,
+            "min": 0,
+            "step": 8
+          }
+        ]
+      }
+    },
+    "name": "LatentUpscale",
+    "object_info_widget_order": [
+      null,
+      "upscale_method",
+      "width",
+      "height",
+      "crop"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LatentUpscaleBy": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Upscale Latent By",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LatentUpscaleBy",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "upscale_method",
+        "scale_by"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "upscale_method",
+      "scale_by"
+    ],
+    "inputs": {
+      "required": {
+        "samples": [
+          "LATENT"
+        ],
+        "scale_by": [
+          "FLOAT",
+          {
+            "default": 1.5,
+            "max": 8.0,
+            "min": 0.01,
+            "step": 0.01
+          }
+        ],
+        "upscale_method": [
+          [
+            "nearest-exact",
+            "bilinear",
+            "area",
+            "bicubic",
+            "bislerp"
+          ]
+        ]
+      }
+    },
+    "name": "LatentUpscaleBy",
+    "object_info_widget_order": [
+      null,
+      "upscale_method",
+      "scale_by"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LoadImage": {
+    "category": "image",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Image",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LoadImage",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image"
+      ]
+    },
+    "input_order_all": [
+      "image"
+    ],
+    "inputs": {
+      "required": {
+        "image": [
+          [
+            "example.png"
+          ],
+          {
+            "image_upload": true
+          }
+        ]
+      }
+    },
+    "name": "LoadImage",
+    "object_info_widget_order": [
+      "image"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LoadImageMask": {
+    "category": "image",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Image (as Mask)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LoadImageMask",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image",
+        "channel"
+      ]
+    },
+    "input_order_all": [
+      "image",
+      "channel"
+    ],
+    "inputs": {
+      "required": {
+        "channel": [
+          [
+            "alpha",
+            "red",
+            "green",
+            "blue"
+          ]
+        ],
+        "image": [
+          [
+            "example.png"
+          ],
+          {
+            "image_upload": true
+          }
+        ]
+      }
+    },
+    "name": "LoadImageMask",
+    "object_info_widget_order": [
+      "image",
+      "channel"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LoadImageOutput": {
+    "category": "image",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Load an image from the output folder. When the refresh button is clicked, the node will update the image list and automatically select the first image, allowing for easy iteration.",
+    "display_name": "Load Image (from Outputs)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LoadImageOutput",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "image"
+      ]
+    },
+    "input_order_all": [
+      "image"
+    ],
+    "inputs": {
+      "required": {
+        "image": [
+          "COMBO",
+          {
+            "image_folder": "output",
+            "image_upload": true,
+            "remote": {
+              "control_after_refresh": "first",
+              "refresh_button": true,
+              "route": "/internal/files/output"
+            }
+          }
+        ]
+      }
+    },
+    "name": "LoadImageOutput",
+    "object_info_widget_order": [
+      "image"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      },
+      {
+        "is_list": false,
+        "name": "MASK",
+        "type": "MASK"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LoadLatent": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Latent",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LoadLatent",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "latent"
+      ]
+    },
+    "input_order_all": [
+      "latent"
+    ],
+    "inputs": {
+      "required": {
+        "latent": [
+          []
+        ]
+      }
+    },
+    "name": "LoadLatent",
+    "object_info_widget_order": [
+      "latent"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LoraLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "This LoRA loader is used to modify both diffusion and CLIP models, altering the way in which latents are denoised such as applying styles. Multiple LoRA nodes can be linked together.",
+    "display_name": "Load LoRA (Model and CLIP)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LoraLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "model",
+        "clip",
+        "lora_name",
+        "strength_model",
+        "strength_clip"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "clip",
+      "lora_name",
+      "strength_model",
+      "strength_clip"
+    ],
+    "inputs": {
+      "required": {
+        "clip": [
+          "CLIP",
+          {
+            "tooltip": "The CLIP model the LoRA will be applied to."
+          }
+        ],
+        "lora_name": [
+          [],
+          {
+            "tooltip": "The name of the LoRA."
+          }
+        ],
+        "model": [
+          "MODEL",
+          {
+            "tooltip": "The diffusion model the LoRA will be applied to."
+          }
+        ],
+        "strength_clip": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 100.0,
+            "min": -100.0,
+            "step": 0.01,
+            "tooltip": "How strongly to modify the CLIP model. This value can be negative."
+          }
+        ],
+        "strength_model": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 100.0,
+            "min": -100.0,
+            "step": 0.01,
+            "tooltip": "How strongly to modify the diffusion model. This value can be negative."
+          }
+        ]
+      }
+    },
+    "name": "LoraLoader",
+    "object_info_widget_order": [
+      null,
+      null,
+      "lora_name",
+      "strength_model",
+      "strength_clip"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "LoraLoaderModelOnly": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "This LoRAs loader is used to modify the diffusion model, altering the way in which latents are denoised such as applying styles. Multiple LoRA nodes can be linked together.",
+    "display_name": "Load LoRA",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "LoraLoaderModelOnly",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "model",
+        "lora_name",
+        "strength_model"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "lora_name",
+      "strength_model"
+    ],
+    "inputs": {
+      "required": {
+        "lora_name": [
+          []
+        ],
+        "model": [
+          "MODEL"
+        ],
+        "strength_model": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 100.0,
+            "min": -100.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "LoraLoaderModelOnly",
+    "object_info_widget_order": [
+      null,
+      "lora_name",
+      "strength_model"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "PreviewImage": {
+    "category": "image",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Preview the images without saving them to the ComfyUI output directory.",
+    "display_name": "Preview Image",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "PreviewImage",
+    "git_commit": null,
+    "input_order": {
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ],
+      "required": [
+        "images"
+      ]
+    },
+    "input_order_all": [
+      "images"
+    ],
+    "inputs": {
+      "hidden": {
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "prompt": "PROMPT"
+      },
+      "required": {
+        "images": [
+          "IMAGE"
+        ]
+      }
+    },
+    "name": "PreviewImage",
+    "object_info_widget_order": [
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "images",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "RepeatLatentBatch": {
+    "category": "model/latent/batch",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Repeat Latent Batch",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "RepeatLatentBatch",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "amount"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "amount"
+    ],
+    "inputs": {
+      "required": {
+        "amount": [
+          "INT",
+          {
+            "default": 1,
+            "max": 64,
+            "min": 1
+          }
+        ],
+        "samples": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "RepeatLatentBatch",
+    "object_info_widget_order": [
+      null,
+      "amount"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "SaveImage": {
+    "category": "image",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Saves the input images to your ComfyUI output directory.",
+    "display_name": "Save Image",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "SaveImage",
+    "git_commit": null,
+    "input_order": {
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ],
+      "required": [
+        "images",
+        "filename_prefix"
+      ]
+    },
+    "input_order_all": [
+      "images",
+      "filename_prefix"
+    ],
+    "inputs": {
+      "hidden": {
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "prompt": "PROMPT"
+      },
+      "required": {
+        "filename_prefix": [
+          "STRING",
+          {
+            "default": "ComfyUI",
+            "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes."
+          }
+        ],
+        "images": [
+          "IMAGE",
+          {
+            "tooltip": "The images to save."
+          }
+        ]
+      }
+    },
+    "name": "SaveImage",
+    "object_info_widget_order": [
+      null,
+      "filename_prefix"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "images",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "SaveLatent": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Save Latent",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "SaveLatent",
+    "git_commit": null,
+    "input_order": {
+      "hidden": [
+        "prompt",
+        "extra_pnginfo"
+      ],
+      "required": [
+        "samples",
+        "filename_prefix"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "filename_prefix"
+    ],
+    "inputs": {
+      "hidden": {
+        "extra_pnginfo": "EXTRA_PNGINFO",
+        "prompt": "PROMPT"
+      },
+      "required": {
+        "filename_prefix": [
+          "STRING",
+          {
+            "default": "latents/ComfyUI"
+          }
+        ],
+        "samples": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "SaveLatent",
+    "object_info_widget_order": [
+      null,
+      "filename_prefix"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "samples",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "SetLatentNoiseMask": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Set Latent Noise Mask",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "SetLatentNoiseMask",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "mask"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "mask"
+    ],
+    "inputs": {
+      "required": {
+        "mask": [
+          "MASK"
+        ],
+        "samples": [
+          "LATENT"
+        ]
+      }
+    },
+    "name": "SetLatentNoiseMask",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "StyleModelApply": {
+    "category": "model/conditioning",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Apply Style Model",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "StyleModelApply",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "style_model",
+        "clip_vision_output",
+        "strength",
+        "strength_type"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "style_model",
+      "clip_vision_output",
+      "strength",
+      "strength_type"
+    ],
+    "inputs": {
+      "required": {
+        "clip_vision_output": [
+          "CLIP_VISION_OUTPUT"
+        ],
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": 0.0,
+            "step": 0.001
+          }
+        ],
+        "strength_type": [
+          [
+            "multiply",
+            "attn_bias"
+          ]
+        ],
+        "style_model": [
+          "STYLE_MODEL"
+        ]
+      }
+    },
+    "name": "StyleModelApply",
+    "object_info_widget_order": [
+      null,
+      "style_model",
+      "clip_vision_output",
+      "strength",
+      "strength_type"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "StyleModelLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Style Model",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "StyleModelLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "style_model_name"
+      ]
+    },
+    "input_order_all": [
+      "style_model_name"
+    ],
+    "inputs": {
+      "required": {
+        "style_model_name": [
+          []
+        ]
+      }
+    },
+    "name": "StyleModelLoader",
+    "object_info_widget_order": [
+      "style_model_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "STYLE_MODEL",
+        "type": "STYLE_MODEL"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "UNETLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load Diffusion Model",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "UNETLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "unet_name",
+        "weight_dtype"
+      ]
+    },
+    "input_order_all": [
+      "unet_name",
+      "weight_dtype"
+    ],
+    "inputs": {
+      "required": {
+        "unet_name": [
+          []
+        ],
+        "weight_dtype": [
+          [
+            "default",
+            "fp8_e4m3fn",
+            "fp8_e4m3fn_fast",
+            "fp8_e5m2"
+          ],
+          {
+            "advanced": true
+          }
+        ]
+      }
+    },
+    "name": "UNETLoader",
+    "object_info_widget_order": [
+      "unet_name",
+      "weight_dtype"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "VAEDecode": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "Decodes latent images back into pixel space images.",
+    "display_name": "VAE Decode",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "VAEDecode",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "vae"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "vae"
+    ],
+    "inputs": {
+      "required": {
+        "samples": [
+          "LATENT",
+          {
+            "tooltip": "The latent to be decoded."
+          }
+        ],
+        "vae": [
+          "VAE",
+          {
+            "tooltip": "The VAE model used for decoding the latent."
+          }
+        ]
+      }
+    },
+    "name": "VAEDecode",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "VAEDecodeTiled": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "VAE Decode (Tiled)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "VAEDecodeTiled",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "samples",
+        "vae",
+        "tile_size",
+        "overlap",
+        "temporal_size",
+        "temporal_overlap"
+      ]
+    },
+    "input_order_all": [
+      "samples",
+      "vae",
+      "tile_size",
+      "overlap",
+      "temporal_size",
+      "temporal_overlap"
+    ],
+    "inputs": {
+      "required": {
+        "overlap": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 64,
+            "max": 4096,
+            "min": 0,
+            "step": 32
+          }
+        ],
+        "samples": [
+          "LATENT"
+        ],
+        "temporal_overlap": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 8,
+            "max": 4096,
+            "min": 4,
+            "step": 4,
+            "tooltip": "Only used for video VAEs: Amount of frames to overlap."
+          }
+        ],
+        "temporal_size": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 64,
+            "max": 4096,
+            "min": 8,
+            "step": 4,
+            "tooltip": "Only used for video VAEs: Amount of frames to decode at a time."
+          }
+        ],
+        "tile_size": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 512,
+            "max": 4096,
+            "min": 64,
+            "step": 32
+          }
+        ],
+        "vae": [
+          "VAE"
+        ]
+      }
+    },
+    "name": "VAEDecodeTiled",
+    "object_info_widget_order": [
+      null,
+      null,
+      "tile_size",
+      "overlap",
+      "temporal_size",
+      "temporal_overlap"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "IMAGE",
+        "type": "IMAGE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "VAEEncode": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "VAE Encode",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "VAEEncode",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "pixels",
+        "vae"
+      ]
+    },
+    "input_order_all": [
+      "pixels",
+      "vae"
+    ],
+    "inputs": {
+      "required": {
+        "pixels": [
+          "IMAGE"
+        ],
+        "vae": [
+          "VAE"
+        ]
+      }
+    },
+    "name": "VAEEncode",
+    "object_info_widget_order": [
+      null,
+      null
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "VAEEncodeForInpaint": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "VAE Encode (for Inpainting)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "VAEEncodeForInpaint",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "pixels",
+        "vae",
+        "mask",
+        "grow_mask_by"
+      ]
+    },
+    "input_order_all": [
+      "pixels",
+      "vae",
+      "mask",
+      "grow_mask_by"
+    ],
+    "inputs": {
+      "required": {
+        "grow_mask_by": [
+          "INT",
+          {
+            "default": 6,
+            "max": 64,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "mask": [
+          "MASK"
+        ],
+        "pixels": [
+          "IMAGE"
+        ],
+        "vae": [
+          "VAE"
+        ]
+      }
+    },
+    "name": "VAEEncodeForInpaint",
+    "object_info_widget_order": [
+      null,
+      null,
+      null,
+      "grow_mask_by"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "VAEEncodeTiled": {
+    "category": "model/latent",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "VAE Encode (Tiled)",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "VAEEncodeTiled",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "pixels",
+        "vae",
+        "tile_size",
+        "overlap",
+        "temporal_size",
+        "temporal_overlap"
+      ]
+    },
+    "input_order_all": [
+      "pixels",
+      "vae",
+      "tile_size",
+      "overlap",
+      "temporal_size",
+      "temporal_overlap"
+    ],
+    "inputs": {
+      "required": {
+        "overlap": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 64,
+            "max": 4096,
+            "min": 0,
+            "step": 32
+          }
+        ],
+        "pixels": [
+          "IMAGE"
+        ],
+        "temporal_overlap": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 8,
+            "max": 4096,
+            "min": 4,
+            "step": 4,
+            "tooltip": "Only used for video VAEs: Amount of frames to overlap."
+          }
+        ],
+        "temporal_size": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 64,
+            "max": 4096,
+            "min": 8,
+            "step": 4,
+            "tooltip": "Only used for video VAEs: Amount of frames to encode at a time."
+          }
+        ],
+        "tile_size": [
+          "INT",
+          {
+            "advanced": true,
+            "default": 512,
+            "max": 4096,
+            "min": 64,
+            "step": 64
+          }
+        ],
+        "vae": [
+          "VAE"
+        ]
+      }
+    },
+    "name": "VAEEncodeTiled",
+    "object_info_widget_order": [
+      null,
+      null,
+      "tile_size",
+      "overlap",
+      "temporal_size",
+      "temporal_overlap"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "LATENT",
+        "type": "LATENT"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "VAELoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load VAE",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "VAELoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "vae_name"
+      ]
+    },
+    "input_order_all": [
+      "vae_name"
+    ],
+    "inputs": {
+      "required": {
+        "vae_name": [
+          [
+            "pixel_space"
+          ]
+        ]
+      }
+    },
+    "name": "VAELoader",
+    "object_info_widget_order": [
+      "vae_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "unCLIPCheckpointLoader": {
+    "category": "model/loaders",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "Load unCLIP Checkpoint",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "unCLIPCheckpointLoader",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "ckpt_name"
+      ]
+    },
+    "input_order_all": [
+      "ckpt_name"
+    ],
+    "inputs": {
+      "required": {
+        "ckpt_name": [
+          []
+        ]
+      }
+    },
+    "name": "unCLIPCheckpointLoader",
+    "object_info_widget_order": [
+      "ckpt_name"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "MODEL",
+        "type": "MODEL"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP",
+        "type": "CLIP"
+      },
+      {
+        "is_list": false,
+        "name": "VAE",
+        "type": "VAE"
+      },
+      {
+        "is_list": false,
+        "name": "CLIP_VISION",
+        "type": "CLIP_VISION"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  },
+  "unCLIPConditioning": {
+    "category": "model/conditioning",
+    "class_schema_sha256": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "description": "",
+    "display_name": "unCLIPConditioning",
+    "evidence_identity": "object_info-runpod-a100.json",
+    "function": "unCLIPConditioning",
+    "git_commit": null,
+    "input_order": {
+      "required": [
+        "conditioning",
+        "clip_vision_output",
+        "strength",
+        "noise_augmentation"
+      ]
+    },
+    "input_order_all": [
+      "conditioning",
+      "clip_vision_output",
+      "strength",
+      "noise_augmentation"
+    ],
+    "inputs": {
+      "required": {
+        "clip_vision_output": [
+          "CLIP_VISION_OUTPUT"
+        ],
+        "conditioning": [
+          "CONDITIONING"
+        ],
+        "noise_augmentation": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "max": 1.0,
+            "min": 0.0,
+            "step": 0.01
+          }
+        ],
+        "strength": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "max": 10.0,
+            "min": -10.0,
+            "step": 0.01
+          }
+        ]
+      }
+    },
+    "name": "unCLIPConditioning",
+    "object_info_widget_order": [
+      null,
+      "clip_vision_output",
+      "strength",
+      "noise_augmentation"
+    ],
+    "outputs": [
+      {
+        "is_list": false,
+        "name": "CONDITIONING",
+        "type": "CONDITIONING"
+      }
+    ],
+    "pack": "nodes",
+    "pack_slug": "nodes",
+    "pack_version": "legacy-import",
+    "python_module": "nodes",
+    "schema_hash": "0e4922393db2986b1a8f847bb7803752313993f7236d7c12f782df46ab72ea48",
+    "source_kind": "legacy_object_info_import"
+  }
+}

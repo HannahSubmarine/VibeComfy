@@ -79,15 +79,19 @@ With VibeComfy installed, start in your project directory:
 ```bash
 vibecomfy import path/to/my_workflow.json
 vibecomfy inspect workflows/my_workflow
-# Edit workflows/my_workflow/workflow.py, then check your changes:
+vibecomfy edit workflows/my_workflow set sampler.steps 30
 vibecomfy validate workflows/my_workflow
 ```
 
 The folder keeps your editable Python, its `.vibe.json` companion, and the
 unchanged original `source.json` together. Import prints the paths and next
-commands. Use `doctor` to investigate dependency findings; validation does
-not run generation. Follow [Import and edit a ComfyUI workflow](docs/guides/workflow-onboarding.md)
-for a concrete edit, file responsibilities, and troubleshooting.
+commands. Standalone commands are local and untracked by default; add
+`--project <name>` to import or edit while recording accepted changes in
+Astrid. You can also edit `workflow.py` directly, then run
+`vibecomfy edit <bundle> capture` to record that change. Use `doctor` to
+investigate dependency findings; validation does not run generation. Follow
+[Import and edit a ComfyUI workflow](docs/guides/workflow-onboarding.md) for
+batch edits, Astrid-native use, file responsibilities, and troubleshooting.
 
 Look up a node by its ComfyUI class name:
 

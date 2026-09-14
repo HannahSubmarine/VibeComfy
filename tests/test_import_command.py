@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
+import builtins
 from pathlib import Path
 
 import pytest
 
 from vibecomfy.cli import build_parser
 from vibecomfy.commands import import_workflow
+from vibecomfy.porting.import_service import ImportArtifacts
 from tests._cli_helpers import _load_emitted_provenance, _write_port_node_index, _write_port_workflow
 
 
@@ -17,7 +18,7 @@ def _run(argv: list[str]) -> int:
     return args.func(args)
 
 
-def test_import_creates_complete_folder_preserves_source_and_points_to_followups(
+def test_import_creates_inspectable_origin_bundle_and_points_to_tools(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     _write_port_node_index(tmp_path)
@@ -25,25 +26,31 @@ def test_import_creates_complete_folder_preserves_source_and_points_to_followups
     original = source.read_bytes()
     monkeypatch.chdir(tmp_path)
 
-    code = _run([str(source)])
+    code = _run([str(source), "--json"])
 
     destination = tmp_path / "workflows" / "port_workflow"
     assert code == 0
+    output = json.loads(capsys.readouterr().out)
     assert (destination / "source.json").read_bytes() == original
     assert (destination / "workflow.py").is_file()
     assert (destination / "workflow.vibe.json").is_file()
+    assert not (destination / "edit-report.json").exists()
+    report = output["report"]
+    assert report["transition_kind"] == "origin"
+    assert report["parent_revision"] is None
+    assert report["parent_task_id"] is None
+    assert report["after"]["parent_revision"] is None
+    assert report["members"]["source.json"] == f"sha256:{hashlib.sha256(original).hexdigest()}"
     assert _load_emitted_provenance(destination / "workflow.py")["source_hash"] == f"sha256:{hashlib.sha256(original).hexdigest()}"
     emitted_python = (destination / "workflow.py").read_text(encoding="utf-8")
     assert "source_ref='source.json'" in emitted_python
     assert str(tmp_path) not in emitted_python
     assert str(source.resolve()) not in emitted_python
     assert str(tmp_path).encode() not in (destination / "workflow.vibe.json").read_bytes()
-    output = capsys.readouterr().out
-    assert f"vibecomfy inspect {destination}" in output
-    assert f"vibecomfy analyze info {destination}" in output
-    assert f"vibecomfy validate {destination}" in output
-    assert f"vibecomfy doctor {destination}" in output
-    assert "Edit the Python file directly" in output
+    assert output["next"]["targets"] == f"vibecomfy edit targets {destination}"
+    assert output["next"]["validate"] == f"vibecomfy validate {destination}"
+    assert output["next"]["node"] == "vibecomfy node <ClassType>"
+    assert output["tracking"]["mode"] == "untracked"
     assert not list((tmp_path / "workflows").glob(".*.import-*"))
 
     from vibecomfy.cli_loader import load_bundle
@@ -52,6 +59,7 @@ def test_import_creates_complete_folder_preserves_source_and_points_to_followups
     bundle = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
     bundle.require_canonical_authority("workflow validation")
     assert bundle.workflow.id == "port_workflow"
+    assert bundle.provenance["operation"] == "imported"
     assert bundle.workflow.validate().ok
     relocated = tmp_path / "moved workflow"
     destination.rename(relocated)
@@ -69,12 +77,12 @@ def test_import_collision_and_conversion_failure_leave_no_partial_destination(
     destination.mkdir()
     called = False
 
-    def unexpected_convert(*_args, **_kwargs):
+    def unexpected_import(*_args, **_kwargs):
         nonlocal called
         called = True
-        return 0, {}, ""
+        raise AssertionError("existing destination must be rejected before conversion")
 
-    monkeypatch.setattr(import_workflow, "_convert", unexpected_convert)
+    monkeypatch.setattr("vibecomfy.porting.import_service.import_workflow_bytes", unexpected_import)
     assert _run([str(source), "--out", str(destination), "--json"]) == 1
     assert destination.is_dir() and list(destination.iterdir()) == []
     assert not called
@@ -82,10 +90,10 @@ def test_import_collision_and_conversion_failure_leave_no_partial_destination(
 
     destination.rmdir()
 
-    def failed_convert(*_args, **_kwargs):
-        return 1, {"status": "error", "message": "conversion rejected"}, ""
+    def failed_import(*_args, **_kwargs):
+        raise ValueError("conversion rejected")
 
-    monkeypatch.setattr(import_workflow, "_convert", failed_convert)
+    monkeypatch.setattr("vibecomfy.porting.import_service.import_workflow_bytes", failed_import)
     assert _run([str(source), "--out", str(destination), "--json"]) == 1
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "error"
@@ -100,19 +108,61 @@ def test_import_dry_run_previews_paths_without_creating_anything(
     source = tmp_path / "incoming.json"
     source.write_text("{}", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    observed: list[tuple[Path, bool]] = []
+    source_bytes = source.read_bytes()
+    members = {
+        "workflow.py": "sha256:" + "a" * 64,
+        "workflow.vibe.json": "sha256:" + "b" * 64,
+        "source.json": "sha256:" + hashlib.sha256(source_bytes).hexdigest(),
+    }
+    artifacts = ImportArtifacts(
+        source_bytes=source_bytes,
+        python_bytes=b"python",
+        companion_bytes=b"{}",
+        report={"workflow_id": "incoming", "revision_id": "rev-1", "members": members, "readiness": {}, "diagnostics": []},
+    )
+    observed: list[tuple[bytes, str]] = []
 
-    def preview_convert(source_path: Path, python_path: Path, *, dry_run: bool, **_kwargs):
-        observed.append((python_path, dry_run))
-        return 0, {"status": "ok", "write": {"dry_run": True}}, ""
+    def preview_import(source_value: bytes, *, workflow_id: str, **_kwargs):
+        observed.append((source_value, workflow_id))
+        return artifacts
 
-    monkeypatch.setattr(import_workflow, "_convert", preview_convert)
+    monkeypatch.setattr("vibecomfy.porting.import_service.import_workflow_bytes", preview_import)
     assert _run([str(source), "--dry-run", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "preview"
     assert payload["folder"] == str(tmp_path / "workflows" / "incoming")
-    assert observed == [(tmp_path / "workflows" / "incoming" / "workflow.py", True)]
+    assert observed == [(source_bytes, "incoming")]
     assert not (tmp_path / "workflows").exists()
+
+
+def test_local_import_does_not_import_or_require_astrid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "incoming.json"
+    source.write_bytes(b"{}\n")
+    monkeypatch.chdir(tmp_path)
+    artifacts = ImportArtifacts(
+        source_bytes=source.read_bytes(),
+        python_bytes=b"# local Python workflow\n",
+        companion_bytes=b"{}\n",
+        report={"workflow_id": "incoming", "revision_id": "revision", "members": {}},
+    )
+    monkeypatch.setattr("vibecomfy.porting.import_service.import_workflow_bytes", lambda *_a, **_kw: artifacts)
+    args = build_parser().parse_args(["import", str(source), "--json"])
+    real_import = builtins.__import__
+
+    def forbid_astrid(name, *args, **kwargs):
+        if name == "astrid" or name.startswith("astrid."):
+            raise AssertionError("the local import path attempted to import Astrid")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", forbid_astrid)
+    assert args.func(args) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["tracking"]["mode"] == "untracked"
+    assert sorted(path.name for path in (tmp_path / "workflows" / "incoming").iterdir()) == [
+        "source.json", "workflow.py", "workflow.vibe.json"
+    ]
 
 
 def test_import_followup_commands_quote_folder_paths_with_spaces(capsys: pytest.CaptureFixture[str]) -> None:
@@ -123,10 +173,11 @@ def test_import_followup_commands_quote_folder_paths_with_spaces(capsys: pytest.
             "folder": folder,
             "python": f"{folder}/workflow.py",
             "companion": f"{folder}/workflow.vibe.json",
-            "original": f"{folder}/source.json",
+            "source_copy": f"{folder}/source.json",
+            "report_path": f"{folder}/edit-report.json",
         },
         json_output=False,
     )
     output = capsys.readouterr().out
-    assert f"vibecomfy inspect '{folder}'" in output
+    assert f"vibecomfy edit targets '{folder}'" in output
     assert f"vibecomfy validate '{folder}'" in output

@@ -9,7 +9,9 @@ or execution registry.
 
 from __future__ import annotations
 
+import ast
 import copy
+import hashlib
 import json
 import math
 import os
@@ -1282,17 +1284,29 @@ def _first(mapping: Mapping[str, Any], *names: str) -> Any:
 def _source_provenance(provenance: Any) -> Any:
     """Return stable provenance suitable for regenerated Python source.
 
-    ``revision_evidence`` is derived when a pair is bound and is deliberately
-    retained on the in-memory bundle for lineage checks. It is not source
-    authority, though: embedding it in regenerated Python makes a second
-    load/save cycle change the source solely because the first cycle created a
-    revision. Stable provenance and the parent precondition remain part of the
-    source contract; derived lineage stays at the pair boundary.
+    Derived revision chains stay out of generated Python so a load/save cycle
+    does not grow history. Preserve only the explicit parent witness required
+    to reload this exact successor revision; it is stable provenance and does
+    not name the current bundle as its own parent.
     """
     if not isinstance(provenance, Mapping):
         return provenance
     result = dict(provenance)
-    result.pop("revision_evidence", None)
+    evidence = result.pop("revision_evidence", None)
+    parent_revision = result.get("parent_revision")
+    if isinstance(parent_revision, str) and parent_revision:
+        if isinstance(evidence, Mapping):
+            candidates = list(evidence.values())
+        elif isinstance(evidence, (list, tuple)):
+            candidates = list(evidence)
+        else:
+            candidates = []
+        parent_records = [
+            dict(item) for item in candidates
+            if isinstance(item, Mapping) and item.get("revision_id") == parent_revision
+        ]
+        if parent_records:
+            result["revision_evidence"] = [parent_records[-1]]
     if result.get("parent_revision") == "":
         result.pop("parent_revision")
     return result
@@ -2731,12 +2745,22 @@ def emit_bundle(
 
 def _atomic_publish_pair(
     path: Path,
-    source: str,
+    source: str | bytes,
     sidecar: Mapping[str, Any] | None,
     *,
     expected: WorkflowBundle | None = None,
+    expected_members: Mapping[str | Path, str | None] | None = None,
+    extra_members: Mapping[str | Path, bytes] | None = None,
 ) -> None:
-    """Validate staged bytes, then publish a complete pair with explicit rollback."""
+    """Validate staged bytes, then publish a complete bundle with rollback.
+
+    ``expected_members`` is a best-effort compare-and-swap precondition checked
+    after staging/backup and immediately before the first visible replacement.
+    It is not a cross-process lock: a writer that ignores this publisher can
+    still race in the tiny interval between the check and replacement.
+    ``extra_members`` lets a caller publish immutable bundle evidence (such as
+    the original ``source.json``) in the same recoverable replacement set.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     staged: list[tuple[Path, Path]] = []
     backups: list[tuple[Path, Path]] = []
@@ -2760,6 +2784,11 @@ def _atomic_publish_pair(
         backed = {destination for _, destination in backups}
         errors.extend(cleanup([destination for _, destination in staged if destination in replaced and destination.exists() and destination not in backed]))
         for backup, destination in reversed(backups):
+            if destination not in replaced:
+                # Never restore the precondition snapshot over a concurrent
+                # writer when compare-and-swap fails before our first visible
+                # replacement.
+                continue
             try:
                 if backup.exists():
                     os.replace(backup, destination)
@@ -2774,14 +2803,27 @@ def _atomic_publish_pair(
             raise WorkflowBundleError(f"publication failed: {exc}; rollback/cleanup failed: {'; '.join(errors)}") from exc
 
     try:
-        members = [(path, source)]
+        source_payload = source.encode("utf-8") if isinstance(source, str) else source
+        if not isinstance(source_payload, bytes):
+            raise TypeError("workflow Python source must be str or bytes")
+        members: list[tuple[Path, bytes]] = [(path, source_payload)]
         if sidecar is not None:
-            members.append((_sidecar_path(path), canonical_json(sidecar)))
+            members.append((_sidecar_path(path), canonical_json(sidecar).encode("utf-8")))
+        if extra_members is not None:
+            for raw_destination, payload in extra_members.items():
+                destination = Path(raw_destination)
+                if not isinstance(payload, bytes):
+                    raise TypeError("extra bundle member payloads must be bytes")
+                if destination in {member for member, _ in members}:
+                    raise WorkflowBundleError(
+                        f"extra bundle member conflicts with canonical pair member {destination}"
+                    )
+                members.append((destination, payload))
         for destination, payload in members:
             fd, raw_tmp = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=destination.suffix or ".tmp", dir=str(path.parent))
             temporary = Path(raw_tmp)
             try:
-                with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                with os.fdopen(fd, "wb") as handle:
                     handle.write(payload)
                     handle.flush()
                     os.fsync(handle.fileno())
@@ -2833,6 +2875,28 @@ def _atomic_publish_pair(
                 shutil.copy2(destination, backup)
                 backup_contents[destination] = destination.read_bytes()
                 backups.append((backup, destination))
+        # Compare all original bundle members after potentially slow staging
+        # and backup work, immediately before making any replacement visible.
+        # A missing member is represented by ``None`` so first publication
+        # into an output location cannot silently overwrite an existing file.
+        if expected_members is not None:
+            for raw_member, expected_digest in expected_members.items():
+                member = Path(raw_member)
+                try:
+                    payload = member.read_bytes()
+                except FileNotFoundError:
+                    actual_digest = None
+                except OSError as exc:
+                    raise WorkflowBundleError(
+                        f"could not recheck workflow bundle member {member}: {exc}"
+                    ) from exc
+                else:
+                    actual_digest = hashlib.sha256(payload).hexdigest()
+                if actual_digest != expected_digest:
+                    raise WorkflowBundleError(
+                        f"workflow bundle changed before publication: {member}; "
+                        "reload it or choose an explicit --out destination"
+                    )
         for temporary, destination in staged:
             os.replace(temporary, destination)
             replaced.add(destination)
@@ -2900,6 +2964,114 @@ def capture_bundle(
     )
 
 
+def _generated_metadata_expressions(
+    source: bytes,
+) -> tuple[dict[str, ast.AST], dict[str, Any]]:
+    """Find the generated READY_METADATA fields that bind a published pair."""
+    try:
+        module = ast.parse(source)
+    except (SyntaxError, ValueError, UnicodeError) as exc:
+        raise WorkflowBundleError(f"Python source cannot be parsed safely: {exc}") from exc
+
+    assignments: list[ast.AST] = []
+    for statement in module.body:
+        if isinstance(statement, ast.Assign):
+            targets = statement.targets
+        elif isinstance(statement, ast.AnnAssign):
+            targets = [statement.target]
+        else:
+            continue
+        if any(isinstance(target, ast.Name) and target.id == "READY_METADATA" for target in targets):
+            assignments.append(statement)
+    if len(assignments) != 1:
+        raise WorkflowBundleError(
+            "expected exactly one generated READY_METADATA assignment"
+        )
+    assignment = assignments[0]
+    value = assignment.value
+    if not isinstance(value, ast.Call):
+        raise WorkflowBundleError("READY_METADATA is not a generated metadata call")
+    function = value.func
+    if not (
+        isinstance(function, ast.Attribute)
+        and function.attr == "build"
+        and isinstance(function.value, ast.Name)
+        and function.value.id == "ReadyMetadata"
+    ):
+        raise WorkflowBundleError("READY_METADATA is not built by ReadyMetadata.build")
+    expressions: dict[str, ast.AST] = {}
+    values: dict[str, Any] = {}
+    for name in ("operation", "provenance", "source_bundle"):
+        matches = [keyword.value for keyword in value.keywords if keyword.arg == name]
+        if len(matches) != 1:
+            raise WorkflowBundleError(f"READY_METADATA must contain one {name} field")
+        expressions[name] = matches[0]
+        try:
+            values[name] = ast.literal_eval(matches[0])
+        except (ValueError, TypeError, SyntaxError) as exc:
+            raise WorkflowBundleError(f"READY_METADATA {name} field is not a literal") from exc
+    if not isinstance(values["operation"], str) or values["operation"] not in _OPERATIONS:
+        raise WorkflowBundleError("READY_METADATA operation field is invalid")
+    if not isinstance(values["provenance"], Mapping):
+        raise WorkflowBundleError("READY_METADATA provenance field is not an object")
+    try:
+        values["source_bundle"] = _validate_v2_marker(values["source_bundle"])
+    except WorkflowBundleError as exc:
+        raise WorkflowBundleError(f"source_bundle marker is invalid: {exc}") from exc
+    return expressions, values
+
+
+def _preserve_python_source_with_marker(
+    original_source: bytes,
+    canonical_source: str,
+) -> bytes:
+    """Keep captured Python bytes, replacing only the generated v2 marker.
+
+    Direct capture executes source under the normal confirmation boundary, but
+    the VibeWorkflow model cannot represent extra user-authored Python. A
+    capture therefore retains the original program and updates only the
+    custody marker that binds it to the newly published companion. The caller
+    publishes the returned bytes through the regular staged pair validator.
+    """
+    try:
+        original_expressions, _old_values = _generated_metadata_expressions(original_source)
+        canonical_bytes = canonical_source.encode("utf-8")
+        canonical_expressions, _new_values = _generated_metadata_expressions(canonical_bytes)
+    except WorkflowBundleError as exc:
+        raise WorkflowBundleError(
+            f"cannot preserve direct Python capture safely: {exc}"
+        ) from exc
+
+    def span(source: bytes, expression: ast.AST) -> tuple[int, int]:
+        if (
+            expression.lineno is None
+            or expression.end_lineno is None
+            or expression.end_col_offset is None
+        ):
+            raise WorkflowBundleError("source_bundle marker has no complete source span")
+        lines = source.splitlines(keepends=True)
+        start = sum(len(line) for line in lines[: expression.lineno - 1]) + expression.col_offset
+        end = sum(len(line) for line in lines[: expression.end_lineno - 1]) + expression.end_col_offset
+        if start < 0 or end < start or end > len(source):
+            raise WorkflowBundleError("source_bundle marker span is outside the Python source")
+        return start, end
+
+    replacements: list[tuple[int, int, bytes]] = []
+    for name in ("operation", "provenance", "source_bundle"):
+        old_start, old_end = span(original_source, original_expressions[name])
+        new_start, new_end = span(canonical_bytes, canonical_expressions[name])
+        replacement = canonical_bytes[new_start:new_end]
+        if not replacement.isascii():
+            raise WorkflowBundleError(
+                f"canonical READY_METADATA {name} field is not ASCII"
+            )
+        replacements.append((old_start, old_end, replacement))
+    result = original_source
+    for start, end, replacement in sorted(replacements, reverse=True):
+        result = result[:start] + replacement + result[end:]
+    return result
+
+
 def emit_bundle_with_candidate(
     workflow: VibeWorkflow,
     destination: str | Path,
@@ -2911,6 +3083,9 @@ def emit_bundle_with_candidate(
     operation: str = "authored",
     source_provenance: Mapping[str, Any] | None = None,
     source_format: str = "scratchpad",
+    expected_members: Mapping[str | Path, str | None] | None = None,
+    extra_members: Mapping[str | Path, bytes] | None = None,
+    preserved_python_source: bytes | None = None,
 ) -> WorkflowBundle:
     """Internal shared writer for emit/capture candidate bundles.
 
@@ -3014,11 +3189,15 @@ def emit_bundle_with_candidate(
             provenance=_source_provenance(source_provenance or bundle.provenance),
             external_custody=True,
         )
+    if preserved_python_source is not None:
+        source = _preserve_python_source_with_marker(preserved_python_source, source)
     _atomic_publish_pair(
         path,
         source,
         bundle.ui_sidecar,
         expected=bundle,
+        expected_members=expected_members,
+        extra_members=extra_members,
     )
     return bundle
 

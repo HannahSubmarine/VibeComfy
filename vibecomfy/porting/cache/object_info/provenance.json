@@ -1,5 +1,5 @@
 {
-  "class_count": 2101,
+  "class_count": 2205,
   "packs": {
     "AILab_AudioDuration@runpod-snapshot.json": {
       "classes": 1,
@@ -223,12 +223,26 @@
       "repo": null,
       "schema_sha256": null
     },
+    "comfy_api_nodes@legacy-import.json": {
+      "classes": 239,
+      "pack": "comfy_api_nodes",
+      "pack_version": "legacy-import",
+      "schema_sha256": "52041b144be1fa93c0cbf421340046fc33648eedbab51a9d0dc39a5a5e79f830",
+      "source_kind": "legacy_object_info_import"
+    },
     "comfy_core@runpod-snapshot.json": {
       "classes": 533,
       "locked_commit": null,
       "pack": "comfy_core",
       "repo": null,
       "schema_sha256": null
+    },
+    "comfy_extras@legacy-import.json": {
+      "classes": 536,
+      "pack": "comfy_extras",
+      "pack_version": "legacy-import",
+      "schema_sha256": "253fe97862fc7e9205f7d204daaa5d47b4ee3d660dfc7e01956fcb6bf5882085",
+      "source_kind": "legacy_object_info_import"
     },
     "comfy_extras@runpod-snapshot.json": {
       "classes": 233,
@@ -264,6 +278,27 @@
       "repo": "https://github.com/ryanontheinside/ComfyUI_RyanOnTheInside",
       "schema_sha256": "e7ac1bc8b4f0061c578a0f13d5bafd134fada020ff37ba53f303535b05c95e1a",
       "source_kind": "on_demand_import"
+    },
+    "custom_nodes.LanPaint@legacy-import.json": {
+      "classes": 12,
+      "pack": "custom_nodes.LanPaint",
+      "pack_version": "legacy-import",
+      "schema_sha256": "b7affc43348b36163538430d9b23cc34ae81229eeee75fe4ba22efe9235a63f6",
+      "source_kind": "legacy_object_info_import"
+    },
+    "custom_nodes.websocket_image_save@legacy-import.json": {
+      "classes": 1,
+      "pack": "custom_nodes.websocket_image_save",
+      "pack_version": "legacy-import",
+      "schema_sha256": "3b66e4e3d6f81442058053ae51ab326946077161aa8d39db55e662f3c46f0d30",
+      "source_kind": "legacy_object_info_import"
+    },
+    "nodes@legacy-import.json": {
+      "classes": 65,
+      "pack": "nodes",
+      "pack_version": "legacy-import",
+      "schema_sha256": "05597e765075c02864d3de92a3a2c347bee29ab57b5fd21e0c2d605083a48e62",
+      "source_kind": "legacy_object_info_import"
     },
     "rgthree-comfy@runpod-snapshot.json": {
       "classes": 24,

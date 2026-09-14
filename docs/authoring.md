@@ -20,7 +20,7 @@ For the normal ComfyUI JSON onboarding path, create an editable workflow bundle:
 vibecomfy import <workflow.json>
 vibecomfy inspect workflows/<source-stem> --json
 vibecomfy analyze info workflows/<source-stem>
-# Edit workflows/<source-stem>/workflow.py before checking your changes:
+vibecomfy edit workflows/<source-stem> set sampler.steps 30
 vibecomfy validate workflows/<source-stem> --json
 vibecomfy doctor workflows/<source-stem> --json
 ```
@@ -32,6 +32,13 @@ existing destinations are refused. `--dry-run` previews without writing and
 `--json` returns machine-readable output. Provenance remains in the bundle
 metadata. Import prepares authoring files; it does not install dependencies,
 configure a runtime, run the graph, or promote it to a ready template.
+Standalone use is local and untracked by default. Pass `--project <name>` to
+`import` and `edit` when you want Astrid to record the origin and accepted
+revisions. For direct Python changes, run `vibecomfy edit <bundle> capture`
+to publish and record a capture. Astrid users already inside a project should
+use the native `vibecomfy.import` task route; the
+[workflow onboarding guide](guides/workflow-onboarding.md) describes all three
+paths and how to inspect their history.
 
 For advanced conversion and promotion work, the porting workbench remains
 available:

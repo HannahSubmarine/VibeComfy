@@ -1,0 +1,652 @@
+"""Typed workflow edits, batch preview, and explicit capture."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+from typing import Any, Mapping
+
+
+def _json_value(raw: str) -> Any:
+    """Parse JSON values while keeping an unquoted CLI string convenient."""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+
+def _json_object(raw: str, *, option: str) -> dict[str, Any]:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise argparse.ArgumentTypeError(f"{option} must be a JSON object: {exc.msg}") from exc
+    if not isinstance(value, dict):
+        raise argparse.ArgumentTypeError(f"{option} must be a JSON object")
+    return value
+
+
+def _load_batch(path_value: str) -> list[dict[str, Any]]:
+    if path_value == "-":
+        payload = json.load(sys.stdin)
+    else:
+        payload = json.loads(Path(path_value).expanduser().read_text(encoding="utf-8"))
+    if isinstance(payload, dict):
+        version = payload.get("schema_version", 1)
+        expected_revision = payload.get("expected_revision", 0)
+        if version != 1:
+            raise ValueError("batch schema_version must be 1")
+        if isinstance(expected_revision, bool) or not isinstance(expected_revision, int) or expected_revision != 0:
+            raise ValueError("expected_revision must be 0 for a new atomic bundle edit")
+        payload = payload.get("ops")
+    if not isinstance(payload, list) or not payload:
+        raise ValueError("batch input must be a non-empty JSON array or an object with an `ops` array")
+    if any(not isinstance(item, dict) for item in payload):
+        raise ValueError("every batch operation must be a JSON object")
+    return payload
+
+
+def _operation(args: argparse.Namespace) -> dict[str, Any] | None:
+    action = args.action
+    if action == "set":
+        if "." not in args.target_field:
+            raise ValueError("set target must use <target>.<field>, for example ksampler.steps")
+        target, field = args.target_field.rsplit(".", 1)
+        if not target or not field:
+            raise ValueError("set target must use <target>.<field>")
+        if args.value_file and args.value is not None:
+            raise ValueError("choose a positional value or --value-file, not both")
+        if args.value_file:
+            value = Path(args.value_file).expanduser().read_text(encoding="utf-8")
+        elif args.value is not None:
+            value = _json_value(args.value)
+        else:
+            raise ValueError("set requires a value or --value-file PATH")
+        return {"tool": "edit_node", "args": {
+            "target": target, "field": field, "value": value,
+            **({"scope_path": args.scope_path} if args.scope_path else {}),
+        }}
+    if action == "add":
+        values: dict[str, Any] = {"class_type": args.class_type}
+        if args.uid is not None:
+            values["uid"] = args.uid
+        if args.node_id is not None:
+            values["node_id"] = args.node_id
+        if args.fields is not None:
+            values["fields"] = args.fields
+        if args.inputs is not None:
+            values["inputs"] = args.inputs
+        if args.scope_path:
+            values["scope_path"] = args.scope_path
+        return {"tool": "add_node", "args": values}
+    if action == "remove":
+        return {"tool": "remove_node", "args": {"target": args.target, **({"scope_path": args.scope_path} if args.scope_path else {})}}
+    if action == "connect":
+        return {"tool": "upsert_link", "args": {
+            "source": args.source, "target": args.target, "target_input": args.target_input,
+            "source_output": _json_value(args.source_output),
+            **({"scope_path": args.scope_path} if args.scope_path else {}),
+        }}
+    if action == "disconnect":
+        return {"tool": "remove_link", "args": {
+            "target": args.target, "target_input": args.target_input,
+            **({"scope_path": args.scope_path} if args.scope_path else {}),
+        }}
+    if action == "mode":
+        return {"tool": "set_node_mode", "args": {
+            "target": args.target, "mode": args.mode,
+            **({"scope_path": args.scope_path} if args.scope_path else {}),
+        }}
+    return None
+
+
+def _targets(path: str, *, json_output: bool) -> int:
+    from vibecomfy.cli_loader import load_bundle
+    from vibecomfy.porting.edit.session import EditSession
+    from vibecomfy.schema import get_authoring_schema_provider
+    from vibecomfy.ingest.snapshot import snapshot_of
+
+    try:
+        provider = get_authoring_schema_provider(on_demand_schemas=False)
+        bundle = load_bundle(path, schema_provider=provider)
+        bundle.require_canonical_authority("workflow target discovery")
+        graph = bundle.materialize_ui(schema_provider=provider, strict=True)
+        session = EditSession(
+            graph,
+            initial_workflow=bundle.workflow,
+            workflow_snapshot=snapshot_of(bundle.workflow),
+            schema_provider=provider,
+        )
+        targets = []
+        for name, uid in sorted(session.uid_by_name.items(), key=lambda item: (item[0].casefold(), item[0])):
+            node = next((node for node in bundle.workflow.nodes.values() if str(node.uid) == str(uid)), None)
+            if node is None:
+                continue
+            targets.append({
+                "target": name,
+                "uid": str(uid),
+                "node_id": str(node.id),
+                "class_type": str(node.class_type),
+                "fields": sorted(str(field) for field in node.inputs),
+            })
+        payload = {"status": "ok", "workflow_id": bundle.workflow.id, "revision": bundle.revision_id, "targets": targets}
+    except Exception as exc:
+        payload = {"status": "error", "message": f"{type(exc).__name__}: {exc}"}
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        else:
+            print(f"Could not inspect workflow targets: {payload['message']}", file=sys.stderr)
+        return 1
+
+    if json_output:
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+    else:
+        print(f"Workflow: {payload['workflow_id']} (revision {payload['revision']})")
+        if not targets:
+            print("(no editable node targets)")
+        for item in targets:
+            print(f"{item['target']}  uid={item['uid']}  node={item['node_id']}  {item['class_type']}")
+            if item["fields"]:
+                print(f"  fields: {', '.join(item['fields'])}")
+    return 0
+
+
+def _workflow_paths(reference: str | Path) -> tuple[Path, Path, Path]:
+    python_path = Path(reference).expanduser()
+    if python_path.is_dir() or (python_path.suffix.lower() != ".py"):
+        python_path = python_path / "workflow.py"
+    python_path = python_path.resolve()
+    return python_path, python_path.with_suffix(".vibe.json"), python_path.parent / "source.json"
+
+
+def _read_members(
+    reference: str | Path,
+    *,
+    require_source: bool = False,
+) -> tuple[Path, dict[str, bytes], dict[str, str]]:
+    python_path, companion_path, source_path = _workflow_paths(reference)
+    paths = {
+        "workflow.py": python_path,
+        "workflow.vibe.json": companion_path,
+        "source.json": source_path,
+    }
+    try:
+        members = {
+            name: path.read_bytes()
+            for name, path in paths.items()
+            if name != "source.json" or path.exists() or require_source
+        }
+        if require_source and set(members) != set(paths):
+            raise FileNotFoundError(paths["source.json"])
+    except OSError as exc:
+        raise ValueError(f"tracked workflow needs sibling workflow.py, workflow.vibe.json, and source.json members: {exc}") from exc
+    digests = {name: hashlib.sha256(payload).hexdigest() for name, payload in members.items()}
+    return python_path, members, digests
+
+
+def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
+    """Admit one canonical typed edit/capture, then materialize settled bytes."""
+    from vibecomfy.commands._astrid_workflows import (
+        AstridWorkflowError,
+        create_task,
+        digest_bytes,
+        download_outputs,
+        find_receipt,
+        materialize_outputs,
+        open_client,
+        report_for_outputs,
+        resolve_project,
+        save_receipt,
+        stable_idempotency_key,
+        upload_bytes,
+        wait_for_task,
+    )
+
+    client = open_client()
+    project_id = resolve_project(client, args.project)
+    python_path, current_members, current_hashes = _read_members(args.workflow, require_source=True)
+    current_as_astrid = {name: "sha256:" + digest for name, digest in current_hashes.items()}
+    direct_capture = args.action == "capture" and args.ui is None
+
+    from vibecomfy.commands._astrid_workflows import _data
+
+    parent_receipt = find_receipt(
+        project_id=project_id,
+        workflow_id=None,
+        member_digests=current_as_astrid,
+        allow_python_mismatch=direct_capture,
+    )
+    if parent_receipt is None:
+        raise AstridWorkflowError(
+            "this exact bundle has no matching Astrid origin or accepted transition. "
+            "Start its tracked history with `vibecomfy import SOURCE --project PROJECT`."
+        )
+    workflow_id = str(parent_receipt.get("workflow_id") or "")
+    if not workflow_id:
+        raise AstridWorkflowError("the local Astrid recovery receipt has no workflow identity")
+    parent_task_id = str(parent_receipt.get("task_id") or "")
+    parent_revision = parent_receipt.get("revision_id")
+    if not parent_task_id or not isinstance(parent_revision, str) or not parent_revision:
+        raise AstridWorkflowError("the local Astrid receipt is missing its parent task or revision")
+    parent_origin_task = parent_receipt.get("origin_task_id")
+    if parent_receipt.get("transition_kind") == "origin":
+        origin_task_id = parent_task_id
+    else:
+        origin_task_id = str(parent_origin_task or "") or None
+    if not origin_task_id:
+        raise AstridWorkflowError("the tracked parent receipt has no origin task identity")
+
+    transition_kind = "manual_capture" if args.action == "capture" else "typed_edit"
+    input_members = dict(current_members)
+    local_precondition = dict(current_hashes)
+    if direct_capture:
+        # The local Python is the candidate, not the parent. Recover the exact
+        # accepted parent members from the previous immutable task outputs.
+        parent_task = _data(client.tasks.show(parent_task_id), action=f"read parent task {parent_task_id}")
+        _old_task, parent_outputs, parent_manifest = download_outputs(
+            client,
+            parent_task,
+            expected_names={"python", "companion", "source", "report"},
+        )
+        expected_parent_outputs = parent_receipt.get("outputs")
+        if not isinstance(expected_parent_outputs, Mapping):
+            raise AstridWorkflowError("the parent task receipt is missing settled output digests")
+        for output_name, member_name in (
+            ("python", "workflow.py"),
+            ("companion", "workflow.vibe.json"),
+            ("source", "source.json"),
+        ):
+            if parent_manifest.get(output_name) != expected_parent_outputs.get(member_name):
+                raise AstridWorkflowError("parent task outputs no longer match the local receipt; refuse capture")
+        if parent_outputs["companion"] != current_members["workflow.vibe.json"] or parent_outputs["source"] != current_members["source.json"]:
+            raise AstridWorkflowError("capture candidate companion/source no longer match the accepted parent")
+        input_members = {
+            "workflow.py": parent_outputs["python"],
+            "workflow.vibe.json": parent_outputs["companion"],
+            "source.json": parent_outputs["source"],
+        }
+    else:
+        from vibecomfy.cli_loader import load_bundle
+        from vibecomfy.schema import get_authoring_schema_provider
+
+        bundle = load_bundle(python_path, schema_provider=get_authoring_schema_provider(on_demand_schemas=False))
+        bundle.require_canonical_authority("tracked workflow editing")
+        if bundle.workflow.id != workflow_id or bundle.revision_id != parent_revision:
+            raise AstridWorkflowError("local workflow identity/revision differs from its last Astrid receipt")
+        for key, name in (
+            ("workflow.py", "workflow.py"),
+            ("workflow.vibe.json", "companion"),
+            ("source.json", "source"),
+        ):
+            if parent_receipt["outputs"].get(key) != digest_bytes(current_members[key]):
+                raise AstridWorkflowError("local workflow bytes differ from its last settled Astrid task")
+
+    if args.action == "batch":
+        ops = _load_batch(args.operations)
+    elif args.action == "capture":
+        ops = []
+    else:
+        call = _operation(args)
+        if call is None:
+            raise ValueError(f"unsupported tracked edit action {args.action}")
+        ops = [{"op": call["tool"], **call["args"]}]
+
+    uploads: list[dict[str, str]] = []
+    upload_payloads: list[tuple[str, str, bytes]] = [
+        ("python", "workflow.py", input_members["workflow.py"]),
+        ("companion", "workflow.vibe.json", input_members["workflow.vibe.json"]),
+        ("source", "source.json", input_members["source.json"]),
+    ]
+    extra_inputs: dict[str, Any] = {
+        "parent_revision": parent_revision,
+        "parent_task_id": parent_task_id,
+        "origin_task_id": origin_task_id,
+        "transition_kind": transition_kind,
+    }
+    operation_envelope: dict[str, Any] | None = None
+    if transition_kind == "typed_edit":
+        operation_envelope = {"schema_version": 1, "expected_revision": 0, "ops": ops}
+        operation_bytes = (json.dumps(operation_envelope, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
+        upload_payloads.append(("operations", "operations.json", operation_bytes))
+    elif direct_capture:
+        upload_payloads.append(("capture_python", "capture_python.py", current_members["workflow.py"]))
+    else:
+        graph_bytes = Path(args.ui).expanduser().read_bytes()
+        graph_value = json.loads(graph_bytes.decode("utf-8"))
+        if not isinstance(graph_value, dict):
+            raise ValueError("UI capture source must be a JSON object")
+        upload_payloads.append(("capture_graph", "capture_graph.json", graph_bytes))
+
+    request_digests: dict[str, str] = {}
+    for input_name, filename, payload in upload_payloads:
+        digest = digest_bytes(payload)
+        request_digests[input_name] = digest
+        uploads.append(upload_bytes(
+            client,
+            project_id,
+            input_name,
+            payload,
+            filename=filename,
+            key=stable_idempotency_key("vibecomfy-media-", {
+                "project_id": project_id,
+                "name": input_name,
+                "digest": digest,
+            }),
+        ))
+
+    task_request = {
+        "project_id": project_id,
+        "workflow_id": workflow_id,
+        "transition_kind": transition_kind,
+        "parent_revision": parent_revision,
+        "parent_task_id": parent_task_id,
+        "origin_task_id": origin_task_id,
+        "input_digests": request_digests,
+        "operations": operation_envelope,
+    }
+    idempotency_key = stable_idempotency_key("vibecomfy-edit-", task_request)
+    task_id = create_task(
+        client,
+        project_id=project_id,
+        capability="vibecomfy.edit",
+        workflow_id=workflow_id,
+        transition_kind=transition_kind,
+        uploads=uploads,
+        idempotency_key=idempotency_key,
+        parent_revision=parent_revision,
+        parent_task_id=parent_task_id,
+        origin_task_id=origin_task_id,
+        extra_inputs={key: value for key, value in extra_inputs.items() if key not in {"parent_revision", "parent_task_id", "origin_task_id", "transition_kind"}},
+    )
+    target = Path(args.out).expanduser().resolve() if args.out else Path(args.workflow).expanduser().resolve()
+    receipt = {
+        "schema_version": 1,
+        "task_id": task_id,
+        "project_id": project_id,
+        "project": args.project,
+        "workflow_id": workflow_id,
+        "transition_kind": transition_kind,
+        "idempotency_key": idempotency_key,
+        "target_path": str(target),
+        "separate_output": bool(args.out),
+        "parent_task_id": parent_task_id,
+        "origin_task_id": origin_task_id,
+        "parent_revision": parent_revision,
+        "parent_members": {name: digest_bytes(payload) for name, payload in input_members.items()},
+        "materialize_precondition": local_precondition if not args.out else None,
+        "outputs": {},
+        "report_digest": None,
+    }
+    save_receipt(receipt)
+    task = wait_for_task(client, task_id)
+    _finished_id, outputs, manifest = download_outputs(
+        client,
+        task,
+        expected_names={"python", "companion", "source", "report"},
+    )
+    if outputs["source"] != input_members["source.json"]:
+        raise AstridWorkflowError("edit task changed immutable source.json bytes")
+    report = report_for_outputs(
+        outputs,
+        manifest,
+        workflow_id=workflow_id,
+        transition_kind=transition_kind,
+        parent_revision=parent_revision,
+        parent_task_id=parent_task_id,
+        origin_task_id=origin_task_id,
+    )
+    receipt["outputs"] = {
+        "workflow.py": manifest["python"],
+        "workflow.vibe.json": manifest["companion"],
+        "source.json": manifest["source"],
+    }
+    receipt["report_digest"] = manifest["report"]
+    receipt["revision_id"] = report.get("revision_id")
+    save_receipt(receipt)
+    expected_local = None
+    if not args.out:
+        precondition = receipt.get("materialize_precondition")
+        expected_local = {
+            name: (value.removeprefix("sha256:") if isinstance(value, str) else value)
+            for name, value in precondition.items()
+        } if isinstance(precondition, Mapping) else None
+    destination = materialize_outputs(outputs, target, expected_members=expected_local)
+    receipt["target_path"] = str(destination)
+    save_receipt(receipt)
+    return {
+        **report,
+        "status": "saved",
+        "tracking": {"mode": "astrid", "astrid": True, "project_id": project_id},
+        "task_id": task_id,
+        "report_digest": manifest["report"],
+        "python": str(destination / "workflow.py"),
+        "companion": str(destination / "workflow.vibe.json"),
+        "source": str(destination / "source.json"),
+        "report": report,
+        "next": {
+            "validate": f"vibecomfy validate {destination}",
+            "history": f"astrid tasks show {task_id}; astrid tasks events {task_id}",
+            "recover": f"vibecomfy recover {task_id}",
+        },
+    }
+
+
+def _cmd_edit(args: argparse.Namespace) -> int:
+    if args.action == "targets":
+        return _targets(args.workflow, json_output=args.json)
+
+    try:
+        result = None
+        if args.project and not args.dry_run:
+            payload = _tracked_edit(args)
+        else:
+            tool_calls: list[dict[str, Any]] = []
+            capture_graph = None
+            capture = args.action == "capture"
+            if args.action == "batch":
+                tool_calls = [{"tool": "edit_batch", "args": {"ops": _load_batch(args.operations)}}]
+            elif args.action == "capture" and args.ui is not None:
+                capture = False
+                capture_graph = json.loads(Path(args.ui).expanduser().read_text(encoding="utf-8"))
+                if not isinstance(capture_graph, dict):
+                    raise ValueError("UI capture source must be a JSON object")
+            else:
+                operation = _operation(args)
+                if operation is not None:
+                    tool_calls = [operation]
+
+            from vibecomfy.porting.edit.bundle_service import transition_bundle
+
+            input_path, _input_members, _input_hashes = _read_members(args.workflow)
+            before_members = {}
+            for name, path in (
+                ("workflow.py", input_path),
+                ("workflow.vibe.json", input_path.with_suffix(".vibe.json")),
+                ("source.json", input_path.parent / "source.json"),
+            ):
+                try:
+                    before_members[name] = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+                except OSError:
+                    pass
+            result = transition_bundle(
+                args.workflow,
+                tool_calls=tool_calls,
+                capture=capture,
+                capture_graph=capture_graph,
+                output=args.out,
+                dry_run=args.dry_run,
+            )
+            payload = result.to_dict()
+            payload["status"] = result.status
+            payload["tracking"] = (
+                {"mode": "astrid_preview", "astrid": False, "project": args.project}
+                if args.project
+                else {"mode": "untracked", "astrid": False}
+            )
+            payload["next"] = {
+                "validate": f"vibecomfy validate {args.out or args.workflow}",
+                "inspect": f"vibecomfy inspect {args.out or args.workflow}",
+                "tracking": "preview only; omit --project to save locally, or pass --project <project> to record in Astrid",
+            }
+            if result.status == "saved":
+                from vibecomfy.cli_loader import load_bundle
+
+                python_path = Path(result.python_path)
+                after_members = {}
+                for name, path in (
+                    ("workflow.py", python_path),
+                    ("workflow.vibe.json", python_path.with_suffix(".vibe.json")),
+                    ("source.json", python_path.parent / "source.json"),
+                ):
+                    try:
+                        after_members[name] = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+                    except OSError:
+                        pass
+                bundle = load_bundle(python_path)
+                before = None
+                if result.parent_revision:
+                    before = {
+                        "revision_id": result.parent_revision,
+                        "parent_revision": None,
+                        "semantic_digest": result.before_semantic_digest,
+                        "ui_digest": result.before_ui_digest,
+                        "members": before_members,
+                    }
+                transition_kind = "manual_capture" if result.kind == "python_capture" else "typed_edit"
+                payload["report"] = {
+                    "schema_version": 1,
+                    "transition_kind": transition_kind,
+                    "workflow_id": bundle.workflow.id,
+                    "workflow_identity": bundle.workflow_identity,
+                    "revision_id": result.revision_id,
+                    "parent_revision": result.parent_revision,
+                    "parent_task_id": None,
+                    "origin_task_id": None,
+                    "before": before,
+                    "after": {
+                        "revision_id": result.revision_id,
+                        "parent_revision": result.parent_revision,
+                        "semantic_digest": result.semantic_digest,
+                        "ui_digest": result.ui_digest,
+                        "members": after_members,
+                    },
+                    "members": after_members,
+                    "operations": payload.get("operations", []),
+                    "diff": payload.get("diff"),
+                    "diff_status": payload.get("diff_status"),
+                    "diagnostics": payload.get("diagnostics", []),
+                    "tracking": payload["tracking"],
+                }
+    except Exception as exc:
+        payload = {
+            "status": "error",
+            "message": f"{type(exc).__name__}: {exc}",
+            "recovery": "Inspect targets with `vibecomfy edit targets <workflow>`, check node details with `vibecomfy node <ClassType>`, and retry with a fresh workflow revision.",
+        }
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        else:
+            print(f"Edit failed: {payload['message']}", file=sys.stderr)
+            print(payload["recovery"], file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+    else:
+        if result is None:
+            print(f"Saved {payload['transition_kind']}: {payload['python']}")
+            print(f"  revision: {payload['revision_id']}")
+            print(f"  parent:   {payload['parent_revision']}")
+            print(f"  task:     {payload['task_id']} (report {payload['report_digest']})")
+            print(f"  validate: {payload['next']['validate']}")
+            print(f"  history:  {payload['next']['history']}")
+        else:
+            status = "Preview" if result.status == "preview" else "Saved"
+            print(f"{status} {result.kind}: {result.python_path}")
+            print(f"  revision: {result.revision_id}")
+            if result.parent_revision:
+                print(f"  parent:   {result.parent_revision}")
+            print(f"  tracking: {payload['tracking']['mode']}")
+            print(f"  validate: vibecomfy validate {args.out or args.workflow}")
+            if args.action == "capture":
+                print("  capture records the aggregate workflow state; it does not invent individual edits")
+    return 0
+
+
+def _configure(subparsers, name: str, help_text: str, args_fn) -> None:
+    command = subparsers.add_parser(name, help=help_text)
+    args_fn(command)
+    command.set_defaults(func=_cmd_edit)
+
+
+def register(subparsers) -> None:
+    edit = subparsers.add_parser(
+        "edit",
+        help="Edit, batch, or explicitly capture an imported workflow.",
+        description=(
+            "Apply one typed workflow operation or one atomic batch through the canonical\n"
+            "bundle editor. Edits update the Python/companion pair together and preserve\n"
+            "source.json. Use --dry-run to preview and --out to save a separate bundle."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    edit.add_argument("workflow", help="Workflow Python file or imported workflow folder.")
+    edit.add_argument("--out", help="Write to a separate bundle directory instead of replacing the input.")
+    edit.add_argument("--project", help="Opt into Astrid task tracking for accepted changes.")
+    edit.add_argument("--dry-run", action="store_true", help="Validate and preview without publishing files.")
+    edit.add_argument("--json", action="store_true", help="Emit a JSON result.")
+    actions = edit.add_subparsers(dest="action", required=True)
+
+    def set_args(parser):
+        parser.add_argument("target_field", help="Target binding and field, such as ksampler.steps.")
+        parser.add_argument("value", nargs="?", help="JSON value, or unquoted text treated as a string.")
+        parser.add_argument("--value-file", help="Read the complete field value as UTF-8 text from this file.")
+        parser.add_argument("--scope-path", default="")
+
+    def add_args(parser):
+        parser.add_argument("class_type")
+        parser.add_argument("--uid", help="Stable identity for later references inside this batch.")
+        parser.add_argument("--node-id")
+        parser.add_argument("--fields", type=lambda value: _json_object(value, option="--fields"))
+        parser.add_argument("--inputs", type=lambda value: _json_object(value, option="--inputs"))
+        parser.add_argument("--scope-path", default="")
+
+    def remove_args(parser):
+        parser.add_argument("target")
+        parser.add_argument("--scope-path", default="")
+
+    def connect_args(parser):
+        parser.add_argument("source")
+        parser.add_argument("target")
+        parser.add_argument("target_input")
+        parser.add_argument("--source-output", default="0")
+        parser.add_argument("--scope-path", default="")
+
+    def disconnect_args(parser):
+        parser.add_argument("target")
+        parser.add_argument("target_input")
+        parser.add_argument("--scope-path", default="")
+
+    def mode_args(parser):
+        parser.add_argument("target")
+        parser.add_argument("mode", choices=("enabled", "muted", "bypassed"))
+        parser.add_argument("--scope-path", default="")
+
+    _configure(actions, "set", "Set one node field.", set_args)
+    _configure(actions, "add", "Add one node.", add_args)
+    _configure(actions, "remove", "Remove one node.", remove_args)
+    _configure(actions, "connect", "Connect a named input to a node output.", connect_args)
+    _configure(actions, "disconnect", "Remove a link from a named input.", disconnect_args)
+    _configure(actions, "mode", "Set a node to enabled, muted, or bypassed.", mode_args)
+
+    batch = actions.add_parser("batch", help="Apply ordered JSON operations atomically.")
+    batch.add_argument("operations", nargs="?", default="-", help="JSON file path; use - or omit it to read stdin.")
+    batch.set_defaults(func=_cmd_edit)
+
+    capture = actions.add_parser("capture", help="Capture direct Python changes or a UI graph as one revision.")
+    capture.add_argument("--ui", help="Capture a ComfyUI JSON graph instead of edited Python.")
+    capture.set_defaults(func=_cmd_edit)
+
+    targets = actions.add_parser("targets", help="List edit targets, stable UIDs, classes, and fields.")
+    targets.set_defaults(func=_cmd_edit)

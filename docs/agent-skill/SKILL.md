@@ -51,7 +51,7 @@ For raw JSON:
 ```bash
 vibecomfy import workflow.json
 vibecomfy inspect workflows/workflow --json
-# Edit workflows/workflow/workflow.py, then check the edited bundle:
+vibecomfy edit workflows/workflow set sampler.steps 30
 vibecomfy validate workflows/workflow --json
 vibecomfy doctor workflows/workflow --json
 ```
@@ -62,6 +62,14 @@ the bundle metadata. Use `--out <directory>`, `--dry-run`, or `--json` as
 needed. This prepares authoring files but does not install dependencies or run
 the workflow. Keep `port check` and `port convert` for advanced preflight,
 standalone scratchpad generation, and intentional ready-template conversion.
+This standalone route is local and untracked by default. Add `--project <name>`
+to `import` and `edit` to opt those transitions into an existing Astrid
+project. If the workflow is already being handled by Astrid, use its native
+`astrid media import` plus `astrid tasks create --capability vibecomfy.import`
+route instead; it inherits the admitted project/task context and does not use
+VibeComfy's `--project` flag. The [workflow onboarding guide](../guides/workflow-onboarding.md)
+explains the three routes, atomic batch edits, direct Python capture, validation,
+and Astrid history.
 
 For node details, use `vibecomfy node <ClassType>`. Its default view includes
 inputs, outputs, schema provenance, and locally available implementation class

@@ -26,6 +26,7 @@ from typing import Any, Mapping, Sequence
 from vibecomfy.porting.edit._ir_utils import (
     RecursiveEditError,
     _freeze,
+    _ir_output_slot_index,
     _uids_for_op,
     recursive_state_snapshot,
 )
@@ -168,7 +169,9 @@ def _node_id_by_uid(workflow: VibeWorkflow) -> dict[str, str]:
 def _edge_uid_records(
     workflow: VibeWorkflow,
 ) -> tuple[tuple[str, str, str, str], ...]:
+    node_items = _node_items(workflow)
     uid_by_id = _uid_by_node_id(workflow)
+    node_by_id = {str(node_id): node for node_id, node in node_items}
     records: list[tuple[str, str, str, str]] = []
     for edge_index, edge in enumerate(_edge_items(workflow)):
         source_id, source_slot, destination_id, destination_slot = _edge_identity(
@@ -192,6 +195,13 @@ def _edge_uid_records(
                     if uid is None
                 ),
             )
+        source_node = node_by_id.get(source_id)
+        # The same captured output can be spelled as a physical slot or as
+        # its retained renderer name in VibeEdge. Canonicalize only when the
+        # source node's own frozen output roster proves the correspondence;
+        # unknown/custom spellings remain visible in the signature.
+        if source_node is not None:
+            source_slot = str(_ir_output_slot_index(source_node, source_slot))
         records.append((source_uid, source_slot, destination_uid, destination_slot))
     return tuple(sorted(records))
 
@@ -398,6 +408,8 @@ def editable_signature(
 
     Runtime link IDs, layout, and other emit furniture are deliberately absent.
     Grammar-visible subgraph interfaces are included alongside nodes and edges.
+    A captured renderer output name and its physical slot index compare as
+    the same endpoint only when the source node's retained roster proves it.
     Every node and every edge endpoint must be identifiable; otherwise callers
     must fail closed rather than compare a partial quotient.
     """

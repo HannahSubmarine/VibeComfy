@@ -251,6 +251,298 @@ def test_typed_batch_is_atomic_when_one_op_is_invalid() -> None:
     assert session.working_ui == before_ui
 
 
+def test_typed_batch_can_set_a_node_added_earlier_by_explicit_uid() -> None:
+    session = _session()
+
+    result = apply_edit_tool_call(
+        session,
+        "edit_batch",
+        {
+            "ops": [
+                {
+                    "op": "add_node",
+                    "class_type": "CLIPTextEncode",
+                    "uid": "batch-prompt",
+                    "fields": {"text": "added text"},
+                    "inputs": {"clip": "checkpointloadersimple"},
+                },
+                {
+                    "op": "edit_node",
+                    "target": "batch-prompt",
+                    "field": "text",
+                    "value": "changed text",
+                },
+            ]
+        },
+        expected_revision=0,
+    )
+
+    assert result.ok
+    assert result.revision == 1
+    assert len(result.landed_ops) == 1
+    assert result.landed_ops[0].uid == "batch-prompt"
+    assert result.landed_ops[0].fields["text"] == "changed text"
+
+
+def test_typed_batch_can_add_and_connect_preceding_new_nodes() -> None:
+    session = _session()
+
+    result = apply_edit_tool_call(
+        session,
+        "edit_batch",
+        {
+            "ops": [
+                {
+                    "op": "add_node",
+                    "class_type": "CLIPTextEncode",
+                    "uid": "batch-prompt",
+                    "fields": {"text": "added text"},
+                    "inputs": {"clip": "checkpointloadersimple"},
+                },
+                {
+                    "op": "add_node",
+                    "class_type": "KSampler",
+                    "uid": "batch-sampler",
+                    "fields": {
+                        "seed": 42,
+                        "steps": 20,
+                        "cfg": 8,
+                        "sampler_name": "euler",
+                        "scheduler": "normal",
+                        "denoise": 1.0,
+                    },
+                    "inputs": {
+                        "model": "checkpointloadersimple",
+                        "positive": "cliptextencode",
+                        "negative": "cliptextencode_2",
+                        "latent_image": "emptylatentimage",
+                    },
+                },
+                {
+                    "op": "upsert_link",
+                    "source": "batch-prompt",
+                    "target": "batch-sampler",
+                    "target_input": "positive",
+                },
+                {
+                    "op": "add_node",
+                    "class_type": "VAEDecode",
+                    "uid": "batch-decode",
+                    "inputs": {
+                        "samples": "batch-sampler",
+                        "vae": "checkpointloadersimple",
+                    },
+                },
+            ]
+        },
+        expected_revision=0,
+    )
+
+    assert result.ok
+    assert result.revision == session.revision == 1
+    node_ids = {
+        node["properties"]["vibecomfy_uid"]: str(node["id"])
+        for node in session.working_ui["nodes"]
+        if node.get("properties", {}).get("vibecomfy_uid", "").startswith("batch-")
+    }
+    assert set(node_ids) == {"batch-prompt", "batch-sampler", "batch-decode"}
+    ui_links = session.working_ui["links"]
+    prompt_to_sampler = next(
+        link
+        for link in ui_links
+        if str(link[1]) == node_ids["batch-prompt"]
+        and str(link[3]) == node_ids["batch-sampler"]
+        and link[4] == 1
+    )
+    sampler_to_decode = next(
+        link
+        for link in ui_links
+        if str(link[1]) == node_ids["batch-sampler"]
+        and str(link[3]) == node_ids["batch-decode"]
+        and link[4] == 0
+    )
+    assert prompt_to_sampler[2] == 0
+    assert sampler_to_decode[2] == 0
+    sampler_ui = next(
+        node for node in session.working_ui["nodes"]
+        if str(node["id"]) == node_ids["batch-sampler"]
+    )
+    positive = next(entry for entry in sampler_ui["inputs"] if entry["name"] == "positive")
+    assert positive["link"] == prompt_to_sampler[0]
+    assert any(
+        edge.from_node == node_ids["batch-sampler"]
+        and edge.to_node == node_ids["batch-decode"]
+        and edge.to_input == "samples"
+        for edge in session.workflow.edges
+    )
+
+
+def test_typed_batch_can_connect_new_node_to_existing_node() -> None:
+    session = _session()
+
+    result = apply_edit_tool_call(
+        session,
+        "edit_batch",
+        {
+            "ops": [
+                {
+                    "op": "add_node",
+                    "class_type": "CLIPTextEncode",
+                    "uid": "batch-prompt",
+                    "fields": {"text": "replacement positive prompt"},
+                    "inputs": {"clip": "checkpointloadersimple"},
+                },
+                {
+                    "op": "upsert_link",
+                    "source": "batch-prompt",
+                    "target": "ksampler",
+                    "target_input": "positive",
+                },
+            ]
+        },
+        expected_revision=0,
+    )
+
+    assert result.ok
+    assert result.revision == session.revision == 1
+    ui_nodes = session.working_ui["nodes"]
+    new_node = next(
+        node for node in ui_nodes
+        if node.get("properties", {}).get("vibecomfy_uid") == "batch-prompt"
+    )
+    sampler = next(
+        node for node in ui_nodes
+        if str(node["id"]) == "5"
+    )
+    positive = next(entry for entry in sampler["inputs"] if entry["name"] == "positive")
+    link = next(
+        item for item in session.working_ui["links"]
+        if item[0] == positive["link"]
+    )
+    assert str(link[1]) == str(new_node["id"])
+    assert link[2] == 0
+    assert str(link[3]) == str(sampler["id"])
+    assert link[4] == 1
+    assert any(
+        edge.from_node == str(new_node["id"])
+        and edge.to_node == str(sampler["id"])
+        and edge.to_input == "positive"
+        for edge in session.workflow.edges
+    )
+    assert not any(
+        edge.from_node == "2"
+        and edge.to_node == str(sampler["id"])
+        and edge.to_input == "positive"
+        for edge in session.workflow.edges
+    )
+
+
+def test_typed_batch_add_then_invalid_edit_rolls_back_atomically() -> None:
+    session = _session()
+    before = editable_signature(session.workflow)
+    before_ui = session.working_ui
+
+    ops = lower_edit_tool_call(
+        session,
+        "edit_batch",
+        {
+            "ops": [
+                {
+                    "op": "add_node",
+                    "class_type": "CLIPTextEncode",
+                    "uid": "batch-prompt",
+                    "fields": {"text": "added text"},
+                    "inputs": {"clip": "checkpointloadersimple"},
+                },
+                {
+                    "op": "edit_node",
+                    "target": "batch-prompt",
+                    "field": "made_up",
+                    "value": 1,
+                },
+            ]
+        },
+    )
+    result = session.apply_ops(ops, expected_revision=0)
+
+    assert not result.ok
+    assert any(diagnostic.code == "unknown_field" for diagnostic in result.diagnostics)
+    assert result.landed_ops == ()
+    assert session.history == ()
+    assert session.revision == 0
+    assert editable_signature(session.workflow) == before
+    assert session.working_ui == before_ui
+
+
+def test_typed_batch_rejects_forward_or_unidentified_add_targets() -> None:
+    session = _session()
+
+    with pytest.raises(EditToolError) as forward:
+        lower_edit_tool_call(
+            session,
+            "edit_batch",
+            {
+                "ops": [
+                    {
+                        "op": "edit_node",
+                        "target": "batch-latent",
+                        "field": "width",
+                        "value": 1024,
+                    },
+                    {
+                        "op": "add_node",
+                        "class_type": "EmptyLatentImage",
+                        "uid": "batch-latent",
+                    },
+                ]
+            },
+        )
+    assert forward.value.code == "unknown_target"
+
+    with pytest.raises(EditToolError) as missing:
+        lower_edit_tool_call(
+            session,
+            "edit_batch",
+            {
+                "ops": [
+                    {"op": "add_node", "class_type": "EmptyLatentImage"},
+                    {
+                        "op": "edit_node",
+                        "target": "batch-latent",
+                        "field": "width",
+                        "value": 1024,
+                    },
+                ]
+            },
+        )
+    assert missing.value.code == "unknown_target"
+
+
+def test_typed_batch_rejects_duplicate_explicit_add_identity() -> None:
+    session = _session()
+
+    with pytest.raises(EditToolError) as duplicate:
+        lower_edit_tool_call(
+            session,
+            "edit_batch",
+            {
+                "ops": [
+                    {
+                        "op": "add_node",
+                        "class_type": "EmptyLatentImage",
+                        "uid": "batch-latent",
+                    },
+                    {
+                        "op": "add_node",
+                        "class_type": "EmptyLatentImage",
+                        "uid": "batch-latent",
+                    },
+                ]
+            },
+        )
+    assert duplicate.value.code == "duplicate_identity"
+
+
 def test_stale_revision_fails_closed_without_mutation() -> None:
     session = _session()
     accepted = apply_edit_tool_call(
