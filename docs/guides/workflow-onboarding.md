@@ -60,28 +60,39 @@ and performs compilation checks; it does not just print the source file.
 `analyze info` provides the graph details. Use those node classes and input
 names to locate the corresponding calls in `workflow.py`.
 
-To understand a node's parameters and sockets, ask for
-its class specification. For example, for an image-saving node:
+To understand one node, use its ComfyUI class name:
 
 ```bash
-vibecomfy nodes spec SaveImage
+vibecomfy node SaveImage
 ```
 
-`nodes spec` already returns JSON: `inputs` contains parameter types, required
-flags, defaults, and choices where known; `outputs` lists the output sockets.
-It also records where the schema came from. This describes the node interface,
-not its implementation code. A schema's `source_path` may be absent when it
-came from cached ComfyUI metadata.
+By default this shows the node's identity and schema provenance, all known
+inputs and outputs, and its implementation class source when that source is
+available locally. Inputs include types, required flags, defaults, choices,
+and ranges where known. Outputs include socket names and types.
 
-For a focused view, if you have `jq` installed:
+Ask for only the sections you need:
 
 ```bash
-vibecomfy nodes spec SaveImage | jq '.inputs'
-vibecomfy nodes spec SaveImage | jq '.outputs'
+vibecomfy node SaveImage --inputs
+vibecomfy node SaveImage --outputs
+vibecomfy node SaveImage --source
+vibecomfy node SaveImage --inputs --outputs
 ```
 
-There are currently no `--inputs`, `--outputs`, or source-code display options
-on this command.
+Add `--json` to any of these commands for structured output. A schema can be
+available from cached ComfyUI metadata even when the implementation source is
+not installed. In that case the default view still shows the interface and
+explains why source is unavailable. An explicit `--source` request exits
+nonzero when unavailable, even with other filters. Source lookup reads local
+Python files without importing the
+custom node or starting ComfyUI. It shows the implementation class, not all
+of the helper code or dependencies that class may call.
+
+Use `vibecomfy nodes list` to discover class names. If you have a captured
+ComfyUI `/object_info` response, `--object-info-cache <file.json>` selects that
+schema evidence. The existing `vibecomfy nodes spec <ClassType>` remains
+available as the schema-only JSON interface.
 
 Some workflows also expose named public controls. `analyze info` lists their
 inputs; `inspect --field <name>` traces an existing public control to its node
@@ -110,7 +121,7 @@ filename_prefix='out/edited'
 This changes the output filename prefix when the workflow is eventually run.
 Keep the surrounding node call and its image connection intact. Prompts,
 seeds, and step counts can be adjusted at their corresponding calls in the
-same way. Confirm unfamiliar argument names with `nodes spec`.
+same way. Confirm unfamiliar argument names with `vibecomfy node <ClassType> --inputs`.
 
 For graph changes, use the Python node calls and supported `VibeWorkflow`
 methods such as `add_node`, `connect`, and `remove_node`. The

@@ -63,6 +63,13 @@ needed. This prepares authoring files but does not install dependencies or run
 the workflow. Keep `port check` and `port convert` for advanced preflight,
 standalone scratchpad generation, and intentional ready-template conversion.
 
+For node details, use `vibecomfy node <ClassType>`. Its default view includes
+inputs, outputs, schema provenance, and locally available implementation class
+source. Use `--inputs`, `--outputs`, or `--source` to focus the result, combine
+filters when useful, and add `--json` for machine-readable output. Treat source
+unavailability separately from a missing schema; never substitute a generated
+wrapper for the underlying node implementation.
+
 For setup trouble:
 
 ```bash
@@ -103,7 +110,7 @@ Keep ComfyUI's terms precise: a **workflow** is any graph; a **template** is a c
 - Treat the worktree as shared. Do not revert, overwrite, or clean up edits you did not make.
 - Keep changes scoped to the requested workflow, command, template, or doc surface.
 - Do not change runtime behavior, workflow corpus files, generated snapshots, or template manifests unless the task explicitly covers them.
-- Never invent node class names, sockets, widget fields, or model layouts. Use `inspect`, `analyze info`, `nodes spec`, local precedents, or `search-comfy-workflows`.
+- Never invent node class names, sockets, widget fields, or model layouts. Use `inspect`, `analyze info`, `node <ClassType>`, local precedents, or `search-comfy-workflows`.
 - Sync indexes only when needed: `vibecomfy sources sync`.
 - Add focused tests when changing command routing, parser behavior, conversion, validation, search, runtime-facing code, or template coverage.
 - Keep tests deterministic; avoid requiring ComfyUI, RunPod, network, or local model files unless the test is explicitly marked for that environment.

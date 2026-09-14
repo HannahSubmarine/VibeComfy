@@ -40,7 +40,7 @@ simple changes. If you use a recipe that loads the imported folder as a
 `VibeWorkflow`, common supported controls are `set_prompt`, `set_seed`,
 `set_steps`, and `set_input`; first check available fields with
 `vibecomfy inspect <folder> --field <field>`. For unfamiliar node parameters,
-use `vibecomfy nodes spec <ClassType>` and visible graph evidence. Validate and
+use `vibecomfy node <ClassType> --inputs` and visible graph evidence. Validate and
 diagnose the artifact you edited: the imported folder for direct edits, or
 the separate recipe `.py` if you created a variation. Validating the source
 folder does not check a recipe that loads it.
@@ -74,7 +74,7 @@ def build():
 
 Reach for patches when decorating an existing graph. Reach for blocks or direct `VibeWorkflow` methods only when the edit changes handles, splices nodes, or rewires topology.
 
-Never invent node fields, sockets, or class names. Use `vibecomfy nodes spec <ClassType>`, visible graph data, local precedents, or `search-comfy-workflows`.
+Never invent node fields, sockets, or class names. Use `vibecomfy node <ClassType> --inputs`, visible graph data, local precedents, or `search-comfy-workflows`.
 
 ## Validate
 

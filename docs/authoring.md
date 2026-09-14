@@ -9,6 +9,11 @@
 For a first edit, follow [Import and edit a ComfyUI workflow](guides/workflow-onboarding.md).
 This page is the reference for composing and extending Python workflows.
 
+Before changing an unfamiliar node, use `vibecomfy node <ClassType>` to see
+its interface and available implementation source. `--inputs` shows parameter
+types and defaults, `--outputs` shows sockets, and `--source` shows the local
+implementation class. Filters can be combined; `--json` gives structured output.
+
 For the normal ComfyUI JSON onboarding path, create an editable workflow bundle:
 
 ```bash

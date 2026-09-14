@@ -85,7 +85,7 @@ def _emit(payload: dict[str, Any], *, json_output: bool) -> None:
     quoted_folder = shlex.quote(folder)
     for command in ("inspect", "analyze info", "validate", "doctor"):
         print(f"  vibecomfy {command} {quoted_folder}")
-    print("For node schemas and socket details: vibecomfy nodes spec <node-class>")
+    print("For node inputs, outputs, and implementation source: vibecomfy node <ClassType>")
     print("Editing guide: https://github.com/peteromallet/VibeComfy/blob/main/docs/guides/workflow-onboarding.md")
     diagnostics = payload.get("diagnostics", [])
     if diagnostics:
@@ -237,7 +237,7 @@ def register(subparsers) -> None:
         epilog=(
             "Edit workflow.py, then use 'vibecomfy validate <folder>'. "
             "Use 'vibecomfy inspect <folder>' to explore the graph and "
-            "'vibecomfy nodes spec <ClassType>' for node inputs and sockets."
+            "'vibecomfy node <ClassType>' for node inputs, outputs, and source."
         ),
     )
     parser.add_argument("source", help="Source ComfyUI workflow JSON file.")
