@@ -89,6 +89,13 @@ Python files without importing the
 custom node or starting ComfyUI. It shows the implementation class, not all
 of the helper code or dependencies that class may call.
 
+Source lookup uses your configured custom-node directory and local ComfyUI
+installation. If needed, point it at a checkout explicitly:
+
+```bash
+COMFYUI_PATH=/path/to/ComfyUI vibecomfy node SaveImage --source
+```
+
 Use `vibecomfy nodes list` to discover class names. If you have a captured
 ComfyUI `/object_info` response, `--object-info-cache <file.json>` selects that
 schema evidence. The existing `vibecomfy nodes spec <ClassType>` remains
