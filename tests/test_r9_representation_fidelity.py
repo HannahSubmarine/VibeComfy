@@ -54,7 +54,13 @@ def test_ui_only_markdown_note_is_retained_as_sidecar_custody() -> None:
                 "properties": {"vibecomfy_uid": "value"},
                 "pos": [0, 0],
             },
-            {"id": 2, "type": "MarkdownNote", "pos": [20, 20], "title": "keep me"},
+            {
+                "id": 2,
+                "type": "MarkdownNote",
+                "pos": [20, 20],
+                "title": "keep me",
+                "widgets_values": ["# Keep this note ✨\n\n"],
+            },
         ],
         "links": [],
         "groups": [],
@@ -62,11 +68,21 @@ def test_ui_only_markdown_note_is_retained_as_sidecar_custody() -> None:
 
     sidecar = _ui_candidate_sidecar(workflow, candidate)
     assert sidecar["nodes"]["ui_only_2"]["class_type"] == "MarkdownNote"
+    assert sidecar["annotations"] == [{
+        "annotation_id": "ui_only_2",
+        "scope_path": "",
+        "owner": {"kind": "node", "uid": "ui_only_2"},
+        "class_type": "MarkdownNote",
+        "title": "keep me",
+        "content": "# Keep this note ✨\n\n",
+    }]
     normalized = validate_sidecar(sidecar, workflow)
     assert "ui_only_2" in normalized["nodes"]
     materialized = materialize_ui_json(workflow, normalized)
     assert any(
-        node.get("type") == "MarkdownNote" and node.get("title") == "keep me"
+        node.get("type") == "MarkdownNote"
+        and node.get("title") == "keep me"
+        and node.get("widgets_values") == ["# Keep this note ✨\n\n"]
         for node in materialized["nodes"]
     )
 

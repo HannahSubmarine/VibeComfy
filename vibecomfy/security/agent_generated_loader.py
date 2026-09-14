@@ -33,9 +33,11 @@ _ALLOWED_IMPORTS: dict[str, frozenset[str] | None] = {
             "InputSpec",
             "ModelAsset",
             "ReadyMetadata",
+            "authored_channel",
             "finalize",
             "new_workflow",
             "node",
+            "recursive_definition_scope",
             "ref",
         }
     ),

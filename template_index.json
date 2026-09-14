@@ -4727,12 +4727,12 @@
         {
           "name": "model",
           "target": {
-            "node_id": "182",
-            "field": "model_name"
+            "node_id": "175",
+            "field": "ckpt_name"
           },
-          "node_id": "182",
-          "field": "model_name",
-          "value": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors",
+          "node_id": "175",
+          "field": "ckpt_name",
+          "value": "LTX23_audio_vae_bf16_KJ.safetensors",
           "type": null,
           "default": null,
           "required": false,

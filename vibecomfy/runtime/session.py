@@ -67,6 +67,14 @@ else:
 OVERRIDES_INCLUDE: set[str] = set()
 OVERRIDES_EXCLUDE: set[str] = set()
 
+# These values are schema defaults, not model selections.  They must not
+# perturb the runtime model fingerprint when a ready template or ComfyUI
+# snapshot happens to materialize the default explicitly.
+_MODEL_FINGERPRINT_DEFAULTS: dict[str, dict[str, str]] = {
+    "UNETLoader": {"weight_dtype": "default"},
+    "CLIPLoader": {"device": "default"},
+}
+
 
 def _require_runtime_boundary(
     record: ApprovedProjectionRecord,
@@ -3170,5 +3178,7 @@ def model_fingerprint(api_dict: dict[str, Any]) -> tuple[tuple[str, str, str], .
             continue
         for slot, value in inputs.items():
             if isinstance(slot, str) and isinstance(value, str):
+                if _MODEL_FINGERPRINT_DEFAULTS.get(class_type, {}).get(slot) == value:
+                    continue
                 triples.append((class_type, slot, value))
     return tuple(sorted(triples))

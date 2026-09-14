@@ -137,6 +137,8 @@ _STATIC_WRAPPER_MODULES: tuple[str, ...] = (
     "gimm_vfi",
     "melbandroformer",
     "vibecomfy_internal",
+    "lanpaint",
+    "comfy_extras",
 )
 
 _CURATED_SCHEMA_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -163,13 +165,16 @@ LTX2_3_TAIL_PATCHES: tuple[str, ...] = (
 
 _WRAPPER_CLASS_TO_MODULE: dict[str, str] | None = None
 _WRAPPER_CLASS_TO_SYMBOL: dict[str, str] | None = None
+_WRAPPER_MODULE_SIGNATURE: tuple[str, ...] | None = None
 
 
 def _wrapper_modules() -> tuple[str, ...]:
     try:
         nodes = importlib.import_module("vibecomfy.nodes")
-    except ImportError:
-        return _STATIC_WRAPPER_MODULES
+    except ImportError as exc:
+        raise RuntimeError(
+            "registered_wrapper_import_failed: could not import vibecomfy.nodes"
+        ) from exc
     modules = getattr(nodes, "MODULES", None)
     if isinstance(modules, (list, tuple)):
         return tuple(str(module) for module in modules if isinstance(module, str) and module)
@@ -177,24 +182,54 @@ def _wrapper_modules() -> tuple[str, ...]:
 
 
 def _wrapper_class_to_module() -> dict[str, str]:
-    global _WRAPPER_CLASS_TO_MODULE, _WRAPPER_CLASS_TO_SYMBOL
-    if _WRAPPER_CLASS_TO_MODULE is not None:
+    global _WRAPPER_CLASS_TO_MODULE, _WRAPPER_CLASS_TO_SYMBOL, _WRAPPER_MODULE_SIGNATURE
+    module_names = _wrapper_modules()
+    if (
+        _WRAPPER_CLASS_TO_MODULE is not None
+        and _WRAPPER_CLASS_TO_SYMBOL is not None
+        and _WRAPPER_MODULE_SIGNATURE == module_names
+    ):
         return _WRAPPER_CLASS_TO_MODULE
     module_mapping: dict[str, str] = {}
     symbol_mapping: dict[str, str] = {}
-    for module_name in _wrapper_modules():
+    for module_name in module_names:
         try:
             module = importlib.import_module(f"vibecomfy.nodes.{module_name}")
-        except ImportError:
-            continue
+        except ImportError as exc:
+            raise RuntimeError(
+                "registered_wrapper_import_failed: "
+                f"could not import vibecomfy.nodes.{module_name}"
+            ) from exc
         exported = getattr(module, "__all__", ())
         for name in exported:
-            if isinstance(name, str):
-                class_type = _wrapper_class_type_for_symbol(module, name)
-                module_mapping.setdefault(class_type, module_name)
-                symbol_mapping.setdefault(class_type, name)
+            if not isinstance(name, str) or not name:
+                raise RuntimeError(
+                    "registered_wrapper_invalid_export: "
+                    f"vibecomfy.nodes.{module_name} contains a non-string __all__ entry"
+                )
+            if not callable(getattr(module, name, None)):
+                raise RuntimeError(
+                    "registered_wrapper_invalid_export: "
+                    f"vibecomfy.nodes.{module_name}.{name} is not callable"
+                )
+            class_type = _wrapper_class_type_for_symbol(module, name)
+            previous = (
+                module_mapping.get(class_type),
+                symbol_mapping.get(class_type),
+            )
+            current = (module_name, name)
+            if previous != (None, None) and previous != current:
+                raise RuntimeError(
+                    "registered_wrapper_conflict: "
+                    f"{class_type!r} is exported by both "
+                    f"vibecomfy.nodes.{previous[0]}.{previous[1]} and "
+                    f"vibecomfy.nodes.{module_name}.{name}"
+                )
+            module_mapping[class_type] = module_name
+            symbol_mapping[class_type] = name
     _WRAPPER_CLASS_TO_MODULE = module_mapping
     _WRAPPER_CLASS_TO_SYMBOL = symbol_mapping
+    _WRAPPER_MODULE_SIGNATURE = module_names
     return module_mapping
 
 
@@ -683,6 +718,8 @@ def _hoist_constants(
     edges_in: dict[str, list[Any]],
     var_names: dict[str, str],
     name_authority: Mapping[str, Sequence[str | None]] | None = None,
+    *,
+    resolve_graph_strings: bool = True,
 ) -> tuple[list[str], dict[tuple[str, str], str]]:
     """Scan workflow nodes for hoistable constants.
 
@@ -707,7 +744,8 @@ def _hoist_constants(
             translated = _translate_widget_for_key(key, input_aliases, cls)
             if translated is None:
                 continue
-            value = _resolve_graph_field_get_string(value, workflow_nodes)
+            if resolve_graph_strings:
+                value = _resolve_graph_field_get_string(value, workflow_nodes)
             category = _classify_value_category(translated, value, cls)
             if category is not None:
                 candidates.append((nid, translated, value, category))
@@ -719,7 +757,8 @@ def _hoist_constants(
             translated = _translate_widget_for_key(key, input_aliases, cls)
             if translated is None:
                 continue
-            value = _resolve_graph_field_get_string(value, workflow_nodes)
+            if resolve_graph_strings:
+                value = _resolve_graph_field_get_string(value, workflow_nodes)
             category = _classify_value_category(translated, value, cls)
             if category is not None:
                 candidates.append((nid, translated, value, category))
@@ -769,11 +808,11 @@ def _hoist_constants(
                 base, canonical_model_value = canonical_model
                 emit_value = canonical_model_value
                 value_key_value = _model_basename(value).lower()
-            # Comfy serializes model selections with either separator.  Keep
-            # the emitted model reference canonical as well as the
-            # requirements metadata; otherwise the same model can produce
-            # platform-dependent ready-template source.
-            emit_value = _normalize_model_path(emit_value)
+            # Preserve the authored runtime spelling.  Backslashes are valid
+            # model-library paths (and are meaningful on Windows); changing
+            # them during emission makes an otherwise untouched workflow
+            # semantically different.  Path normalization is used only for
+            # classification/constant naming, never for runtime values.
         value_key = (base, category, value_key_value)
         if value_key in value_to_name:
             name = value_to_name[value_key]
@@ -798,7 +837,8 @@ def _hoist_constants(
             translated = _translate_widget_for_key(key, input_aliases, cls)
             if translated is None:
                 continue
-            value = _resolve_graph_field_get_string(value, workflow_nodes)
+            if resolve_graph_strings:
+                value = _resolve_graph_field_get_string(value, workflow_nodes)
             # Only track string values that are not already categorized
             if not isinstance(value, str):
                 continue
@@ -1029,7 +1069,11 @@ def _apply_ready_template_metadata_defaults(metadata: dict[str, Any], template_i
         metadata.setdefault("comfy_configuration", {"memory_profile": 3, "fp8_e4m3fn_text_enc": True})
 
 
-def _metadata_extras_for_emit(metadata: Mapping[str, Any]) -> dict[str, Any]:
+def _metadata_extras_for_emit(
+    metadata: Mapping[str, Any],
+    *,
+    external_custody: bool = False,
+) -> dict[str, Any]:
     derived_keys = {
         "ready_template",
         "workflow_template",
@@ -1051,7 +1095,13 @@ def _metadata_extras_for_emit(metadata: Mapping[str, Any]) -> dict[str, Any]:
         "_has_public_inputs_for_emit",
         "_workflow_snapshot",
         "_ingest_snapshot",
+        "_native_subgraph_source",
+        "_ui_door",
     }
+    # v2 custody is deliberately the only owner of lowered-helper provenance.
+    # Legacy sources still emit this field for compatibility.
+    if external_custody:
+        derived_keys.add("resolver_helper_custody")
     extras = {
         str(key): value
         for key, value in metadata.items()
@@ -1078,14 +1128,17 @@ def _normalize_model_path(value: Any) -> Any:
     return value
 
 
-def _requirements_expr_for_emit(requirements: Mapping[str, Any], *, has_models: bool) -> str | None:
+def _requirements_expr_for_emit(
+    requirements: Mapping[str, Any],
+    *,
+    has_models: bool,
+    preserve_empty_models: bool = False,
+) -> str | None:
     retained: dict[str, Any] = {}
     for key, value in dict(requirements).items():
         if key == "models" and has_models:
             continue
-        if value:
-            if key == "models" and isinstance(value, (list, tuple)):
-                value = [_normalize_model_path(v) for v in value]
+        if value or (key == "models" and preserve_empty_models and value == []):
             retained[str(key)] = value
     if not retained:
         return None

@@ -1,0 +1,35 @@
+{
+  "id": "native-depth-two-positive",
+  "nodes": [
+    {"id": 1, "type": "sg-outer", "inputs": [{"name": "value", "type": "INT", "link": 10}], "outputs": [{"name": "value", "type": "INT", "links": [11]}], "widgets_values": []}
+  ],
+  "links": [[10, -10, 0, 1, 0, "INT"], [11, 1, 0, -20, 0, "INT"]],
+  "definitions": {
+    "subgraphs": [
+      {
+        "id": "sg-outer",
+        "name": "Outer",
+        "inputNode": {"id": -10},
+        "outputNode": {"id": -20},
+        "inputs": [{"name": "value", "type": "INT", "linkIds": [101]}],
+        "outputs": [{"name": "value", "type": "INT", "linkIds": [102]}],
+        "nodes": [{"id": 11, "type": "sg-inner", "inputs": [{"name": "value", "type": "INT", "link": 101}], "outputs": [{"name": "value", "type": "INT", "links": [102]}], "widgets_values": []}],
+        "links": [[101, -10, 0, 11, 0, "INT"], [102, 11, 0, -20, 0, "INT"]],
+        "definitions": {
+          "subgraphs": [
+            {
+              "id": "sg-inner",
+              "name": "Inner",
+              "inputNode": {"id": -10},
+              "outputNode": {"id": -20},
+              "inputs": [{"name": "value", "type": "INT", "linkIds": [201]}],
+              "outputs": [{"name": "value", "type": "INT", "linkIds": [202]}],
+              "nodes": [{"id": 21, "type": "PrimitiveInt", "inputs": [{"name": "value", "type": "INT", "link": 201}], "outputs": [{"name": "INT", "type": "INT", "links": [202]}], "widgets_values": [1024, "fixed"]}],
+              "links": [[201, -10, 0, 21, 0, "INT"], [202, 21, 0, -20, 0, "INT"]]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import subprocess
 import sys
@@ -726,6 +727,43 @@ def test_port_convert_emits_importable_scratchpad_by_default(
     assert provenance["output_mode"] == "scratchpad"
 
 
+def test_h3_draft_convert_writes_with_schema_diagnostics_but_strict_refuses(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Source-backed H3 wrappers emit cleanly, but readiness stays strict."""
+    source = Path("docs/handover/unified-workflow-integrity-20260909/assets/h3/MiniMax_H3_AV_EncodeDecode_Inpaint.json")
+    monkeypatch.setenv("VIBECOMFY_ON_DEMAND_SCHEMAS", "0")
+    draft = tmp_path / "h3.py"
+    args = dict(
+        workflow=str(source),
+        out=str(draft),
+        ready_id=None,
+        json=True,
+        head_check_models=False,
+        strict_ready_template=False,
+        dry_run=False,
+        diff=False,
+        all=False,
+    )
+
+    assert _cmd_port_convert(argparse.Namespace(**args)) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert draft.is_file()
+    assert payload["status"] == "ok"
+    assert not any(d["code"] == "unresolved_runtime_class" for d in payload["report"]["diagnostics"])
+    assert "MiniMaxH3ImageToVideo" in draft.read_text(encoding="utf-8")
+    assert payload["conversion"]["validation"]["parity_ok"] is True
+
+    strict = tmp_path / "h3-strict.py"
+    args.update(out=str(strict), strict_ready_template=True)
+    assert _cmd_port_convert(argparse.Namespace(**args)) == 1
+    strict_payload = json.loads(capsys.readouterr().out)
+    assert strict_payload["status"] == "error"
+    assert not strict.exists()
+
+
 def test_port_convert_ready_template_mode_requires_ready_id_and_writes_metadata(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -764,13 +802,28 @@ def build():
 
     payload = json.loads(capsys.readouterr().out)
     text = out.read_text(encoding="utf-8")
+    companion = json.loads(out.with_suffix(".vibe.json").read_text(encoding="utf-8"))
     assert "READY_METADATA =" in text
-    assert "template_id='image/ported'" not in text
-    provenance = _load_emitted_provenance(out)
-    assert provenance["ready_id"] == "image/ported"
-    assert provenance["source_hash"] == payload["report"]["source_hash"]
-    assert provenance["workflow_shape"] == payload["report"]["workflow_shape"]
-    assert provenance["output_mode"] == "ready_template"
+    assert "CANONICAL_CUSTODY" not in text
+    assert "HELPER_CUSTODY" not in text
+    assert "wf = wf.finalize(PUBLIC_INPUT_METADATA" in text
+    assert set(companion) == {"format_version", "bind", "custody", "presentation"}
+    assert companion["bind"]["workflow_identity"] == "image/ported"
+    assert companion["presentation"] == {
+        "nodes": {}, "links": [], "groups": [], "canvas": {}, "annotations": []
+    }
+    assert not out.with_suffix(".layout.json").exists()
+    assert "template_id='image/ported'" in text
+    assert "ready_id='image/ported'" in text
+    spec = importlib.util.spec_from_file_location("test_ready_pair", out)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    metadata = module.build().metadata
+    assert metadata["ready_id"] == "image/ported"
+    assert metadata["source_hash"] == payload["report"]["source_hash"]
+    assert metadata["workflow_shape"] == payload["report"]["workflow_shape"]
+    assert metadata["output_mode"] == "ready_template"
 
 
 def test_port_convert_diff_implies_dry_run_and_preserves_target(
@@ -1229,6 +1282,33 @@ def _patch_convert_all_fixture(
     return good_path, bad_path
 
 
+def test_port_convert_dry_run_admits_source_once_and_keeps_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"workflow_id": "one-source", "nodes": [{
+        "id": 1, "type": "PrimitiveInt", "inputs": [], "outputs": [],
+        "widgets_values": [1], "properties": {}
+    }], "links": [], "groups": []}), encoding="utf-8")
+    import vibecomfy.commands.port._convert as convert_command
+    original_load = convert_command.load_port_source
+    calls: list[str] = []
+
+    def counted_load(path: str, **kwargs: object):
+        calls.append(path)
+        return original_load(path, **kwargs)
+
+    monkeypatch.setattr(convert_command, "load_port_source", counted_load)
+    args = argparse.Namespace(
+        workflow=str(source), out=None, ready_id=None, json=True,
+        head_check_models=False, strict_ready_template=False, dry_run=True,
+        diff=False, all=False, keep_virtual_wires=False,
+    )
+
+    assert _cmd_port_convert(args) == 0
+    assert calls == [str(source)]
+
+
 def test_port_convert_all_json_marks_parity_and_validation_failures(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1585,7 +1665,8 @@ def test_port_export_to_ui_roundtrip_pos_and_uid(
     )
     assert code == 0, f"port convert failed with code {code}"
     assert (tmp_path / "flat.py").exists(), "flat.py was not written"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar flat.layout.json was not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion flat.vibe.json was not written"
+    assert not (tmp_path / "flat.layout.json").exists(), "legacy layout sidecar should not be emitted by canonical conversion"
 
     # Step 2: export flat.py --to ui → flat_emit.json
     out_emit = tmp_path / "flat_emit.json"
@@ -2087,7 +2168,7 @@ def test_export_fresh_overrides_sidecar(
         )
     )
     assert code == 0, f"port convert failed with code {code}"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar was not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion was not written"
 
     out_emit = tmp_path / "flat_emit_fresh.json"
     code = _cmd_port_export(
@@ -2373,7 +2454,7 @@ def test_export_from_flag_takes_priority_over_sidecar(
         )
     )
     assert code == 0, f"port convert failed with code {code}"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion was not written"
 
     # Export with --from pointing at the SHIFTED prior emission.
     out_emit = tmp_path / "flat_emit_from_over_sidecar.json"
@@ -2728,11 +2809,10 @@ def test_port_convert_keep_virtual_wires_integration(tmp_path: Path) -> None:
         )
         return result.text
 
-    # Unknown helper classes retain their canonical raw-call representation in
-    # both modes; `--keep-virtual-wires` must not silently drop the graph.
+    # Clean source lowers helper furniture; explicit keep mode retains it.
     text_default = _convert_and_get_text(keep=False)
-    assert "raw_call('GetNode'" in text_default
-    assert "raw_call('SetNode'" in text_default
+    assert "raw_call('GetNode'" not in text_default
+    assert "raw_call('SetNode'" not in text_default
 
     # With --keep-virtual-wires the same helper calls and signal survive.
     text_keep = _convert_and_get_text(keep=True)

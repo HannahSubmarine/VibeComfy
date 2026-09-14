@@ -10,6 +10,7 @@ added by an earlier operation in the same atomic batch.
 from __future__ import annotations
 
 import re
+import math
 
 from typing import Any, Mapping, Sequence
 
@@ -90,6 +91,99 @@ def _input_spec(node: Any, field: str, provider: Any) -> Any | None:
     return inputs.get(field) if isinstance(inputs, Mapping) else None
 
 
+def _snapshot_input_spec(provider: Any, class_type: str, field: str) -> Any | None:
+    """Read an exact recursive field witness from the frozen payload.
+
+    ``node_schema_from_payload`` intentionally removes positional ``widget_N``
+    aliases from the general schema lookup surface.  Recursive IR, however,
+    can carry an explicitly authored positional field, so preserve that
+    narrow witness for scoped validation without making positional aliases
+    generally editable.
+    """
+    snapshot = getattr(provider, "snapshot", None)
+    schemas = getattr(snapshot, "schemas", None)
+    if not isinstance(schemas, Mapping):
+        return None
+    payload = schemas.get(class_type)
+    inputs = payload.get("inputs") if isinstance(payload, Mapping) else None
+    raw = inputs.get(field) if isinstance(inputs, Mapping) else None
+    if not isinstance(raw, Mapping):
+        return None
+    from vibecomfy.schema import InputSpec
+
+    choices = raw.get("choices")
+    return InputSpec(
+        type=raw.get("type") if isinstance(raw.get("type"), str) else None,
+        required=raw.get("required") is True,
+        default=raw.get("default"),
+        choices=(
+            list(choices)
+            if isinstance(choices, Sequence)
+            and not isinstance(choices, (str, bytes, bytearray))
+            else None
+        ),
+        min=raw.get("min") if isinstance(raw.get("min"), (int, float)) else None,
+        max=raw.get("max") if isinstance(raw.get("max"), (int, float)) else None,
+        unresolved_choices=raw.get("unresolved_choices") is True,
+        asset_kind=raw.get("asset_kind") if isinstance(raw.get("asset_kind"), str) else None,
+    )
+
+
+def _is_json_literal(value: Any) -> bool:
+    """Return whether a replacement can be retained in canonical JSON IR."""
+    if value is None or isinstance(value, (bool, str, int)):
+        return True
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, Mapping):
+        return all(
+            isinstance(key, str) and _is_json_literal(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, (list, tuple)):
+        return all(_is_json_literal(item) for item in value)
+    return False
+
+
+def _recursive_untyped_literal_carrier(
+    node: Mapping[str, Any], field: str, resolved: tuple[str, Any]
+) -> bool:
+    """Prove a schema-less recursive field is one authored literal input.
+
+    Older recursive exports can retain a typed, unlinked list-form input even
+    when the frozen execution schema omits that input.  Permit only one
+    unambiguous authored record and reject channel shadows; canvas structure
+    is never sufficient evidence on its own.
+    """
+    if not resolved[0].startswith("inputs."):
+        return False
+    records = node.get("inputs")
+    if not isinstance(records, (list, tuple)):
+        return False
+    matches = [
+        item
+        for item in records
+        if isinstance(item, Mapping)
+        and item.get("name") == field
+        and "value" in item
+        and item.get("link") is None
+        and isinstance(item.get("type"), str)
+        and bool(item.get("type"))
+    ]
+    if len(matches) != 1:
+        return False
+    for channel in ("widgets", "semantic"):
+        values = node.get(channel)
+        if isinstance(values, Mapping) and field in values:
+            return False
+        if isinstance(values, (list, tuple)) and any(
+            isinstance(item, Mapping) and item.get("name") == field
+            for item in values
+        ):
+            return False
+    return True
+
+
 def _require_node(workflow: Any, uid: str) -> Any:
     node = _node_by_uid(workflow, uid)
     if node is None:
@@ -138,11 +232,19 @@ def _validate_recursive_field(workflow: Any, op: SetNodeFieldOp, provider: Any) 
     specs = getattr(schema, "inputs", None) or {}
     spec = specs.get(field) if isinstance(specs, Mapping) else None
     if spec is None:
+        spec = _snapshot_input_spec(provider, class_type, field)
+    if spec is None:
         if schema is not None:
-            raise ApplyOpsError(
-                "unknown_target_field",
-                f"field {field!r} has no exact authoring-schema witness on {class_type!r}; canvas/compiled fields are not schema authority.",
-            )
+            if not _recursive_untyped_literal_carrier(node, field, resolved):
+                raise ApplyOpsError(
+                    "unknown_target_field",
+                    f"field {field!r} has no exact authoring-schema witness on {class_type!r}; canvas/compiled fields are not schema authority.",
+                )
+            if not _is_json_literal(op.value):
+                raise ApplyOpsError(
+                    "value_type_mismatch",
+                    f"field {field!r} requires a JSON literal replacement.",
+                )
         return
     from vibecomfy.porting.authoring_surface import input_spec_is_literal_widget
 
@@ -212,6 +314,28 @@ def _validate_field(workflow: Any, op: SetNodeFieldOp, provider: Any) -> None:
     schema = _schema_for(node, provider)
     specs = getattr(schema, "inputs", None) or {}
     spec = specs.get(field) if isinstance(specs, Mapping) else None
+    if spec is None and field == "control_after_generate":
+        # Comfy's seed randomisation selector is an authored UI widget, but it
+        # is intentionally absent from the execution schema.  Validate it
+        # from the sealed widget roster rather than treating the canvas field
+        # as schema authority or accepting arbitrary values.
+        from vibecomfy.porting.edit.widget_slots import _canonical_ui_only_widget_field
+
+        if _canonical_ui_only_widget_field(
+            raw_ui if isinstance(raw_ui, Mapping) else {},
+            field,
+            schema_provider=provider,
+        ) is not None:
+            from vibecomfy.schema import InputSpec
+
+            from vibecomfy.porting.widgets.compact_resolver import (
+                _CONTROL_AFTER_GENERATE_VALUES,
+            )
+
+            spec = InputSpec(
+                type="COMBO",
+                choices=sorted(_CONTROL_AFTER_GENERATE_VALUES),
+            )
     positional_index: int | None = None
     if spec is None and field not in widgets and field not in inputs:
         try:
@@ -245,6 +369,17 @@ def _validate_field(workflow: Any, op: SetNodeFieldOp, provider: Any) -> None:
 
     if spec is None:
         if schema is not None:
+            # Some Comfy object-info snapshots omit a widget-backed input
+            # that the retained IR already materialized (for example
+            # CLIPTextEncode.text).  An indexed widget edit may have been
+            # canonically named from the retained UI roster; accepting that
+            # existing IR carrier preserves the established edit surface
+            # without inventing a field from canvas bytes alone.  A named
+            # ``widgets_values`` mapping is canvas evidence, not that witness.
+            if (field in widgets or field in inputs) and not (
+                isinstance(ui_values, Mapping)
+            ):
+                return
             raise ApplyOpsError(
                 "unknown_target_field",
                 f"field {field!r} has no exact authoring-schema witness on {node.class_type!r}; canvas/compiled fields are not schema authority.",

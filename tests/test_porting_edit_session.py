@@ -604,7 +604,7 @@ class TestAgentEditPythonEmitter:
         # its old private ``_node(wf, ...)`` implementation detail is not part
         # of the emitter contract.
         assert "def build() -> VibeWorkflow:" in baseline_scratchpad
-        assert "wf = new_workflow(" in baseline_scratchpad
+        assert "with new_workflow(" in baseline_scratchpad
         assert "_node(wf," not in rendered
 
     def test_agent_edit_python_tags_virtual_nodes(self) -> None:

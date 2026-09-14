@@ -589,10 +589,16 @@ def test_subgraph_boundary_connectivity_uses_edges_not_node_inputs() -> None:
     )
 
 
-def test_legacy_native_subgraph_boundary_is_an_exact_negative() -> None:
+def test_native_subgraph_boundary_expands_through_the_shared_ingestion_path() -> None:
     path = Path(__file__).parent / "fixtures/agent_edit/subgraphed_wan_i2v.json"
     raw = json.loads(path.read_bytes())
-    _assert_native_boundary_rejected(raw, source_path=str(path))
+    from vibecomfy.ingest.normalize import from_ui
+
+    workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
+    assert workflow.nodes
+    assert workflow.edges
+    assert workflow.metadata.get("_native_subgraph_provenance")
+    assert not {"-10", "-20"}.intersection(workflow.nodes)
 
 
 # ---------------------------------------------------------------------------
@@ -1370,12 +1376,14 @@ _STARTER_SET = (
     "edit-source-sink",
 )
 
-_LEGACY_NATIVE_STARTERS = (
+_SUPPORTED_NATIVE_STARTERS = (
     "ready_templates/sources/official/image/z_image.json",
     "ready_templates/sources/official/image/flux2_klein_4b_t2i.json",
     "ready_templates/sources/official/edit/qwen_image_edit.json",
     "ready_templates/sources/official/edit/flux2_klein_4b_image_edit_base.json",
 )
+
+_LEGACY_NATIVE_STARTERS = ()
 
 
 def _starter_workflow(case: str) -> VibeWorkflow:
@@ -1438,6 +1446,19 @@ def test_offline_parity_gate_green_on_starter_set(case: str) -> None:
     wf = _starter_workflow(case)
     ok, diffs = offline_emitter_normalizer_self_consistency_check(wf, schema_provider=_local_provider())
     assert ok, f"{case}: {diffs[:5]}"
+
+
+@pytest.mark.parametrize("path", _SUPPORTED_NATIVE_STARTERS)
+def test_native_starters_expand_into_the_shared_ingestion_path(path: str) -> None:
+    from vibecomfy.ingest.normalize import from_ui
+
+    with open(path) as handle:
+        raw = json.load(handle)
+    workflow = from_ui(raw, source_path=path, use_comfy_converter=False)
+    assert workflow.nodes
+    assert workflow.edges
+    assert workflow.metadata.get("_native_subgraph_provenance")
+    assert not {"-10", "-20"}.intersection(workflow.nodes)
 
 
 @pytest.mark.parametrize("path", _LEGACY_NATIVE_STARTERS)
@@ -4329,10 +4350,15 @@ def test_ir_door_emitter_restores_subgraph_fixture_byte_canonically() -> None:
     )
 
 
-def test_ir_door_legacy_native_fixture_remains_an_exact_negative() -> None:
+def test_ir_door_native_fixture_round_trips_through_the_shared_ingestion_path() -> None:
     path = Path(__file__).parent / "fixtures/agent_edit/subgraphed_wan_i2v.json"
     raw = json.loads(path.read_bytes())
-    _assert_native_boundary_rejected(raw, source_path=str(path))
+    from vibecomfy.ingest.normalize import from_ui
+
+    workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
+    assert workflow.nodes
+    assert workflow.edges
+    assert not {"-10", "-20"}.intersection(workflow.nodes)
 
 
 def test_ir_door_property_untouched_corpus_round_trips_byte_identically() -> None:

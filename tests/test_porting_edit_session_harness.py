@@ -310,39 +310,30 @@ def test_empty_done_on_flat(flat_ui: dict[str, Any]) -> None:
 
 
 def test_empty_done_on_subgraphed_wan(subgraphed_wan_ui: dict[str, Any]) -> None:
-    """Native boundary markers are rejected before an empty session opens."""
-    with pytest.raises(
-        ValueError,
-        match=(
-            "unsupported_boundary_encoding.*native inputNode/outputNode markers"
-            ".*explicit Python-owned boundary mapping"
-        ),
-    ):
-        EditSession(subgraphed_wan_ui, schema_provider=_wan_schema_provider())
+    """Supported native boundaries admit an empty, identity-preserving session."""
+    session = EditSession(subgraphed_wan_ui, schema_provider=_wan_schema_provider())
+    session.render()
+    result = session.done()
+    assert result.ok, result.summary
+    assert "identity verified" in result.summary.lower()
 
 
 def test_empty_done_on_ltx_t2v(ltx_t2v_ui: dict[str, Any], ltx_t2v_provider: GraphInferredSchemaProvider) -> None:
-    """Native boundary markers are rejected before an empty session opens."""
-    with pytest.raises(
-        ValueError,
-        match=(
-            "unsupported_boundary_encoding.*native inputNode/outputNode markers"
-            ".*explicit Python-owned boundary mapping"
-        ),
-    ):
-        EditSession(ltx_t2v_ui, schema_provider=ltx_t2v_provider)
+    """The supported native LTX graph has a clean no-edit lifecycle."""
+    session = EditSession(ltx_t2v_ui, schema_provider=ltx_t2v_provider)
+    session.render()
+    result = session.done()
+    assert result.ok, result.summary
+    assert "identity verified" in result.summary.lower()
 
 
 def test_empty_done_on_ltx_i2v(ltx_i2v_ui: dict[str, Any], ltx_i2v_provider: GraphInferredSchemaProvider) -> None:
-    """Native boundary markers are rejected before an empty session opens."""
-    with pytest.raises(
-        ValueError,
-        match=(
-            "unsupported_boundary_encoding.*native inputNode/outputNode markers"
-            ".*explicit Python-owned boundary mapping"
-        ),
-    ):
-        EditSession(ltx_i2v_ui, schema_provider=ltx_i2v_provider)
+    """The supported native LTX graph has a clean no-edit lifecycle."""
+    session = EditSession(ltx_i2v_ui, schema_provider=ltx_i2v_provider)
+    session.render()
+    result = session.done()
+    assert result.ok, result.summary
+    assert "identity verified" in result.summary.lower()
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -556,19 +547,16 @@ def test_recovery_add_nodes_anchor_to_downstream_rewire_after_failed_replacement
 def test_case_d_native_subgraph_boundary_fails_closed(
     subgraphed_wan_ui: dict[str, Any],
 ) -> None:
-    """Native ``-10/-20`` carriers cannot masquerade as Python-owned scope."""
-    with pytest.raises(
-        ValueError,
-        match=(
-            "unsupported_boundary_encoding.*native inputNode/outputNode markers"
-            ".*explicit Python-owned boundary mapping"
-        ),
-    ):
-        from_ui(
-            subgraphed_wan_ui,
-            schema_provider=_wan_schema_provider(),
-            use_comfy_converter=False,
-        )
+    """Native ``-10/-20`` carriers are expanded through the shared path."""
+    workflow = from_ui(
+        subgraphed_wan_ui,
+        schema_provider=_wan_schema_provider(),
+        use_comfy_converter=False,
+    )
+    assert workflow.nodes
+    assert workflow.edges
+    assert workflow.metadata.get("_native_subgraph_provenance")
+    assert not {"-10", "-20"}.intersection(workflow.nodes)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -579,15 +567,12 @@ def test_case_d_native_subgraph_boundary_fails_closed(
 def test_case_e_reroute_analysis_ltx_i2v(
     ltx_i2v_ui: dict[str, Any], ltx_i2v_provider: GraphInferredSchemaProvider
 ) -> None:
-    """A native-boundary Reroute graph is rejected before a session opens."""
-    with pytest.raises(
-        ValueError,
-        match=(
-            "unsupported_boundary_encoding.*native inputNode/outputNode markers"
-            ".*explicit Python-owned boundary mapping"
-        ),
-    ):
-        EditSession(ltx_i2v_ui, schema_provider=ltx_i2v_provider)
+    """Reroute analysis is available after native-boundary expansion."""
+    session = EditSession(ltx_i2v_ui, schema_provider=ltx_i2v_provider)
+    session.render()
+    assert "reroute" in session.uid_by_name
+    result = session.done()
+    assert result.ok, result.summary
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -664,15 +649,13 @@ def test_describe_named_nodes_flat(flat_ui: dict[str, Any]) -> None:
 def test_describe_ltx_t2v_top_level(
     ltx_t2v_ui: dict[str, Any], ltx_t2v_provider: GraphInferredSchemaProvider
 ) -> None:
-    """Native boundary markers are rejected before describe() can run."""
-    with pytest.raises(
-        ValueError,
-        match=(
-            "unsupported_boundary_encoding.*native inputNode/outputNode markers"
-            ".*explicit Python-owned boundary mapping"
-        ),
-    ):
-        EditSession(ltx_t2v_ui, schema_provider=ltx_t2v_provider)
+    """Top-level nodes remain describable after native-boundary expansion."""
+    session = EditSession(ltx_t2v_ui, schema_provider=ltx_t2v_provider)
+    session.render()
+    descriptor = session.describe(next(iter(session.uid_by_name)))
+    assert descriptor.uid
+    assert descriptor.class_type
+    assert descriptor.scope_path == ""
 
 
 def test_working_ui_unchanged_after_describe(flat_ui: dict[str, Any]) -> None:

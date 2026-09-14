@@ -7,6 +7,7 @@ import importlib.util
 import logging
 import tempfile
 from dataclasses import asdict, dataclass, field
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -36,6 +37,7 @@ from vibecomfy.porting.strict_ready import (
 from vibecomfy.porting.widgets.aliases import widget_alias_analysis
 from vibecomfy.utils import repo_relative_path
 from vibecomfy.workflow import ValidationIssue, ValidationReport, VibeWorkflow
+from vibecomfy.model_assets import reconcile_model_requirements
 
 # -- model-like value detection ----------------------------------------------
 
@@ -215,6 +217,7 @@ def port_convert_workflow(
     raw_workflow: dict[str, Any] | None = None,
     keep_virtual_wires: bool = False,
     prune_dead_branches: bool = True,
+    preserve_node_ids: bool = False,
 ) -> PortConvertResult:
     # Keep conversion as an import/emission surface. Helper semantics are
     # lowered only by the shared detached execution projection.
@@ -226,7 +229,17 @@ def port_convert_workflow(
 
     emission_diagnostics: list[EmissionDiagnostic] = []
 
-    registered_inputs = dict(registered_inputs or {})
+    if registered_inputs is None:
+        # Direct SDK callers already carry the authored public interface on
+        # the workflow. Preserve it by default so conversion/rebuild parity
+        # does not depend on the CLI wrapper supplying a second registration
+        # map; an explicit empty mapping still opts out of that inference.
+        registered_inputs = {
+            str(name): (str(binding.node_id), str(binding.field))
+            for name, binding in workflow.inputs.items()
+        }
+    else:
+        registered_inputs = dict(registered_inputs)
     if raw_workflow is not None:
         _definitions = raw_workflow.get("definitions")
         if _definitions is not None:
@@ -275,8 +288,20 @@ def port_convert_workflow(
             output_mode="scratchpad",
             ready_id=None,
         )
+        # The v2 bundle writer rebuilds the staged source with the external
+        # companion.  That rebuild refreshes ``requirements.models`` from the
+        # actual model-picker values so an edited loader cannot retain a stale
+        # requirement witness.  Keep the source workflow used for parity
+        # evidence unchanged, but give the scratchpad preflight the same
+        # effective model witness; otherwise the later atomic pair check sees
+        # an avoidable semantic-digest mismatch for workflows whose source
+        # requirements list omits one or more picker values.
+        emission_workflow = workflow
+        if workflow.requirements.models:
+            emission_workflow = workflow.copy()
+            emission_workflow.requirements.models = _ready_requirements(workflow)["models"]
         text = emit_scratchpad_python(
-            workflow,
+            emission_workflow,
             workflow_id=workflow.id,
             source_path=source_path,
             provenance=complete_provenance,
@@ -287,6 +312,7 @@ def port_convert_workflow(
             # separate conversion-time resolver.
             keep_virtual_wires=keep_virtual_wires,
             prune_dead_branches=prune_dead_branches,
+            preserve_node_ids=preserve_node_ids,
         )
         mode: PortConvertMode = "scratchpad"
     else:
@@ -308,6 +334,7 @@ def port_convert_workflow(
             registered_inputs=registered_inputs,
             diagnostics=emission_diagnostics,
             raw_workflow=raw_workflow,
+            preserve_node_ids=preserve_node_ids,
         )
         mode = "ready_template"
 
@@ -707,7 +734,36 @@ def _repo_relative_provenance_path(path: str) -> str:
 
 def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     model_assets = workflow.metadata.get("model_assets")
-    models = model_assets if isinstance(model_assets, list) else list(workflow.requirements.models)
+    references = _referenced_model_values_for_workflow(workflow)
+    current_model_names: list[str] = []
+    seen_names: set[str] = set()
+    for item in references:
+        if not isinstance(item, Mapping) or not item.get("value"):
+            continue
+        name = str(item["value"])
+        if name not in seen_names:
+            seen_names.add(name)
+            current_model_names.append(name)
+    if current_model_names:
+        rich_by_name = {
+            str(item.get("name", item.get("filename", ""))): item
+            for item in (model_assets or [])
+            if isinstance(item, Mapping)
+        }
+        inferred = [rich_by_name.get(name, name) for name in current_model_names]
+        models = (
+            reconcile_model_requirements(workflow.requirements.models, inferred)
+            if workflow.requirements.models
+            else inferred
+        )
+    elif isinstance(model_assets, list):
+        models = []
+    else:
+        models = list(current_model_names)
+    # Empty model references retain the historical requirements witness. This
+    # matters for drafts whose graph has not yet acquired a model picker.
+    if not current_model_names and not isinstance(model_assets, list):
+        models = list(workflow.requirements.models)
     requirements = {
         "models": models,
         "custom_nodes": list(workflow.requirements.custom_nodes),
@@ -724,6 +780,15 @@ def _ready_requirements(workflow: VibeWorkflow) -> dict[str, Any]:
     if refs:
         requirements["custom_node_refs"] = refs
     return requirements
+
+
+def _referenced_model_values_for_workflow(workflow: VibeWorkflow) -> list[dict[str, str]]:
+    from vibecomfy.model_assets import _referenced_model_values
+
+    try:
+        return list(_referenced_model_values(workflow))
+    except (TypeError, ValueError, AttributeError):
+        return []
 
 
 # ---------------------------------------------------------------------------

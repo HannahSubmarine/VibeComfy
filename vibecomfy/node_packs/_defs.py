@@ -47,6 +47,12 @@ _STATIC_NODE_PACKS: tuple[CustomNodePack, ...] = (
         ),
     ),
     CustomNodePack(
+        name="comfy_extras",
+        repo="https://github.com/Comfy-Org/ComfyUI.git",
+        classes=frozenset({"MiniMaxH3ImageToVideo"}),
+        class_schema_sha256="62ec72d4f3b879640dbd41b959a6c1112a82b77478509323094f49dae17fffdb",
+    ),
+    CustomNodePack(
         name="ComfyUI-WanVideoWrapper",
         repo="https://github.com/kijai/ComfyUI-WanVideoWrapper.git",
         classes=frozenset(

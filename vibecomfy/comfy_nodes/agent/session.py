@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import socket
 import re
 import time
@@ -1952,6 +1953,11 @@ def _cleanup_pending_bundle(pending: Mapping[str, Path]) -> None:
             pass
     parent = pending.get("python_path")
     if isinstance(parent, Path):
+        # Loading staged Python may create __pycache__ under .pending. The
+        # directory is disposable staging state, so remove that exact scope.
+        pending_dir = parent.parent
+        if pending_dir.name == ".pending":
+            shutil.rmtree(pending_dir, ignore_errors=True)
         for directory in (parent.parent, parent.parent.parent):
             try:
                 directory.rmdir()

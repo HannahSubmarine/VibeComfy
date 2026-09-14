@@ -1908,7 +1908,11 @@ def readiness(*, route: str, model: str | None = None) -> dict[str, Any]:
         else:
             resolved_model = _strip_provider_prefix(resolved_model, "openrouter")
         credential_name = "DEEPSEEK_API_KEY" if transport == "native" else "OPENROUTER_API_KEY"
-        worker_importable = _arnold_worker_importable()
+        # Do not import the provider backend merely to report that its
+        # credential is absent.  Besides avoiding needless startup work, this
+        # keeps a headless readiness probe from pulling network-only optional
+        # modules such as aiohttp into the process.
+        worker_importable = bool(key) and _arnold_worker_importable()
         ready = bool(key) and worker_importable
         if not key:
             reason = f"No {credential_name} in environment or ~/.hermes/.env."

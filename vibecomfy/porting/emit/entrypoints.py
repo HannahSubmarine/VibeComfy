@@ -44,6 +44,10 @@ def emit_canonical_python(
     apply_overrides: dict[str, Any] | None = None,
     diagnostics: list[EmissionDiagnostic] | None = None,
     object_info_identities: dict[str, Any] | None = None,
+    omit_terminal_ui_only: bool = False,
+    keep_virtual_wires: bool = False,
+    preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     """Emit the sole executable Python workflow source.
 
@@ -80,20 +84,30 @@ def emit_canonical_python(
     requirements = dict(ready_requirements or {})
     if not requirements:
         requirements = {
-            "models": list(getattr(workflow.requirements, "models", ()) or ()),
-            "custom_nodes": list(getattr(workflow.requirements, "custom_nodes", ()) or ()),
+            key: list(getattr(workflow.requirements, key, ()) or ())
+            for key in (
+                "models", "custom_nodes", "missing_models", "missing_nodes",
+                "unsupported",
+            )
         }
     if registered_inputs is None:
-        registered_inputs = {
-            str(name): (str(item.node_id), str(item.field))
-            for name, item in getattr(workflow, "inputs", {}).items()
-        }
+        authored_inputs = getattr(workflow, "inputs", {})
+        # Keep ``None`` distinct from an explicitly supplied empty retained
+        # map.  The latter requests role-based reconciliation (for example,
+        # adding an inferred prompt beside a retained voice input); an
+        # implicit empty map means this workflow has no authored public-input
+        # contract and must keep ordinary constructor values literal.
+        if authored_inputs:
+            registered_inputs = {
+                str(name): (str(item.node_id), str(item.field))
+                for name, item in authored_inputs.items()
+            }
     return _render_canonical_python(
         workflow,
         ready_metadata=metadata,
         ready_requirements=requirements,
         template_id=str(template_id or source_id),
-        registered_inputs=registered_inputs or None,
+        registered_inputs=registered_inputs,
         apply_overrides=None,
         diagnostics=diagnostics,
         # Canonical sources never consult raw UI evidence for semantics.  The
@@ -101,6 +115,10 @@ def emit_canonical_python(
         # recursive/variant data from the detached IR below.
         raw_workflow={},
         object_info_identities=object_info_identities,
+        omit_terminal_ui_only=omit_terminal_ui_only,
+        keep_virtual_wires=keep_virtual_wires,
+        preserve_node_ids=preserve_node_ids,
+        external_custody=external_custody,
     )
 
 
@@ -115,6 +133,7 @@ def emit_ready_template_python(
     diagnostics: list[EmissionDiagnostic] | None = None,
     raw_workflow: dict[str, Any] | None = None,
     object_info_identities: dict[str, Any] | None = None,
+    preserve_node_ids: bool = False,
 ) -> str:
     """One-way ready-template migration into canonical executable source."""
     migrated = workflow.copy()
@@ -130,6 +149,8 @@ def emit_ready_template_python(
         apply_overrides=apply_overrides,
         diagnostics=diagnostics,
         object_info_identities=object_info_identities,
+        omit_terminal_ui_only=False,
+        preserve_node_ids=preserve_node_ids,
     )
 
 
@@ -144,6 +165,8 @@ def emit_scratchpad_python(
     diagnostics: list[EmissionDiagnostic] | None = None,
     keep_virtual_wires: bool = True,
     prune_dead_branches: bool = False,
+    preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     if not keep_virtual_wires or prune_dead_branches:
         message = (
@@ -179,6 +202,9 @@ def emit_scratchpad_python(
         registered_inputs=registered_inputs,
         apply_overrides=apply_overrides,
         diagnostics=diagnostics,
+        keep_virtual_wires=keep_virtual_wires,
+        preserve_node_ids=preserve_node_ids,
+        external_custody=external_custody,
     )
 
 

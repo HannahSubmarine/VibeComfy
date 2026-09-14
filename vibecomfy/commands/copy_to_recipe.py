@@ -12,6 +12,8 @@ import argparse
 import re
 from pathlib import Path
 
+from vibecomfy.security.provenance import Provenance
+
 from vibecomfy.registry.ready import (
     repo_ready_template_discovery,
     resolve_ready_template,
@@ -49,6 +51,32 @@ def _cmd_copy_to_recipe(args: argparse.Namespace) -> int:
         print(f"Failed to read {source_path}: {exc}", __import__("sys").stderr)
         return 1
 
+    # Marked v2 sources are inseparable from their same-basename companion.
+    # Load and validate the pair before touching the destination; the bundle
+    # publisher below also validates the transformed staged bytes.
+    v2_bundle = None
+    try:
+        from vibecomfy.workflow_bundle import _atomic_publish_pair, _sidecar_path, load_bundle
+
+        candidate = load_bundle(source_path, trust=Provenance.USER_CONFIRMED)
+        if isinstance(candidate.ui_sidecar, dict) and candidate.ui_sidecar.get("format_version") == 2:
+            v2_bundle = candidate
+    except Exception as exc:
+        # A malformed marked pair must not fall back to Python-only copying.
+        if source_path.with_suffix(".vibe.json").exists() or "source_bundle" in source_text:
+            print(f"Failed to validate v2 source {source_path}: {exc}", __import__("sys").stderr)
+            return 1
+
+    if v2_bundle is not None:
+        destination_sidecar = _sidecar_path(out_path)
+        destination_layout = out_path.with_suffix(".layout.json")
+        if destination_sidecar.exists() or destination_layout.exists():
+            print(
+                f"Refusing v2 copy: destination companion/layout already exists for {out_path}",
+                __import__("sys").stderr,
+            )
+            return 1
+
     # Strip markers if requested
     if strip_markers:
         source_text = _strip_markers(source_text)
@@ -57,7 +85,26 @@ def _cmd_copy_to_recipe(args: argparse.Namespace) -> int:
     if with_runner:
         source_text = _append_runner(source_text, template_id)
 
-    # Write output
+    if v2_bundle is not None:
+        try:
+            _atomic_publish_pair(
+                out_path,
+                source_text,
+                v2_bundle.ui_sidecar,
+                expected=v2_bundle,
+            )
+        except Exception as exc:
+            print(f"Failed to publish v2 pair {out_path}: {exc}", __import__("sys").stderr)
+            return 1
+        print(f"Copied {template_id!r} → {out_path}")
+        if strip_markers:
+            print("  (markers stripped)")
+        if with_runner:
+            print("  (runner block appended)")
+        print("  (v2 Python + companion published atomically)")
+        return 0
+
+    # Write output (legacy/direct drafts remain Python-only).
     try:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(source_text, encoding="utf-8")

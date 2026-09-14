@@ -10,10 +10,12 @@ from tests.structural_harness.actors import (
 )
 from vibecomfy import load_workflow_any
 
-# Recognizable interpolation class shared between this builder and the rubric.
-# Opaque placeholder so the scenario stays offline-compilable while still
-# modelling a real RIFE/FILM/GIMM-style VFI node that operates on IMAGES.
-INTERP_CLASS = "vibecomfy.placeholder.frame_interpolation"
+# Use the actual ComfyUI interpolation pair.  The loader is included so the
+# structural graph has the same required ``INTERP_MODEL`` boundary as a real
+# execution; the harness supplies a bounded offline model registry.
+INTERP_CLASS = "FrameInterpolate"
+INTERP_LOADER_CLASS = "FrameInterpolationModelLoader"
+INTERP_MODEL = "rife"
 
 # Real wan_t2v node ids the edit must hang off of.
 VAEDECODE_ID = "8"      # VAEDecode -> decoded IMAGES
@@ -40,8 +42,11 @@ def build_m4_wan_t2v_append_frame_interpolation_evidence(
 
     workflow = load_workflow_any("video/wan_t2v")
 
-    # 1. Add the interpolation node and feed it the decoded IMAGES (8.0).
-    interp = workflow.add_node(INTERP_CLASS, multiplier=2)
+    # 1. Add a real interpolation model loader and interpolation node, then
+    # feed the decoded IMAGES (8.0) into the interpolation node.
+    model_loader = workflow.node(INTERP_LOADER_CLASS, model_name=INTERP_MODEL)
+    interp = workflow.node(INTERP_CLASS, multiplier=2)
+    workflow.connect(f"{model_loader.id}.0", f"{interp.id}.interp_model")
     workflow.connect(f"{VAEDECODE_ID}.0", f"{interp.id}.images")
 
     # 2. Rewire the video combine node to consume interpolated frames, NOT the
@@ -71,6 +76,14 @@ def build_m4_wan_t2v_append_frame_interpolation_evidence(
                 "op": "load_workflow_any",
                 "template": "video/wan_t2v",
                 "run_id": evidence.run_id,
+            },
+            {
+                "op": "add_node",
+                "class_type": INTERP_LOADER_CLASS,
+                "node_id": model_loader.id,
+                "model_name": INTERP_MODEL,
+                "run_id": evidence.run_id,
+                "status": "added",
             },
             {
                 "op": "add_node",

@@ -24,7 +24,9 @@ from vibecomfy.ingest.normalize import (
     ingest_workflow_and_ui,
     normalize_to_api,
 )
+from vibecomfy.cli_loader import load_workflow_any
 from vibecomfy.porting.emit.ui import emit_ui_json
+from vibecomfy.workflow import VibeEdge, WorkflowCompileError
 
 
 def _t06_recursive_graph(*, links=None, **extra):
@@ -43,6 +45,8 @@ def _t06_recursive_graph(*, links=None, **extra):
 
 def test_bundle_source_kind_classification_stays_at_ingest_door() -> None:
     assert door_import_source_kind({"nodes": []}) == "ui"
+
+
     assert door_import_source_kind(
         {"vibecomfy_format_version": "1.0", "nodes": {}}
     ) == "envelope"
@@ -61,6 +65,47 @@ def test_bundle_source_kind_classification_stays_at_ingest_door() -> None:
     assert door_import_source_kind(
         {"nodes": {}, "prompt": {"nodes": []}}
     ) == "api"
+
+
+@pytest.mark.parametrize(
+    ("fixture", "channel", "producer", "slot"),
+    [
+        ("1cc45704dcffe34a", "FPS", "513", "fps"),
+        ("430a3f936f6235f5", "instrumental", "153", "instruments"),
+        ("506ebdde037e22d8", "BG", "54", "IMAGE"),
+        ("673197a9269d00f8", "cond_negative", "266", "CONDITIONING"),
+    ],
+)
+def test_corpus_virtual_wire_capture_resolves_rostered_source_slots(
+    fixture: str, channel: str, producer: str, slot: str
+) -> None:
+    """Authored Set/Get channels may witness slots without a schema roster."""
+    path = Path(__file__).parent / "fixtures/live_agentic_corpus/corpus" / f"{fixture}.json"
+    workflow = from_envelope(json.loads(path.read_text(encoding="utf-8")))
+
+    legs = workflow.virtual_wires[channel]["legs"]
+    assert legs
+    assert all(leg["from_node"] == producer for leg in legs)
+    assert all(leg["from_output"] == slot for leg in legs)
+    assert slot in (workflow.nodes[producer].native_output_names or [])
+
+
+def test_api_import_recognizes_legacy_numeric_scoped_links() -> None:
+    workflow = from_api(
+        {
+            "238:218": {
+                "class_type": "PrimitiveInt",
+                "inputs": {"value": 4},
+            },
+            "238:240": {
+                "class_type": "ComfySwitchNode",
+                "inputs": {"on_true": ["238:218", 0]},
+            },
+        }
+    )
+
+    assert workflow.edges == [VibeEdge("238:218", "0", "238:240", "on_true")]
+    assert workflow.nodes["238:240"].inputs == {}
 
 
 def test_t06_rework_native_sentinel_never_bypasses_config_extra() -> None:
@@ -243,8 +288,6 @@ def test_t06_rework_definition_boundary_missing_name_has_stable_error() -> None:
         {"inputNode": {"id": -10}},
         {"outputNode": {"id": -20}},
         {"nodes": [{"id": -10, "type": "Input", "inputs": [], "outputs": []}, {"id": -20, "type": "Output", "inputs": [], "outputs": []}]},
-        {"config": {"inputNode": -10, "outputNode": -20}},
-        {"extra": {"inputNode": -10, "outputNode": -20}},
     ],
 )
 def test_t06_rework_every_native_marker_shape_rejects_from_ui(marker_fields) -> None:
@@ -269,6 +312,15 @@ def test_t06_rework_nested_native_marker_and_envelope_reject() -> None:
     }
     with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
         from_envelope(envelope)
+
+
+@pytest.mark.parametrize("field", ["config", "extra"])
+@pytest.mark.parametrize("value", [-10, -20, "-10", "-20"])
+def test_t06_rework_scalar_boundary_sentinels_in_payload_survive(field: str, value: object) -> None:
+    raw = _t06_recursive_graph(**{field: {"nested": [value], "pos": value}})
+    workflow = from_ui(raw, use_comfy_converter=False)
+    assert workflow.definitions["subgraphs"][0][field]["nested"][0] == value
+    assert workflow.definitions["subgraphs"][0][field]["pos"] == value
 
 
 @pytest.mark.parametrize("marker_id", [-10, "-20"])
@@ -333,7 +385,7 @@ def test_t06_ui_links_are_exact_and_capture_set_get_before_projection() -> None:
     workflow = from_ui(raw, use_comfy_converter=False)
     assert workflow.virtual_wires["BUS"]["legs"] == [{
         "scope_path": "", "leg_index": 0, "occurrence_index": 0,
-        "from_node": "1", "from_output": "0", "to_node": "4", "to_input": "value",
+        "from_node": "1", "from_output": "out", "to_node": "4", "to_input": "value",
     }]
     malformed = {**raw, "links": [[1, 1, 0, 2, 0]]}
     with pytest.raises(ValueError, match="exact six-field"):
@@ -402,6 +454,142 @@ def test_ui_ingest_captures_exact_native_socket_rosters() -> None:
     assert node.native_output_names == ["result", None]
     assert "_ui" in node.metadata
     assert "inputs" not in node.native_input_names
+
+
+def test_ui_witness_hydrates_only_absent_native_port_carriers() -> None:
+    from vibecomfy.workflow import VibeNode
+
+    ui = {
+        "inputs": [
+            {"name": "required", "type": "IMAGE"},
+            None,
+            {"name": "optional", "shape": 7, "type": "MASK"},
+        ],
+        "outputs": [{"name": "IMAGE", "type": "IMAGE"}, None],
+    }
+    node_data = {"class_type": "Witnessed", "inputs": {}, "_ui": ui}
+    from vibecomfy.ingest.normalize import _promote_ui_native_port_carriers
+
+    _promote_ui_native_port_carriers(node_data, ui)
+    assert node_data["native_input_names"] == ["required", None, "optional"]
+    assert node_data["native_input_types"] == ["IMAGE", None, "MASK"]
+    assert node_data["native_input_optional"] == [False, False, True]
+    assert node_data["native_output_names"] == ["IMAGE", None]
+    assert node_data["native_output_types"] == ["IMAGE", None]
+
+    # Explicit top-level carriers, especially an empty roster, are data rather
+    # than missing values and must remain authoritative.
+    explicit = {
+        **node_data,
+        "native_input_names": [],
+        "native_input_types": [],
+        "native_input_optional": [],
+        "native_output_names": [],
+        "native_output_types": [],
+    }
+    _promote_ui_native_port_carriers(explicit, ui)
+    assert explicit["native_input_names"] == []
+    assert explicit["native_output_names"] == []
+    assert VibeNode("1", "Witnessed", **{
+        key: explicit[key] for key in (
+            "native_input_names", "native_input_types", "native_input_optional",
+            "native_output_names", "native_output_types",
+        )
+    }).native_input_names == []
+
+
+@pytest.mark.parametrize(
+    ("workflow_id", "producer", "channel"),
+    [
+        ("1cc45704dcffe34a", "513", "FPS"),
+        ("430a3f936f6235f5", "153", "instrumental"),
+        ("506ebdde037e22d8", "54", "BG"),
+        ("673197a9269d00f8", "266", "cond_negative"),
+    ],
+)
+def test_named_channel_corpus_cli_import_compiles(
+    workflow_id: str, producer: str, channel: str
+) -> None:
+    """The real CLI envelope path hydrates and compiles each named channel."""
+    path = Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json"
+    workflow = load_workflow_any(str(path))
+    assert producer in workflow.nodes
+    assert channel in workflow.virtual_wires
+    if workflow_id == "506ebdde037e22d8":
+        # This fixture deliberately retains an ambiguous bypass presentation
+        # path; the existing fail-closed bypass contract remains authoritative.
+        with pytest.raises(WorkflowCompileError, match="not executable|bypass_ambiguous"):
+            workflow.compile("api")
+    else:
+        assert workflow.compile("api")
+
+
+@pytest.mark.parametrize("workflow_id", ["00444a9409f56c07", "78afac42baf0a381"])
+def test_bypass_roster_corpus_import_is_not_ambiguous(workflow_id: str) -> None:
+    raw = json.loads(
+        (Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json").read_text()
+    )
+    workflow = from_envelope(raw)
+    assert workflow.virtual_wires == {}
+
+
+@pytest.mark.parametrize(
+    ("workflow_id", "active_output_ids"),
+    [
+        ("00444a9409f56c07", {"1", "3", "37", "69", "73", "111", "113"}),
+        ("0070184c5f1c8ca2", {"9", "229", "231", "262"}),
+        ("1b136036c776018a", {"222", "223"}),
+        ("1c7ad8a2a8c0224b", {"264"}),
+        ("78afac42baf0a381", {"16", "48", "50", "62"}),
+    ],
+)
+def test_external_corpus_inferred_outputs_follow_hydrated_ui_modes(
+    workflow_id: str, active_output_ids: set[str]
+) -> None:
+    """Stale pre-hydration terminal discovery does not become a contract."""
+    path = Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json"
+    raw = json.loads(path.read_text())
+    workflow = from_envelope(raw)
+
+    assert {output.node_id for output in workflow.outputs} == active_output_ids
+    assert workflow.compile("api")
+
+
+@pytest.mark.parametrize("workflow_id", [
+    "00444a9409f56c07",
+    "78afac42baf0a381",
+    "506ebdde037e22d8",
+])
+def test_bypass_corpus_import_promotes_exact_ui_port_rosters(workflow_id: str) -> None:
+    """Every serialized node gets absence-only roster hydration, including bypass cases."""
+    path = Path(__file__).parent / "fixtures" / "live_agentic_corpus" / "corpus" / f"{workflow_id}.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    workflow = from_envelope(raw)
+
+    for node_id, serialized in raw["nodes"].items():
+        ui = serialized["metadata"].get("_ui")
+        node = workflow.nodes[node_id]
+        if not isinstance(ui, dict):
+            continue
+
+        for direction in ("input", "output"):
+            field = f"{direction}s"
+            ports = ui.get(field)
+            if ports is not None:
+                assert getattr(node, f"native_{direction}_names") == [
+                    (port.get("name") or None) if isinstance(port, dict) else None
+                    for port in ports
+                ]
+                assert getattr(node, f"native_{direction}_types") == [
+                    (port.get("type") or None) if isinstance(port, dict) else None
+                    for port in ports
+                ]
+        inputs = ui.get("inputs")
+        if inputs is not None:
+            assert node.native_input_optional == [
+                isinstance(port, dict) and port.get("shape") == 7
+                for port in inputs
+            ]
 
 
 # ── Case 1a: 'randomize' captured from named inputs dict ─────────────────────
@@ -1765,15 +1953,17 @@ def test_ingest_workflow_and_ui_accepts_api_prompt_dict() -> None:
     assert normalized["links"], "API edges must become canonical UI links"
 
 
-def test_ir_door_rejects_subgraph_fixture_native_boundary_payloads() -> None:
+def test_ir_door_expands_supported_subgraph_fixture_native_boundary_payloads() -> None:
     path = Path(__file__).parent / "fixtures/agent_edit/subgraphed_wan_i2v.json"
     raw = json.loads(path.read_bytes())
-    with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-        from_ui(raw, source_path=str(path), use_comfy_converter=False)
+    workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
+    assert workflow.nodes
+    assert any("::" in node_id for node_id in workflow.nodes)
+    assert not any(node.class_type == raw["definitions"]["subgraphs"][0]["id"] for node in workflow.nodes.values())
 
 
 def test_ir_door_exact_json_equality_across_the_spike_corpus() -> None:
-    """Law 1: exact ``json.dumps`` equality for the three spike corpus files."""
+    """Law 1: exact equality for ordinary sources; native graphs materialize."""
     import warnings as _warnings
 
     from vibecomfy.porting.emit.ui import emit_ui_json as _emit
@@ -1800,8 +1990,16 @@ def test_ir_door_exact_json_equality_across_the_spike_corpus() -> None:
             emitted = from_envelope(raw).to_envelope()
         else:
             if path.name == "subgraphed_wan_i2v.json":
-                with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-                    from_ui(raw, source_path=str(path), use_comfy_converter=False)
+                workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
+                with _warnings.catch_warnings():
+                    _warnings.simplefilter("ignore")
+                    emitted = _emit(workflow)
+                assert emitted["nodes"]
+                assert "definitions" not in emitted
+                assert not any(
+                    str(link[1]) in {"-10", "-20"} or str(link[3]) in {"-10", "-20"}
+                    for link in emitted["links"]
+                )
                 continue
             workflow = from_ui(raw, source_path=str(path), use_comfy_converter=False)
             with _warnings.catch_warnings():

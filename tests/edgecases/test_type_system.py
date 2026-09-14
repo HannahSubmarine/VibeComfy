@@ -50,8 +50,9 @@ def test_widget_prefixed_inputs_normalized() -> None:
     # widget_0 should be resolved to a proper name (image) for LoadImage
     # The emitted text should NOT contain the raw widget_0 for this known class
     assert "image='test_image.png'" in result.text
-    # Raw widget evidence is retained separately from the typed constructor input.
-    assert "wf.nodes['1'].widgets = {'widget_0': 'test_image.png'}" in result.text
+    # Raw widget evidence is retained in the IR/custody model, not replayed as
+    # a post-build mutation in the generated module.
+    assert "wf.nodes[" not in result.text
 
 
 def test_link_edge_handling() -> None:

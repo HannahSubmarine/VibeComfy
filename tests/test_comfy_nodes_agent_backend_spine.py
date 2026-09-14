@@ -5975,6 +5975,7 @@ def test_runtime_readiness_normalizes_route_and_status_wraps_it(
 def test_runtime_readiness_reports_deepseek_key_presence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("VIBECOMFY_TRANSPORT", raising=False)
     monkeypatch.setattr(runtime, "_resolve_openrouter_key", lambda: "test-key")
     monkeypatch.setattr(runtime, "_arnold_worker_importable", lambda: True)
 

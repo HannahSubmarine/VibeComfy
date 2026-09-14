@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -157,6 +158,72 @@ def apply_positional_widget_aliases(
             inputs[name] = inputs[widget_key]
         if name != widget_key:
             inputs.pop(widget_key, None)
+
+
+def _ui_widget_aliases(node: Mapping[str, Any]) -> list[str]:
+    metadata = node.get("metadata")
+    ui = metadata.get("_ui") if isinstance(metadata, Mapping) else None
+    raw_inputs = ui.get("inputs") if isinstance(ui, Mapping) else None
+    if not isinstance(raw_inputs, list):
+        return []
+    return [
+        str(item["widget"]["name"])
+        for item in raw_inputs
+        if isinstance(item, Mapping)
+        and isinstance(item.get("widget"), Mapping)
+        and isinstance(item["widget"].get("name"), str)
+        and item["widget"]["name"]
+    ]
+
+
+def promote_positional_widget_aliases(
+    node: dict[str, Any],
+    class_type: str,
+) -> None:
+    """Promote only absent positional carriers using source-backed evidence.
+
+    The object-info roster is compact (link-only inputs are already ``None``
+    and omitted); UI widget names are independent witness anchors.  A shorter
+    roster leaves the remaining positional carriers untouched, preserving
+    unresolved holes and their authority.  Existing names are never replaced;
+    duplicate positional aliases are rejected instead of guessed through.
+    """
+    widgets = node.get("widgets")
+    inputs = node.get("inputs")
+    if not isinstance(widgets, dict) or not isinstance(inputs, dict):
+        return
+    ui_names = _ui_widget_aliases(node)
+    try:
+        from vibecomfy.porting.object_info.consume import object_info_widget_value_order
+
+        schema_names = object_info_widget_value_order(class_type)
+    except Exception:
+        schema_names = []
+    if ui_names and schema_names:
+        positions = [schema_names.index(name) for name in ui_names if name in schema_names]
+        if len(positions) != len(ui_names) or positions != sorted(positions):
+            schema_names = []
+    names = schema_names or ui_names
+    if len(names) != len(set(names)):
+        raise ValueError(f"duplicate positional widget aliases for {class_type!r}")
+    for key in sorted(widgets, key=_widget_index):
+        if not key.startswith("widget_"):
+            continue
+        index = _widget_index(key)
+        if index < 0 or index >= len(names):
+            continue
+        name = names[index]
+        if not isinstance(name, str) or not name or name == key:
+            continue
+        if name in inputs:
+            # An explicitly named carrier owns the value; preserve the
+            # unresolved positional carrier instead of guessing through it.
+            continue
+        if name in widgets:
+            raise ValueError(
+                f"duplicate positional widget alias {key!r} -> {name!r} for {class_type!r}"
+            )
+        inputs[name] = widgets.pop(key)
 
 
 def resolve_widget_key(class_type: str, key: str) -> str | None:

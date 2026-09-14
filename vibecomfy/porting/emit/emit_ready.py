@@ -35,14 +35,18 @@ import ast
 import copy
 import json
 import keyword as _keyword
+import unicodedata
 from dataclasses import replace
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping
 
+from vibecomfy._compile._helpers import RESOLVABLE_HELPER_CLASS_TYPES
 from vibecomfy.node_packs import LockEntry, read_lockfile
 from vibecomfy.porting.widgets.aliases import resolve_widget_key_with_provenance
+from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
+from vibecomfy.porting.widgets.schema import WIDGET_SCHEMA
 from vibecomfy.porting.emit.emit_constants import (
     _LOAD_IMAGE_FAMILY,
     _looks_like_placeholder_filename,
@@ -122,6 +126,10 @@ class _PublicInputSpec:
     required: bool = False
     aliases: tuple[str, ...] = ()
     media_semantics: str | None = None
+    range: Any = None
+    allow_missing_target: bool = False
+    infer_type: bool = True
+    materialize_aliases: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +159,12 @@ def _resolved_field_values(node: Any) -> dict[str, Any]:
     class_type = str(getattr(node, "class_type", ""))
     metadata = getattr(node, "metadata", {})
     aliases = metadata.get("input_aliases") if isinstance(metadata, Mapping) else None
+    if not isinstance(aliases, (list, tuple)):
+        # Public-input inference must use the same source-backed compact
+        # widget roster as Python emission.  This names proven seed slots
+        # (including custom-node schemas) without inventing names for opaque
+        # widgets such as UltraShapeSaveGLB.
+        aliases = compact_widget_names_for_node(node, class_type).names
     values: dict[str, Any] = {}
     # ``inputs`` is the semantic channel and wins only after translating both
     # channels to their canonical field names.  This mirrors direct compile's
@@ -165,6 +179,14 @@ def _resolved_field_values(node: Any) -> dict[str, Any]:
         if translated is not None and translated not in values:
             values[translated] = value
     return values
+
+
+def _has_proven_schema_type(node: Any) -> bool:
+    """Whether a node carries source-backed type evidence for inference."""
+    metadata = getattr(node, "metadata", {})
+    source = metadata.get("schema_source") if isinstance(metadata, Mapping) else None
+    confidence = source.get("confidence") if isinstance(source, Mapping) else None
+    return isinstance(confidence, (int, float)) and confidence > 0
 
 
 # ---------------------------------------------------------------------------
@@ -249,9 +271,19 @@ def _infer_public_input_bindings(
             prompt_candidate = prompt_candidate or (str(node_id), "value")
         if class_type == "LoadImage" and "image" in fields:
             add("image", str(node_id), "image", type="IMAGE", required=True, aliases=("input_image",), media_semantics="image")
-        if "seed" in fields and isinstance(fields["seed"], int) and not isinstance(fields["seed"], bool):
+        if (
+            "seed" in fields
+            and isinstance(fields["seed"], int)
+            and not isinstance(fields["seed"], bool)
+            and _has_proven_schema_type(node)
+        ):
             add("seed", str(node_id), "seed", type="INT")
-        if "noise_seed" in fields and isinstance(fields["noise_seed"], int) and not isinstance(fields["noise_seed"], bool):
+        if (
+            "noise_seed" in fields
+            and isinstance(fields["noise_seed"], int)
+            and not isinstance(fields["noise_seed"], bool)
+            and _has_proven_schema_type(node)
+        ):
             add("seed", str(node_id), "noise_seed", type="INT")
         if "width" in fields and isinstance(fields["width"], int):
             add("width", str(node_id), "width", type="INT")
@@ -283,12 +315,17 @@ def _public_input_specs(
     *,
     registered_inputs: dict[str, tuple[str, str]] | None,
     constant_map: dict[tuple[str, str], str],
+    authored_inputs: Mapping[str, Any] | None = None,
 ) -> list[_PublicInputSpec]:
     specs: list[_PublicInputSpec] = []
     used_names: set[str] = set()
     used_targets: set[tuple[str, str]] = set()
 
-    def add(binding: _PublicInputBinding) -> None:
+    def add(
+        binding: _PublicInputBinding,
+        *,
+        retained_node_ref: str | None = None,
+    ) -> None:
         if binding.name in used_names:
             return
         node = workflow_nodes.get(str(binding.node_id))
@@ -301,9 +338,31 @@ def _public_input_specs(
             field_values[binding.field],
             workflow_nodes,
         )
-        default_expr = constant_map.get((str(binding.node_id), binding.field))
+        authored = (authored_inputs or {}).get(binding.name)
+        if authored is not None:
+            read = (
+                (lambda key, fallback=None: authored.get(key, fallback))
+                if isinstance(authored, Mapping)
+                else (lambda key, fallback=None: getattr(authored, key, fallback))
+            )
+            authored_default = copy.deepcopy(read("default"))
+            binding = replace(
+                binding,
+                type=read("type"),
+                required=bool(read("required", False)),
+                aliases=tuple(read("aliases", ()) or ()),
+                media_semantics=read("media_semantics"),
+            )
+        else:
+            read = lambda key, fallback=None: fallback
+            authored_default = default_value
+        default_expr = (
+            None
+            if authored is not None
+            else constant_map.get((str(binding.node_id), binding.field))
+        )
         if default_expr is None:
-            default_expr = _format_value(default_value)
+            default_expr = _format_value(authored_default)
         # Blank placeholder filenames for LoadImage-family public inputs
         # (e.g. 'image (6).png' — the upstream workflow author's local file).
         if (
@@ -316,7 +375,15 @@ def _public_input_specs(
             default_expr = "''"
         node_var = _first_output_var(output_var_names.get(str(binding.node_id))) or var_names.get(str(binding.node_id))
         node_ref = node_var if node_var is not None else repr(str(binding.node_id))
-        metadata_node_ref = repr(str(binding.node_id))
+        metadata_node_ref = (
+            retained_node_ref
+            if retained_node_ref is not None
+            else (
+                repr(str(binding.node_id))
+                if registered_inputs is not None
+                else (f"ref({node_var!r})" if node_var is not None else repr(str(binding.node_id)))
+            )
+        )
         specs.append(
             _PublicInputSpec(
                 name=binding.name,
@@ -328,6 +395,13 @@ def _public_input_specs(
                 required=binding.required,
                 aliases=binding.aliases,
                 media_semantics=binding.media_semantics,
+                range=copy.deepcopy(read("range")),
+                allow_missing_target=bool(read("allow_missing_target", False)),
+                infer_type=authored is None,
+                materialize_aliases=(
+                    authored is None
+                    or all(alias in (authored_inputs or {}) for alias in binding.aliases)
+                ),
             )
         )
         used_names.add(binding.name)
@@ -342,18 +416,32 @@ def _public_input_specs(
             metadata = getattr(node, "metadata", {})
             aliases = metadata.get("input_aliases") if isinstance(metadata, Mapping) else None
             resolved = resolve_widget_key_with_provenance(cls, field, input_aliases=aliases)
-            if resolved.name is not None:
+            if resolved.resolved and resolved.name is not None:
                 resolved_field = resolved.name
-        add(_PublicInputBinding(name=input_name, node_id=str(old_id), field=resolved_field))
+        if resolved_field.startswith("widget_"):
+            continue
+        add(
+            _PublicInputBinding(name=input_name, node_id=str(old_id), field=resolved_field),
+            retained_node_ref=repr(str(old_id)),
+        )
 
-    inferred = _infer_public_input_bindings(
-        workflow_nodes,
-        edges_in,
-        reserved_names=used_names,
-        reserved_targets=used_targets,
-    )
-    for binding in inferred:
-        add(binding)
+    # A supplied retained map (including an explicitly empty one) permits
+    # ordinary inference for targets it does not occupy.  ``None`` means the
+    # caller did not request retained-input reconciliation and preserves the
+    # legacy no-inference surface.
+    if registered_inputs is not None:
+        inferred = _infer_public_input_bindings(
+            workflow_nodes,
+            edges_in,
+            reserved_names=used_names,
+            reserved_targets=used_targets,
+        )
+        for binding in inferred:
+            # Retained-input reconciliation fills the role-based controls
+            # that can be safely inferred without changing unrelated asset or
+            # output configuration bindings supplied by the caller.
+            if binding.name in {"prompt", "negative_prompt", "seed"}:
+                add(binding)
     return specs
 
 
@@ -401,9 +489,76 @@ def _format_public_inputs_block(specs: list[_PublicInputSpec], *, metadata: bool
             args.append(f"aliases={aliases!r}")
         if spec.media_semantics is not None:
             args.append(f"media_semantics={spec.media_semantics!r}")
+        if spec.range is not None:
+            args.append(f"range={spec.range!r}")
+        if spec.allow_missing_target:
+            args.append("allow_missing_target=True")
+        if not spec.infer_type:
+            args.append("infer_type=False")
+        if not spec.materialize_aliases:
+            args.append("materialize_aliases=False")
         lines.append(f"    {spec.name!r}: InputSpec({', '.join(args)}),")
     lines.append("}" if metadata else "    }")
     return lines
+
+
+def _share_public_input_values(
+    specs: list[_PublicInputSpec],
+    workflow_nodes: Mapping[str, Any],
+    var_names: Mapping[str, str],
+    *,
+    constant_lines: list[str],
+    constant_map: dict[tuple[str, str], str],
+) -> tuple[list[str], list[_PublicInputSpec]]:
+    """Name a value shared by a constructor and its public descriptor once."""
+    if not specs:
+        return constant_lines, specs
+    node_by_var = {str(variable): str(node_id) for node_id, variable in var_names.items()}
+    used_names: set[str] = set()
+    if constant_lines:
+        try:
+            used_names.update(
+                target.id
+                for statement in ast.parse("\n".join(constant_lines)).body
+                if isinstance(statement, (ast.Assign, ast.AnnAssign))
+                for target in (
+                    statement.targets if isinstance(statement, ast.Assign) else [statement.target]
+                )
+                if isinstance(target, ast.Name)
+            )
+        except SyntaxError:
+            pass
+
+    rewritten: list[_PublicInputSpec] = []
+    additions: list[str] = []
+    for spec in specs:
+        node_id = node_by_var.get(str(spec.node_ref))
+        node = workflow_nodes.get(node_id) if node_id is not None else None
+        fields = _resolved_field_values(node) if node is not None else {}
+        if spec.field not in fields:
+            rewritten.append(spec)
+            continue
+        current_expr = _format_value(fields[spec.field])
+        if current_expr != spec.default_expr:
+            rewritten.append(spec)
+            continue
+        expression = constant_map.get((node_id, spec.field))
+        if expression is None:
+            stem = "".join(
+                character if character.isalnum() else "_"
+                for character in str(spec.name).upper()
+            ).strip("_") or "INPUT"
+            base = f"DEFAULT_{stem}"
+            expression = base
+            suffix = 2
+            while expression in used_names:
+                expression = f"{base}_{suffix}"
+                suffix += 1
+            used_names.add(expression)
+            additions.append(f"{expression} = {current_expr}")
+            constant_map[(str(node_id), spec.field)] = expression
+        rewritten.append(replace(spec, default_expr=expression))
+    return [*constant_lines, *additions], rewritten
 
 
 # ---------------------------------------------------------------------------
@@ -547,6 +702,8 @@ def _format_ready_metadata_build(
     has_public_inputs: bool,
     custom_node_packs: Mapping[str, Any] | None = None,
     output_node_class_type: str | None = None,
+    external_custody: bool = False,
+    preserve_empty_models: bool = False,
 ) -> list[str]:
     template_id = str(metadata.get("ready_template") or metadata.get("workflow_template") or "ready_template")
     raw_capability = str(metadata.get("capability") or "unknown")
@@ -568,12 +725,18 @@ def _format_ready_metadata_build(
         lines.append("    models=MODELS,")
     if output_prefix != template_id:
         lines.append(f"    output_prefix={output_prefix!r},")
-    requirements_expr = _requirements_expr_for_emit(requirements, has_models=has_models)
+    requirements_expr = _requirements_expr_for_emit(
+        requirements,
+        has_models=has_models,
+        preserve_empty_models=preserve_empty_models,
+    )
     if requirements_expr is not None:
         lines.append(f"    requirements={requirements_expr},")
     if custom_node_packs:
         lines.append(f"    custom_node_packs={_format_value(dict(custom_node_packs))},")
-    for key, value in _metadata_extras_for_emit(metadata).items():
+    for key, value in _metadata_extras_for_emit(
+        metadata, external_custody=external_custody
+    ).items():
         lines.append(f"    {key}={_format_value(value)},")
     lines.append(")")
     return lines
@@ -621,6 +784,10 @@ def emit_ready_template_python(
     diagnostics: list[Any] | None = None,
     raw_workflow: dict[str, Any] | None = None,
     object_info_identities: dict[str, Any] | None = None,
+    omit_terminal_ui_only: bool = False,
+    keep_virtual_wires: bool = False,
+    preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     from vibecomfy.porting.emitter import _use_object_info_identities, _drain_lookup_warning_diagnostics  # noqa: PLC0415
     with _use_object_info_identities(object_info_identities):
@@ -633,6 +800,10 @@ def emit_ready_template_python(
             apply_overrides=apply_overrides,
             diagnostics=diagnostics,
             raw_workflow=raw_workflow,
+            omit_terminal_ui_only=omit_terminal_ui_only,
+            keep_virtual_wires=keep_virtual_wires,
+            preserve_node_ids=preserve_node_ids,
+            external_custody=external_custody,
         )
         lookup_warnings = _drain_lookup_warning_diagnostics(diagnostics)
         if lookup_warnings:
@@ -653,9 +824,17 @@ def _emit_ready_template_python_inner(
     apply_overrides: dict[str, Any] | None = None,
     diagnostics: list[Any] | None = None,
     raw_workflow: dict[str, Any] | None = None,
+    omit_terminal_ui_only: bool = False,
+    keep_virtual_wires: bool = False,
+    preserve_node_ids: bool = False,
+    external_custody: bool = False,
 ) -> str:
     from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit  # noqa: PLC0415
     _preflight_object_info_identity_resolution(workflow)
+    # Bundle publication opts into the compact companion-backed form. Direct
+    # ready-template conversion remains independently buildable and may retain
+    # the recursive helper's structural witness locally; published pairs keep
+    # that witness in the sibling companion instead.
     metadata = dict(ready_metadata)
     metadata["ready_template"] = str(workflow.id)
     metadata["workflow_template"] = str(workflow.id).rsplit("/", 1)[-1]
@@ -707,29 +886,26 @@ def _emit_ready_template_python_inner(
     # immediately before kwargs emission, so presentation data still cannot
     # become call arguments or workflow semantics.
     _validate_named_output_edges(workflow)
-    # Connections are emitted once, explicitly, from ``workflow.edges``.
-    # Imported IR may also retain a link-shaped value on the target input; do
-    # not let the wrapper call turn that redundant view into a second edge.
-    for edge in workflow.edges:
-        target = emission_workflow.nodes.get(str(edge.to_node))
-        if target is None:
-            continue
-        if str(edge.to_input) in target.inputs:
-            target.inputs[str(edge.to_input)] = None
-        if str(edge.to_input) in target.widgets:
-            target.widgets[str(edge.to_input)] = None
     prepared = _prepare_workflow_for_emit(
         emission_workflow,
         apply_overrides=apply_overrides,
         template_id=template_id,
         diagnostics=diagnostics,
-        project_execution_edges=False,
-        keep_virtual_wires=True,
+        project_execution_edges=True,
+        omit_terminal_ui_only=omit_terminal_ui_only,
+        keep_virtual_wires=keep_virtual_wires,
         prune_dead_branches=False,
     )
+    # UI widget labels/titles are presentation evidence, not constructor-name
+    # authority.  Retained native/schema metadata remains available to the
+    # compact resolver without consulting the raw UI name table.
+    prepared["name_authority"] = {}
     prepared["subgraph_definitions"] = subgraph_definitions
     _apply_subgraph_names_to_prepared(prepared)
-    has_ltx_tail = _has_ltx_lowvram_tail(template_id)
+    # The canonical workflow already contains the effective result of any
+    # template-specific preparation. Reapplying a legacy build tail would be
+    # a second semantic authority and can override visible constructor edits.
+    has_ltx_tail = False
 
     workflow_nodes = door_nodes(prepared)
     edges_in = prepared["edges_in"]
@@ -738,7 +914,11 @@ def _emit_ready_template_python_inner(
 
     # Hoist constants and build section groups
     constant_lines, constant_map = _hoist_constants(
-        workflow_nodes, edges_in, var_names, name_authority=prepared.get("name_authority")
+        workflow_nodes,
+        edges_in,
+        var_names,
+        name_authority=prepared.get("name_authority"),
+        resolve_graph_strings=False,
     )
     constant_lines, constant_map = _drop_output_prefix_constants(constant_lines, constant_map)
     section_groups = _build_section_groups(workflow_nodes, edges_in)
@@ -746,12 +926,18 @@ def _emit_ready_template_python_inner(
         workflow.definitions,
         interfaces=workflow.interfaces,
         boundary_ports=workflow.boundary_ports,
+        external_custody=external_custody,
     )
     wrapper_imports = _wrapper_imports_for_nodes(_all_nodes_for_imports(workflow_nodes, subgraph_definitions))
     wrapper_imports = _merge_definition_wrapper_imports(
         wrapper_imports, workflow.definitions
     )
     output_var_names = prepared["output_var_names"]
+    # Keep every constructed node bound to one stable Python variable.  Named
+    # ``.out(...)`` handles express fanout/slot selection without discarding
+    # the builder object needed by compact identity custody.
+    output_var_names = {}
+    prepared["output_var_names"] = output_var_names
     public_inputs = _public_input_specs(
         workflow_nodes,
         edges_in,
@@ -759,8 +945,26 @@ def _emit_ready_template_python_inner(
         output_var_names,
         registered_inputs=registered_inputs,
         constant_map=constant_map,
+        authored_inputs=workflow.inputs,
+    )
+    constant_lines, public_inputs = _share_public_input_values(
+        public_inputs,
+        workflow_nodes,
+        var_names,
+        constant_lines=constant_lines,
+        constant_map=constant_map,
     )
     model_assets = _model_assets_for_emit(metadata, requirements)
+    # An explicitly empty requirements.models list is meaningful for an
+    # editable draft even when a model-picker widget is already present.  It
+    # is only serialized when the graph proves that such a picker exists;
+    # ordinary model-free workflows stay as clean as before.
+    from vibecomfy.model_assets import _referenced_model_values
+    preserve_empty_models = (
+        not model_assets
+        and requirements.get("models") == []
+        and bool(_referenced_model_values(workflow))
+    )
     custom_node_packs = _custom_node_packs_for_emit(workflow_nodes, metadata, requirements)
     has_public_inputs = bool(public_inputs)
     metadata["_has_public_inputs_for_emit"] = has_public_inputs
@@ -772,7 +976,7 @@ def _emit_ready_template_python_inner(
     out_lines.append("from __future__ import annotations")
     out_lines.append("")
     out_lines.append(
-        "from vibecomfy.templates import InputSpec, ModelAsset, ReadyMetadata, finalize, new_workflow, node as raw_call, ref"
+        "from vibecomfy.templates import InputSpec, ModelAsset, OutputSpec, ReadyMetadata, authored_channel, finalize, new_workflow, node as raw_call, recursive_definition_scope, ref"
     )
     out_lines.append("from vibecomfy.workflow import VibeWorkflow")
     for module_name, names in sorted(wrapper_imports.items()):
@@ -795,11 +999,27 @@ def _emit_ready_template_python_inner(
         workflow_nodes,
         subgraph_definitions,
     )
+    # Direct spec inspection keeps the retained source node id (needed by the
+    # remapper and its unit contract); emitted Python metadata binds the
+    # corresponding canonical node object.
+    node_ids_by_var = {str(variable): str(node_id) for node_id, variable in var_names.items()}
+    public_inputs_for_metadata = [
+        replace(
+            spec,
+            metadata_node_ref=(
+                f"ref({spec.node_ref!r})"
+                if spec.metadata_node_ref == repr(node_ids_by_var.get(spec.node_ref))
+                else spec.metadata_node_ref
+            ),
+        )
+        for spec in public_inputs_for_metadata
+    ]
     public_input_metadata_lines = _format_public_inputs_block(public_inputs_for_metadata, metadata=True)
     if public_input_metadata_lines:
         out_lines.append("")
         out_lines.extend(public_input_metadata_lines)
         out_lines.append("")
+    out_lines.append("")
     output_node_ids = _terminal_output_node_ids(workflow_nodes, edges_in)
     output_node_cls: str | None = (
         str(workflow_nodes[output_node_ids[0]].class_type) if output_node_ids and output_node_ids[0] in workflow_nodes else None
@@ -812,6 +1032,8 @@ def _emit_ready_template_python_inner(
             has_public_inputs=has_public_inputs,
             custom_node_packs=custom_node_packs,
             output_node_class_type=output_node_cls,
+            external_custody=external_custody,
+            preserve_empty_models=preserve_empty_models,
         )
     )
     out_lines.append("")
@@ -826,35 +1048,33 @@ def _emit_ready_template_python_inner(
         output_var_names,
         metadata,
     )
-    # Finalization releases the workflow context. Restore the exact authored
-    # semantic IR afterwards so inferred ready-template metadata never becomes
-    # a competing authority.
+    input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
+    if external_custody:
+        # The v2 source uses the concise companion-backed output declaration.
+        tail_lines[-1] = f"    return wf.finalize({input_expr})"
+    finalize_line = tail_lines[-1].replace("return wf.finalize(", "wf = wf.finalize(", 1)
+    if not finalize_line.endswith(")"):
+        raise RuntimeError("canonical finalize line is malformed")
+    input_expr = "PUBLIC_INPUT_METADATA" if has_public_inputs else "{}"
+    # Use one typed output spelling for direct and companion-backed renders.
+    # It preserves explicit multi-output contracts and makes an output-less
+    # direct graph unambiguous without reintroducing the legacy output-node
+    # argument bundle.
+    finalize_line = f"    wf = wf.finalize({input_expr}{_v2_output_args(workflow, var_names, metadata)})"
+    # Finalization owns compact identity/schema rebinding.  Runtime values and
+    # topology are already authoritative in the constructor calls above.
     tail_lines = [
-        *(
-            f"    {line}"
-            for line in _canonical_connection_lines(
-                workflow,
-                retained_node_ids=set(workflow_nodes),
-            )
-        ),
         *tail_lines[:-1],
-        tail_lines[-1].replace("return wf.finalize(", "wf = wf.finalize(", 1),
+        finalize_line,
         *(
             f"    {line}"
-            for line in _canonical_semantic_lines(
+            for line in _canonical_graph_semantic_lines(
                 workflow,
-                workflow_nodes,
-                registered_inputs=registered_inputs,
                 definitions_expr=definitions_expr,
             )
         ),
         "    return wf",
     ]
-    # Connections are emitted explicitly above. Keep the original edge view
-    # for ordering/liveness, but do not duplicate links in kwargs.
-    prepared["ordering_edges_in"] = edges_in
-    prepared["live_edges_in"] = edges_in
-    prepared["edges_in"] = {}
     out_lines.extend(
         _emit_build_function(
             prepared,
@@ -867,9 +1087,14 @@ def _emit_ready_template_python_inner(
             tail_lines=tail_lines,
             diagnostics=diagnostics,
             use_shared_helpers=True,
-            emit_all_ids=True,
+            # CLI bundle preflight needs a temporary source-id witness so its
+            # rebuilt candidate can be joined back to the captured UI graph.
+            # The published source leaves this false and keeps identity in the
+            # sibling sidecar instead of making the Python noisy.
+            emit_all_ids=preserve_node_ids,
             constant_map=constant_map,
             section_groups=section_groups,
+            external_custody=external_custody,
         )
     )
     out_lines.append("")
@@ -889,57 +1114,22 @@ def _emit_ready_template_python_inner(
     return combined
 
 
-def _canonical_semantic_lines(
+def _canonical_graph_semantic_lines(
     workflow: Any,
-    workflow_nodes: Mapping[str, Any],
     *,
-    registered_inputs: Mapping[str, tuple[str, str]] | None,
     definitions_expr: str | None,
 ) -> list[str]:
-    """Render authored semantic fields that wrappers cannot carry themselves.
-
-    Public node wrappers intentionally own node construction and output ABI;
-    recursive declarations, variant maps, and T04 native socket rosters belong
-    to the workflow IR and therefore are restored explicitly on the freshly
-    built workflow.  Values are detached before rendering so emission never
-    mutates the caller or turns UI evidence into a source authority.
-    """
+    """Render graph-level authored declarations not owned by node calls."""
     def render(value: Any) -> str:
         return _format_value(_plain_canonical_value(copy.deepcopy(value)))
 
     lines: list[str] = []
-    for node_id in sorted(workflow.nodes, key=str):
-        node = workflow.nodes[node_id]
-        if str(node_id) not in workflow_nodes:
-            continue
-        node_expr = f"wf.nodes[{str(node_id)!r}]"
-        lines.append(f"{node_expr}.inputs = {render(node.inputs)}")
-        lines.append(f"{node_expr}.widgets = {render(node.widgets)}")
-        semantic_metadata = workflow._semantic_node_metadata(node)
-        runtime_metadata: dict[str, Any] = {}
-        if semantic_metadata:
-            runtime_metadata["semantic"] = semantic_metadata
-        source_metadata = node.metadata if isinstance(node.metadata, Mapping) else {}
-        for key in (
-            "schema_source", "unresolved", "reconciliation", "diagnostics",
-            "provenance", "input_names", "output_names", "input_types", "output_types",
-            "keep_defaults",
-        ):
-            if key in source_metadata:
-                runtime_metadata[key] = copy.deepcopy(source_metadata[key])
-        lines.append(f"{node_expr}.metadata = {render(runtime_metadata)}")
-        # Ready wrappers hydrate legacy schema carriers while they build.  The
-        # emitted workflow is the authority, including an explicit absence, so
-        # always overwrite every carrier rather than leaving wrapper evidence
-        # behind when the authored node has ``None``.
-        lines.append(f"{node_expr}.native_input_names = {render(node.native_input_names)}")
-        lines.append(f"{node_expr}.native_output_names = {render(node.native_output_names)}")
-        lines.append(f"{node_expr}.native_input_types = {render(node.native_input_types)}")
-        lines.append(f"{node_expr}.native_output_types = {render(node.native_output_types)}")
-        lines.append(f"{node_expr}.native_input_optional = {render(node.native_input_optional)}")
-        lines.append(f"{node_expr}.native_input_asset_kinds = {render(node.native_input_asset_kinds)}")
-        lines.append(f"{node_expr}.native_output_slots = {render(node.native_output_slots)}")
-    for field_name in ("definitions", "interfaces", "boundary_ports", "virtual_wires"):
+    # Virtual wires are an ingestion/presentation witness. Their legs are
+    # already materialized into ordinary constructor edges by the shared
+    # execution projection. Replaying that roster in Python would create a
+    # second connectivity authority (and duplicate edges on reload); the v2
+    # companion retains the presentation/custody evidence.
+    for field_name in ("definitions", "interfaces", "boundary_ports"):
         value = copy.deepcopy(getattr(workflow, field_name, None))
         if value:
             value_expr = definitions_expr if field_name == "definitions" else None
@@ -948,158 +1138,644 @@ def _canonical_semantic_lines(
         lines.append(f"wf.variants = {render(workflow.variants)}")
     if workflow.default_variant is not None:
         lines.append(f"wf.default_variant = {render(workflow.default_variant)}")
-    # Public inputs are reconstructed through the IR's public registration
-    # method.  This preserves aliases/ranges/media semantics without importing
-    # workflow dataclasses that the restricted generated-source policy does
-    # not expose.
-    lines.append("wf.inputs.clear()")
-    authored_inputs = dict(workflow.inputs)
-    for name, target in sorted(dict(registered_inputs or {}).items()):
-        if name in authored_inputs:
-            continue
-        node_id, field = str(target[0]), str(target[1])
-        node = workflow.nodes.get(node_id)
-        if node is None or (field not in node.inputs and field not in node.widgets):
-            raise ValueError(
-                f"public input {name!r} targets missing field {node_id}.{field}"
-            )
-        value = copy.deepcopy(node.inputs.get(field, node.widgets.get(field)))
-        authored_inputs[name] = {
-            "name": name,
-            "node_id": node_id,
-            "field": field,
-            "value": value,
-            "type": None,
-            "default": value,
-            "required": False,
-            "range": None,
-            "aliases": (),
-            "media_semantics": None,
-            "allow_missing_target": False,
-        }
-    def read_input(item: Any, key: str) -> Any:
-        return item[key] if isinstance(item, Mapping) else getattr(item, key)
-
-    descriptor_fields = (
-        "node_id", "field", "value", "type", "default", "required", "range",
-        "media_semantics", "allow_missing_target",
-    )
-    from vibecomfy.testing.canonical import canonical_bytes
-
-    def descriptor_bytes(item: Any) -> bytes:
-        return canonical_bytes(
-            {field_name: read_input(item, field_name) for field_name in descriptor_fields}
-        )
-
-    materialized_alias_owners: dict[str, str] = {}
-    for owner_name, owner in authored_inputs.items():
-        for alias in tuple(read_input(owner, "aliases")):
-            candidate = authored_inputs.get(alias)
-            if candidate is None or tuple(read_input(candidate, "aliases")):
-                continue
-            if descriptor_bytes(candidate) == descriptor_bytes(owner):
-                previous = materialized_alias_owners.setdefault(str(alias), str(owner_name))
-                if previous != str(owner_name):
-                    materialized_alias_owners.pop(str(alias), None)
-
-    ordered_input_names = [
-        *sorted(
-            (name for name in authored_inputs if name not in materialized_alias_owners),
-            key=str,
-        ),
-        *sorted(materialized_alias_owners, key=str),
-    ]
-    for name in ordered_input_names:
-        item = authored_inputs[name]
-        read = (
-            (lambda key: item[key])
-            if isinstance(item, Mapping)
-            else (lambda key: getattr(item, key))
-        )
-        register_args = [
-            repr(str(read("name"))),
-            repr(str(read("node_id"))),
-            repr(str(read("field"))),
-            render(read("value")),
-            f"type={render(read('type'))}",
-            f"default={render(read('default'))}",
-            f"required={render(read('required'))}",
-            f"range={render(read('range'))}",
-            f"aliases={render(tuple(read('aliases')))}",
-            f"media_semantics={render(read('media_semantics'))}",
-            f"allow_missing_target={render(read('allow_missing_target'))}",
-        ]
-        if name in materialized_alias_owners:
-            register_args.append(
-                f"materialized_alias_of={materialized_alias_owners[name]!r}"
-            )
-        lines.append(f"wf.register_input({', '.join(register_args)})")
-        # ``register_input`` predates the distinction between an omitted
-        # default and an explicitly-authored ``None`` and therefore falls
-        # back to ``value`` whenever ``default is None``.  Canonical source
-        # must preserve the exact VibeInput descriptor, so restore the
-        # detached authored value after registration instead of broadening
-        # the public API with a second sentinel/overload.
-        if read("default") is None:
-            lines.append(
-                f"wf.inputs[{str(read('name'))!r}].default = {render(read('default'))}"
-            )
-
-    # finalize_metadata() already creates the public-output objects for every
-    # supported terminal node.  Reuse those objects, select the authored set,
-    # and restore the exact contract.  An output that cannot be bound through
-    # that public lifecycle is rejected instead of being smuggled in through a
-    # private dataclass constructor.
-    from vibecomfy.metadata import OUTPUT_NODE_NAMES
-    from vibecomfy.workflow import mode_to_litegraph
-
-    inferred_output_ids = sorted(
-        (
-            str(node_id)
-            for node_id, node in workflow.nodes.items()
-            if node.class_type in OUTPUT_NODE_NAMES
-            and mode_to_litegraph(node.mode) not in (2, 4)
-        ),
-        key=lambda item: (int(item) if item.isdigit() else 1 << 30, item),
-    )
-    authored_output_ids = [str(item.node_id) for item in workflow.outputs]
-    duplicate_output_ids = sorted(
-        node_id for node_id in set(authored_output_ids) if authored_output_ids.count(node_id) > 1
-    )
-    if duplicate_output_ids:
-        raise ValueError(
-            "duplicate public output binding(s) are not representable through the canonical "
-            f"public lifecycle: {', '.join(duplicate_output_ids)}"
-        )
-    unbound_output_ids = sorted(set(authored_output_ids) - set(inferred_output_ids))
-    if unbound_output_ids:
-        raise ValueError(
-            "public output binding(s) do not target supported terminal output nodes: "
-            f"{', '.join(unbound_output_ids)}"
-        )
-    for index, item in enumerate(workflow.outputs):
-        source_index = inferred_output_ids.index(str(item.node_id))
-        lines.append(f"public_output_{index} = wf.outputs[{source_index}]")
-    lines.append("wf.outputs.clear()")
-    for index, item in enumerate(workflow.outputs):
-        output_expr = f"public_output_{index}"
-        lines.append(f"{output_expr}.output_type = {render(item.output_type)}")
-        lines.append(f"{output_expr}.name = {render(item.name)}")
-        lines.append(f"{output_expr}.artifact_kind = {render(item.artifact_kind)}")
-        lines.append(f"{output_expr}.mime_type = {render(item.mime_type)}")
-        lines.append(f"{output_expr}.filename_prefix = {render(item.filename_prefix)}")
-        lines.append(
-            f"{output_expr}.expected_cardinality = {render(item.expected_cardinality)}"
-        )
-        lines.append(f"wf.outputs.append({output_expr})")
-
-    for field_name in (
-        "models", "custom_nodes", "missing_models", "missing_nodes", "unsupported",
-    ):
-        value = copy.deepcopy(getattr(workflow.requirements, field_name))
-        lines.append(f"wf.requirements.{field_name} = {render(value)}")
     lines.append(f"wf.strict_types = {render(bool(workflow.strict_types))}")
     return lines
+
+
+def _canonical_node_custody(
+    workflow_nodes: Mapping[str, Any],
+    var_names: Mapping[str, str],
+    *,
+    edges_in: Mapping[str, list[Any]],
+    name_authority: Mapping[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    """Return the compact non-runtime custody manifest for emitted nodes."""
+    custody: dict[str, dict[str, Any]] = {}
+    allowed_metadata = (
+        "semantic", "semantic_metadata", "schema_source", "unresolved",
+        "reconciliation", "diagnostics", "provenance", "input_names",
+        "output_names", "input_types", "output_types", "keep_defaults",
+    )
+    for node_id in _topological_node_order(workflow_nodes, dict(edges_in)):
+        node = workflow_nodes[node_id]
+        label = str(var_names[node_id])
+        metadata = getattr(node, "metadata", {})
+        retained_metadata = _v2_custody_metadata(metadata, allowed_metadata)
+        widget_channels = _canonical_widget_channels(node, name_authority)
+        linked_inputs = {
+            str(edge.to_input)
+            for edge in edges_in.get(str(node_id), ())
+        }
+        output_slot_names: dict[str, str] = {}
+        output_names = getattr(node, "native_output_names", None)
+        if not isinstance(output_names, (list, tuple)):
+            output_names = metadata.get("output_names") if isinstance(metadata, Mapping) else None
+        if isinstance(output_names, (list, tuple)):
+            for incoming_edges in edges_in.values():
+                for edge in incoming_edges:
+                    if str(edge.from_node) != str(node_id):
+                        continue
+                    raw_output = str(edge.from_output)
+                    if raw_output.isdigit():
+                        continue
+                    matches = [
+                        index for index, name in enumerate(output_names)
+                        if isinstance(name, str) and name.casefold() == raw_output.casefold()
+                    ]
+                    if len(matches) != 1:
+                        raise ValueError(
+                            f"malformed_named_output_schema: {node.class_type} output {raw_output!r} "
+                            "does not identify exactly one retained slot"
+                        )
+                    output_slot_names[str(matches[0])] = raw_output
+        custody[label] = {
+            "id": str(node_id),
+            "uid": str(node.uid),
+            "class_type": str(node.class_type),
+            "native_ports": {
+                "native_input_names": copy.deepcopy(node.native_input_names),
+                "native_output_names": copy.deepcopy(node.native_output_names),
+                "native_input_types": copy.deepcopy(node.native_input_types),
+                "native_output_types": copy.deepcopy(node.native_output_types),
+                "native_input_optional": copy.deepcopy(node.native_input_optional),
+                "native_input_asset_kinds": copy.deepcopy(node.native_input_asset_kinds),
+                "native_output_slots": copy.deepcopy(node.native_output_slots),
+            },
+            "metadata": retained_metadata,
+            "widget_channels": widget_channels,
+            "none_input_fields": sorted(
+                key for key, value in node.inputs.items()
+                if value is None and key in linked_inputs
+            ),
+            "none_widget_fields": sorted(
+                key for key, value in node.widgets.items()
+                if value is None and key in linked_inputs
+            ),
+            "output_slot_names": output_slot_names,
+        }
+        construction_output_names = _node_output_names(node)
+        if node.native_output_names is None and construction_output_names:
+            custody[label]["construction_output_names"] = construction_output_names
+    return custody
+
+
+def canonical_v2_custody(workflow: Any) -> dict[str, Any]:
+    """Project the emitted constructor roster into the closed v2 capsule.
+
+    This deliberately reuses the canonical execution preparation and label
+    assignment used by the Python renderer.  The returned records contain no
+    runtime values or semantic edges.
+    """
+    from vibecomfy.porting.emit.emit_prepare import _prepare_workflow_for_emit
+
+    prepared = _prepare_workflow_for_emit(
+        workflow.copy(),
+        apply_overrides=None,
+        template_id=str(workflow.id),
+        diagnostics=None,
+        project_execution_edges=True,
+        omit_terminal_ui_only=False,
+        keep_virtual_wires=True,
+        prune_dead_branches=False,
+    )
+    prepared["name_authority"] = {}
+    nodes = door_nodes(prepared)
+    records = _canonical_node_custody(
+        nodes,
+        prepared["var_names"],
+        edges_in=prepared["edges_in"],
+        name_authority=prepared["name_authority"],
+    )
+    result: dict[str, Any] = {
+        "scopes": [
+            {
+                "scope_path": "",
+                "nodes": [
+                    {"label": label, **copy.deepcopy(record)}
+                    for label, record in records.items()
+                ],
+                "helpers": _canonical_helper_custody(workflow),
+            }
+        ]
+    }
+    recursive_custody = _recursive_constructor_custody(
+        getattr(workflow, "definitions", None)
+    )
+    if recursive_custody is not None:
+        result["scopes"].extend(_recursive_scope_custody(recursive_custody))
+        result["definitions"] = recursive_custody
+    return result
+
+
+def _canonical_helper_custody(workflow: Any) -> list[dict[str, Any]]:
+    """Retain provenance for lowered helpers without retaining their values."""
+
+    def position_pair(value: Any) -> list[float] | None:
+        if not isinstance(value, (list, tuple)) or len(value) < 2:
+            return None
+        first, second = value[:2]
+        if any(isinstance(item, bool) or not isinstance(item, (int, float)) for item in (first, second)):
+            return None
+        return [float(first), float(second)]
+
+    records: list[dict[str, Any]] = []
+    for node_id, node in sorted(workflow.nodes.items(), key=lambda item: _id_sort_key(str(item[0]))):
+        if str(node.class_type) not in RESOLVABLE_HELPER_CLASS_TYPES:
+            continue
+        metadata = getattr(node, "metadata", {})
+        provenance = metadata.get("provenance") if isinstance(metadata, Mapping) else None
+        record: dict[str, Any] = {
+            "id": str(node_id),
+            "uid": str(node.uid),
+            "class_type": str(node.class_type),
+        }
+        safe_provenance = _v2_custody_provenance(provenance)
+        if safe_provenance is not None:
+            record["provenance"] = safe_provenance
+        for field in ("pos", "size"):
+            pair = position_pair(getattr(node, field, None))
+            if pair is None and isinstance(metadata, Mapping):
+                ui_record = metadata.get("_ui")
+                if isinstance(ui_record, Mapping):
+                    pair = position_pair(ui_record.get(field))
+            if pair is not None:
+                record[field] = pair
+        native_ports = {
+            "native_input_names": copy.deepcopy(node.native_input_names),
+            "native_output_names": copy.deepcopy(node.native_output_names),
+            "native_input_types": copy.deepcopy(node.native_input_types),
+            "native_output_types": copy.deepcopy(node.native_output_types),
+            "native_input_optional": copy.deepcopy(node.native_input_optional),
+            "native_input_asset_kinds": copy.deepcopy(node.native_input_asset_kinds),
+            "native_output_slots": copy.deepcopy(node.native_output_slots),
+        }
+        if any(value is not None for value in native_ports.values()):
+            record["native_ports"] = native_ports
+        records.append(record)
+    # A v2 rebuild removes UI-only/value helpers from the executable node
+    # roster, but finalize() has already retained their source-backed custody
+    # in metadata.  Merge both witnesses so a second publication cannot turn
+    # a four-helper source into an empty companion.  Identity conflicts are a
+    # refusal, never a last-write-wins repair.
+    metadata = getattr(workflow, "metadata", {})
+    retained = metadata.get("resolver_helper_custody") if isinstance(metadata, Mapping) else None
+    if isinstance(retained, (list, tuple)):
+        records.extend(copy.deepcopy(dict(item)) for item in retained if isinstance(item, Mapping))
+    by_identity: dict[tuple[str, str], dict[str, Any]] = {}
+    by_id: dict[str, tuple[str, str]] = {}
+    by_uid: dict[str, tuple[str, str]] = {}
+    for record in records:
+        identity = (str(record.get("id")), str(record.get("uid")))
+        prior_id = by_id.get(identity[0])
+        prior_uid = by_uid.get(identity[1])
+        if prior_id is not None and prior_id != identity:
+            raise ValueError(f"conflicting helper custody id {identity[0]!r}")
+        if prior_uid is not None and prior_uid != identity:
+            raise ValueError(f"conflicting helper custody uid {identity[1]!r}")
+        by_id[identity[0]] = identity
+        by_uid[identity[1]] = identity
+        previous = by_identity.get(identity)
+        if previous is None:
+            by_identity[identity] = copy.deepcopy(record)
+            continue
+        merged = copy.deepcopy(previous)
+        for field, value in record.items():
+            if field in merged and merged[field] != value:
+                raise ValueError(f"conflicting helper custody for identity {identity!r}")
+            merged.setdefault(field, copy.deepcopy(value))
+        by_identity[identity] = merged
+    return [
+        by_identity[key]
+        for key in sorted(by_identity, key=lambda item: (item[0], item[1]))
+    ]
+
+
+def _recursive_constructor_custody(source: Any) -> Any:
+    """Return structural recursive custody for the v2 companion.
+
+    Recursive constructor products remain the editable/value authority.  This
+    companion witness contains only the definition boundary roster and the
+    stable constructor identities needed to materialize those products after a
+    clean source rebuild; it intentionally contains no node values or links.
+    """
+    from vibecomfy.identity.scope import sg_key
+    from vibecomfy.ingest.normalize import canonical_definition_nodes
+
+    def entries(value: Any) -> list[Any]:
+        if isinstance(value, Mapping) and "subgraphs" in value:
+            return list(value["subgraphs"])
+        if isinstance(value, Mapping):
+            return list(value.values())
+        return list(value) if isinstance(value, (list, tuple)) else []
+
+    def roster(value: Any) -> Any:
+        if not isinstance(value, (list, tuple)):
+            return None
+        result: list[Any] = []
+        for item in value:
+            if not isinstance(item, Mapping):
+                result.append(item)
+                continue
+            result.append({
+                **{
+                    key: copy.deepcopy(item[key])
+                    for key in ("name", "type", "slot")
+                    if key in item
+                },
+                "_has_link": "link" in item,
+                "_has_value": "value" in item,
+            })
+        return result
+
+    def records(definition: Mapping[str, Any]) -> list[dict[str, Any]]:
+        raw_nodes = canonical_definition_nodes(definition)
+        values = raw_nodes.values() if isinstance(raw_nodes, Mapping) else raw_nodes
+        if not isinstance(values, (list, tuple)):
+            raise ValueError("recursive_definition_nodes_malformed: nodes must be a sequence or mapping")
+        result: list[dict[str, Any]] = []
+        for index, raw in enumerate(values):
+            if not isinstance(raw, Mapping):
+                raise ValueError("recursive_definition_nodes_malformed: node must be a mapping")
+            node_id = str(raw.get("uid") or raw.get("id") or f"node_{index}")
+            class_type = str(raw.get("class_type", raw.get("type", "")))
+            if not class_type:
+                raise ValueError(f"recursive_definition_nodes_malformed: node {node_id!r} has no class type")
+            raw_inputs = raw.get("inputs")
+            raw_outputs = raw.get("outputs")
+            row: dict[str, Any] = {
+                "id": node_id,
+                "uid": raw.get("uid"),
+                "class_type": class_type,
+                "node_field": "type" if "type" in raw and "class_type" not in raw else "class_type",
+                "input_shape": roster(raw_inputs),
+                "output_shape": roster(raw_outputs),
+            }
+            for field in (
+                "native_input_names", "native_output_names", "native_input_types",
+                "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                "native_output_slots",
+            ):
+                if field in raw:
+                    row[field] = copy.deepcopy(raw[field])
+            result.append(row)
+        return result
+
+    def build(definition: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(definition, Mapping):
+            raise ValueError("recursive definition entries must be mappings")
+        # Only the readable identity label crosses into the companion.  The
+        # constructor roster below is the structural witness; source nodes,
+        # links, values, layout, and arbitrary vendor payload stay in the
+        # executed constructors or the presentation sidecar.
+        result = {
+            str(key): copy.deepcopy(definition[key])
+            for key in ("id", "name")
+            if key in definition
+        }
+        result["_scope_key"] = sg_key(definition)
+        ordered = records(definition)
+        result["_constructor_nodes"] = ordered
+        nested = definition.get("definitions")
+        if nested not in (None, {}, []):
+            result["definitions"] = {"subgraphs": [
+                build(item) for item in entries(nested) if isinstance(item, Mapping)
+            ]}
+        return result
+
+    if source in (None, {}, []):
+        return None
+    return {"subgraphs": [build(item) for item in entries(source) if isinstance(item, Mapping)]}
+
+
+def _recursive_scope_custody(source: Any) -> list[dict[str, Any]]:
+    """Project structural recursive custody into the v2 scope roster."""
+    from vibecomfy.identity.scope import compose_scope_path
+
+    scopes: list[dict[str, Any]] = []
+
+    def walk(value: Any, parents: tuple[str, ...]) -> None:
+        for definition in value.get("subgraphs", []) if isinstance(value, Mapping) and isinstance(value.get("subgraphs"), list) else ():
+            if not isinstance(definition, Mapping):
+                continue
+            key = str(definition.get("_scope_key"))
+            scope_path = compose_scope_path((*parents, key))
+            nodes: list[dict[str, Any]] = []
+            for record in definition.get("_constructor_nodes", ()):
+                if not isinstance(record, Mapping):
+                    continue
+                node_id = str(record.get("id"))
+                node = {
+                    "label": node_id,
+                    "id": node_id,
+                    "uid": str(record.get("uid") or node_id),
+                    "class_type": str(record.get("class_type")),
+                }
+                native_ports = {
+                    field: copy.deepcopy(record[field])
+                    for field in (
+                        "native_input_names", "native_output_names", "native_input_types",
+                        "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                        "native_output_slots",
+                    )
+                    if field in record
+                }
+                if native_ports:
+                    node["native_ports"] = native_ports
+                nodes.append(node)
+            scopes.append({"scope_path": scope_path, "nodes": nodes, "helpers": []})
+            walk(definition.get("definitions"), (*parents, key))
+
+    walk(source, ())
+    return scopes
+
+
+_V2_CUSTODY_PROVENANCE_KEYS = frozenset({
+    "source_path", "source_id", "source_type", "source_workflow_path", "source_ref",
+    "source_kind", "indexed_id", "workflow_source_id", "workflow_source_type",
+    "raw_workflow_shape", "source_hash", "workflow_shape", "output_mode",
+})
+_V2_CUSTODY_SHAPE_KEYS = frozenset({
+    "nodes", "runtime_nodes", "helper_nodes", "edges", "inputs", "outputs",
+})
+_V2_CUSTODY_SCHEMA_KEYS = frozenset({
+    "provider", "path", "cache_path", "server_url", "package", "version", "hash", "confidence",
+})
+
+
+def _v2_custody_provenance(value: Any) -> Any:
+    """Keep only the closed provenance witness accepted by the v2 companion."""
+    if isinstance(value, str):
+        return value if value.strip() else None
+    if not isinstance(value, Mapping):
+        return None
+    if any(str(key) not in _V2_CUSTODY_PROVENANCE_KEYS for key in value):
+        return None
+    result: dict[str, Any] = {}
+    for key, item in value.items():
+        if key in {"workflow_shape", "raw_workflow_shape"}:
+            if not isinstance(item, Mapping) or any(
+                str(shape_key) not in _V2_CUSTODY_SHAPE_KEYS
+                or type(shape_value) is not int
+                or shape_value < 0
+                for shape_key, shape_value in item.items()
+            ):
+                return None
+            result[str(key)] = {
+                str(shape_key): int(shape_value)
+                for shape_key, shape_value in item.items()
+            }
+        elif isinstance(item, (Mapping, list, tuple)):
+            return None
+        else:
+            result[str(key)] = copy.deepcopy(item)
+    return result
+
+
+def _v2_custody_metadata(
+    metadata: Any,
+    allowed_metadata: tuple[str, ...],
+) -> dict[str, Any]:
+    """Project node metadata into the closed, non-runtime v2 custody shape."""
+    if not isinstance(metadata, Mapping):
+        return {}
+    result: dict[str, Any] = {}
+    for key in allowed_metadata:
+        if key not in metadata:
+            continue
+        value = metadata[key]
+        if key == "provenance":
+            safe = _v2_custody_provenance(value)
+            if safe is not None:
+                result[key] = safe
+        elif key == "schema_source":
+            if isinstance(value, Mapping) and not any(
+                str(source_key) not in _V2_CUSTODY_SCHEMA_KEYS
+                or isinstance(source_value, (Mapping, list, tuple))
+                for source_key, source_value in value.items()
+            ):
+                result[key] = copy.deepcopy(dict(value))
+        # Native type/name rosters are already represented in native_ports.
+        # Keeping the list-valued metadata copies would duplicate authority
+        # and rejects nested provider shapes such as per-input type lists.
+        elif key in {"input_types", "output_types"}:
+            continue
+        elif isinstance(value, Mapping):
+            continue
+        elif isinstance(value, (list, tuple)) and any(
+            isinstance(item, (Mapping, list, tuple)) for item in value
+        ):
+            continue
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
+def _format_helper_custody(custody: list[dict[str, Any]]) -> list[str]:
+    plain = _plain_canonical_value(copy.deepcopy(custody))
+    return _format_metadata_dict("HELPER_CUSTODY", plain).splitlines()
+
+
+def _canonical_widget_channels(
+    node: Any,
+    name_authority: Mapping[str, Any] | None,
+) -> dict[str, str]:
+    """Map constructor field names back to their authored widget channel."""
+    from vibecomfy.porting.widgets.compact_resolver import compact_widget_names_for_node
+
+    # ``_ui`` is presentation/provenance evidence, never naming authority for
+    # generated Python.  A detached copy keeps the importer-owned metadata
+    # available to the custody manifest while preventing UI aliases from
+    # changing the canonical widget roster used by the emitter.
+    semantic_node = node
+    metadata = getattr(node, "metadata", None)
+    if isinstance(metadata, Mapping) and "_ui" in metadata:
+        semantic_node = copy.deepcopy(node)
+        semantic_node.metadata.pop("_ui", None)
+    resolution = compact_widget_names_for_node(
+        semantic_node,
+        str(semantic_node.class_type),
+        name_authority=name_authority,
+    )
+    aliases = list(resolution.names)
+    result: dict[str, str] = {}
+    for authored_name in semantic_node.widgets:
+        constructed_name = str(authored_name)
+        if constructed_name.startswith("widget_"):
+            resolved = resolve_widget_key_with_provenance(
+                str(semantic_node.class_type),
+                constructed_name,
+                input_aliases=aliases or None,
+            ).name
+            if resolved is None:
+                continue
+            constructed_name = resolved
+        existing = result.get(constructed_name)
+        if existing is not None and existing != str(authored_name):
+            raise ValueError(
+                "ambiguous_authored_channel: "
+                f"{semantic_node.class_type}.{constructed_name} maps to both {existing!r} "
+                f"and {authored_name!r}"
+            )
+        result[constructed_name] = str(authored_name)
+    return result
+
+
+def _exceptional_authored_channels(
+    node: Any,
+    edges_in: Mapping[str, list[Any]],
+    name_authority: Mapping[str, Any] | None,
+) -> dict[str, tuple[str, Any, bool, Any]]:
+    """Return widget channels shadowed by a distinct effective input channel."""
+    channels = _canonical_widget_channels(node, name_authority)
+    incoming_fields = {
+        str(edge.to_input) for edge in edges_in.get(str(node.id), ())
+    }
+    input_fields = set(node.inputs) | incoming_fields
+    exceptional: dict[str, tuple[str, Any, bool, Any]] = {}
+    for constructed_name, authored_name in channels.items():
+        if constructed_name not in input_fields:
+            continue
+        value = node.widgets.get(authored_name)
+        if _is_link(value):
+            raise ValueError(
+                "ambiguous_authored_channel: linked widget shadow for "
+                f"{node.class_type}.{constructed_name} cannot be represented once"
+            )
+        exceptional[constructed_name] = (
+            authored_name,
+            copy.deepcopy(value),
+            constructed_name in incoming_fields and constructed_name in node.inputs,
+            copy.deepcopy(node.inputs.get(constructed_name)),
+        )
+    return exceptional
+
+
+def _format_authored_channel(
+    effective_expr: str,
+    record: tuple[str, Any, bool, Any],
+) -> str:
+    authored_name, widget_value, retain_input_default, input_default = record
+    extras = ""
+    if retain_input_default:
+        if input_default == widget_value:
+            extras = ", retain_input_default=True"
+        else:
+            extras = f", input_default={_format_value(input_default)}"
+    return (
+        f"authored_channel({effective_expr}, widget={_format_value(widget_value)}, "
+        f"name={authored_name!r}{extras})"
+    )
+
+
+def _format_canonical_custody(custody: Mapping[str, Any]) -> list[str]:
+    plain = _plain_canonical_value(copy.deepcopy(dict(custody)))
+    return _format_metadata_dict("CANONICAL_CUSTODY", plain).splitlines()
+
+
+def _canonical_outputs_expr(
+    workflow: Any,
+    var_names: Mapping[str, str],
+) -> str:
+    records: list[str] = []
+    for item in workflow.outputs:
+        node_id = str(item.node_id)
+        binding = var_names.get(node_id)
+        if binding is None:
+            raise ValueError(
+                f"public output {node_id!r} does not survive canonical execution projection"
+            )
+        fields = {
+            "output_type": item.output_type,
+            "name": item.name,
+            "artifact_kind": item.artifact_kind,
+            "mime_type": item.mime_type,
+            "filename_prefix": item.filename_prefix,
+            "expected_cardinality": item.expected_cardinality,
+        }
+        parts = [f"'node': {binding}"]
+        parts.extend(f"{key!r}: {_format_value(value)}" for key, value in fields.items())
+        records.append("{" + ", ".join(parts) + "}")
+    return "[" + ", ".join(records) + "]"
+
+
+def _v2_output_args(
+    workflow: Any,
+    var_names: Mapping[str, str],
+    metadata: Mapping[str, Any],
+) -> str:
+    """Render the concise typed output declaration for a v2 source."""
+    outputs = list(workflow.outputs)
+    if not outputs:
+        return ", outputs=[]"
+
+    def binding(item: Any) -> str:
+        value = var_names.get(str(item.node_id))
+        if value is None:
+            raise ValueError(
+                f"public output {item.node_id!r} does not survive canonical execution projection"
+            )
+        return value
+
+    if len(outputs) == 1:
+        item = outputs[0]
+        node = workflow.nodes.get(str(item.node_id))
+        derived_kind = None
+        if node is not None:
+            from vibecomfy.templates import _derive_output_kind
+
+            derived_kind = _derive_output_kind(str(node.class_type))
+        if (
+            node is not None
+            and _is_output_class(str(node.class_type))
+            and item.output_type == str(node.class_type)
+            and item.name is None
+            and item.artifact_kind == derived_kind
+            and item.mime_type is None
+            # wf.finalize(..., output_node=...) injects READY_METADATA's
+            # output_prefix.  Compact only when that is already the exact
+            # declared value; an explicit null prefix must remain an
+            # OutputSpec rather than acquire inferred metadata on rebuild.
+            and item.filename_prefix == metadata.get("output_prefix")
+            and item.expected_cardinality is None
+        ):
+            return f", output_node={binding(item)}"
+        if (
+            node is not None
+            and item.output_type == str(node.class_type)
+            and item.name is None
+            and item.artifact_kind is None
+            and item.mime_type is None
+            and item.filename_prefix is None
+            and item.expected_cardinality is None
+        ):
+            # Preserve an explicit null artifact kind without expanding the
+            # declaration into an importer-shaped record.  ``output_node``
+            # intentionally infers an artifact kind, so this typed minimum is
+            # the lossless concise form for legacy/opaque outputs.
+            return f", outputs=[OutputSpec(node={binding(item)})]"
+
+    records: list[str] = []
+    for item in outputs:
+        fields = (
+            ("output_type", item.output_type),
+            ("name", item.name),
+            ("artifact_kind", item.artifact_kind),
+            ("mime_type", item.mime_type),
+            ("filename_prefix", item.filename_prefix),
+            ("expected_cardinality", item.expected_cardinality),
+        )
+        args = [f"node={binding(item)}"]
+        # None is the typed OutputSpec default.  Omitting it keeps a
+        # multi-output finalizer readable without changing its semantics.
+        args.extend(
+            f"{name}={_format_value(value)}"
+            for name, value in fields
+            if value is not None
+        )
+        records.append(f"OutputSpec({', '.join(args)})")
+    if len(outputs) > 1:
+        return ", outputs=[\n        " + ",\n        ".join(records) + ",\n    ]"
+    return ", outputs=[" + records[0] + "]"
 
 
 def _plain_canonical_value(value: Any) -> Any:
@@ -1165,12 +1841,14 @@ def _canonical_definition_helpers(
     *,
     interfaces: Mapping[str, Any] | None = None,
     boundary_ports: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    external_custody: bool = False,
 ) -> tuple[list[str], str | None]:
-    """Render typed, readable recursive callables plus a literal IR expression.
+    """Render the authoritative recursive constructor helpers.
 
-    The callables are an inspectable Python-owned authoring view.  ``build``
-    never calls them: its ``wf.definitions`` assignment is a detached literal,
-    and recursive expansion remains solely in ``VibeWorkflow``'s compiler.
+    Definition-local values are lowered through the same constructor kernel as
+    root nodes.  The returned expression is a helper call so editing a helper
+    body changes the rebuilt definition rather than being shadowed by a
+    detached replay literal.
     """
     if definitions in (None, {}, []):
         return [], None
@@ -1299,8 +1977,76 @@ def _canonical_definition_helpers(
         used_names.add(name)
         return name
 
-    def literal_container(source: Any) -> str:
-        return render(source)
+    def constructor_custody(source: Any) -> Any:
+        """Retain shape/identity custody, leaving values to constructors."""
+        def structural_roster(value: Any) -> Any:
+            if not isinstance(value, (list, tuple)):
+                return None
+            return [
+                {
+                    **{key: copy.deepcopy(item[key]) for key in ("name", "type", "slot") if key in item},
+                    "_has_link": "link" in item,
+                    "_has_value": "value" in item,
+                }
+                if isinstance(item, Mapping) else item
+                for item in value
+            ]
+
+        if isinstance(source, Mapping):
+            if "subgraphs" in source:
+                return {"subgraphs": [constructor_custody(item) for item in entries(source["subgraphs"])]}
+            result = {
+                str(key): copy.deepcopy(source[key])
+                for key in ("id", "name")
+                if key in source
+            }
+            result["_scope_key"] = sg_key(source)
+            records = node_records(source)
+            local_links = link_records(source, records)
+            deps = {item["id"]: set() for item in records}
+            for origin, _slot, target, _field in local_links:
+                if origin in deps and target in deps:
+                    deps[target].add(origin)
+            ordered_records: list[dict[str, Any]] = []
+            remaining = list(records)
+            while remaining:
+                ready = [item for item in remaining if not (deps[item["id"]] & {other["id"] for other in remaining})]
+                if not ready:
+                    raise ValueError("recursive_definition_links_malformed: cyclic local topology")
+                ordered_records.extend(ready)
+                remaining = [item for item in remaining if item not in ready]
+            records = ordered_records
+            result["_constructor_nodes"] = [
+                {
+                    **{
+                        "id": item["id"],
+                        "uid": item.get("uid"),
+                        "class_type": item["class_type"],
+                        "node_field": item.get("node_field", "class_type"),
+                        "input_shape": structural_roster(item.get("input_shape")),
+                        "output_shape": structural_roster(item.get("output_shape")),
+                    },
+                    **{
+                        field: copy.deepcopy(item[field])
+                        for field in (
+                            "native_input_names", "native_output_names", "native_input_types",
+                            "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                            "native_output_slots",
+                        )
+                        if field in item
+                    },
+                }
+                for item in records
+            ]
+            nested = source.get("definitions")
+            if nested not in (None, {}, []):
+                result["definitions"] = {
+                    "subgraphs": [constructor_custody(item) for item in entries(nested)]
+                }
+            return result
+        if isinstance(source, (list, tuple)):
+            return [constructor_custody(item) for item in source]
+        return copy.deepcopy(source)
 
     def safe_name(value: Any, fallback: str) -> str:
         candidate = "".join(char if char.isalnum() else "_" for char in str(value or ""))
@@ -1313,6 +2059,19 @@ def _canonical_definition_helpers(
         return {"INT": "int", "FLOAT": "float", "STRING": "str", "BOOLEAN": "bool"}.get(
             str(member.get("type") or "").upper(), "Any"
         )
+
+    def capture_placeholder(member: Mapping[str, Any]) -> str:
+        """Return a type-safe temporary value for recursive capture only."""
+        member_type = str(member.get("type") or "").upper()
+        if member_type in {"STRING", "COMBO"}:
+            return repr("capture")
+        if member_type == "INT":
+            return "0"
+        if member_type == "FLOAT":
+            return "0.0"
+        if member_type == "BOOLEAN":
+            return "False"
+        return "None"
 
     def node_records(definition: Mapping[str, Any]) -> list[dict[str, Any]]:
         raw_nodes = canonical_definition_nodes(definition)
@@ -1342,7 +2101,58 @@ def _canonical_definition_helpers(
             if isinstance(raw.get("widgets"), Mapping):
                 for key, value in raw["widgets"].items():
                     values.setdefault(str(key), value)
-            records.append({"id": node_id, "class_type": class_type, "uid": raw.get("uid"), "values": values})
+            raw_widget_values = canonical_node_widgets_values(raw)
+            primitive_classes = {
+                "PrimitiveBoolean", "PrimitiveFloat", "PrimitiveInt",
+                "PrimitiveString", "PrimitiveStringMultiline",
+            }
+            if class_type in primitive_classes:
+                if isinstance(raw_widget_values, Mapping):
+                    for key, value in raw_widget_values.items():
+                        values.setdefault(str(key), copy.deepcopy(value))
+                elif isinstance(raw_widget_values, (list, tuple)):
+                    widget_names = WIDGET_SCHEMA.get(class_type, ())
+                    for widget_name, value in zip(widget_names, raw_widget_values):
+                        if isinstance(widget_name, str):
+                            values.setdefault(widget_name, copy.deepcopy(value))
+            input_shape = copy.deepcopy(raw_inputs) if isinstance(raw_inputs, (list, tuple)) else None
+            if isinstance(input_shape, list):
+                for item in input_shape:
+                    if not isinstance(item, Mapping):
+                        continue
+                    field = item.get("name")
+                    if (
+                        isinstance(field, str)
+                        and item.get("link") is None
+                        and "value" not in item
+                        and field in values
+                    ):
+                        item["value"] = copy.deepcopy(values[field])
+            widget_channels = (
+                {str(key): copy.deepcopy(value) for key, value in raw["widgets"].items()}
+                if isinstance(raw.get("widgets"), Mapping) else {}
+            )
+            raw_outputs = raw.get("outputs")
+            outputs = tuple(
+                str(item.get("name", item.get("slot", index)))
+                if isinstance(item, Mapping) else str(item)
+                for index, item in enumerate(raw_outputs)
+            ) if isinstance(raw_outputs, (list, tuple)) else ()
+            # Normalization adds ``class_type`` to legacy ``type`` rows.  A
+            # surviving type key is therefore the strongest authored spelling
+            # witness for the emitted definition source.
+            node_field = "type" if "type" in raw and "class_type" not in raw else "class_type"
+            record = {"id": node_id, "class_type": class_type, "node_field": node_field, "uid": raw.get("uid"), "values": values, "widget_channels": widget_channels, "outputs": outputs,
+                      "input_shape": input_shape,
+                      "output_shape": copy.deepcopy(raw_outputs) if isinstance(raw_outputs, (list, tuple)) else None}
+            for field in (
+                "native_input_names", "native_output_names", "native_input_types",
+                "native_output_types", "native_input_optional", "native_input_asset_kinds",
+                "native_output_slots",
+            ):
+                if field in raw:
+                    record[field] = raw[field]
+            records.append(record)
         return records
 
     def link_records(definition: Mapping[str, Any], records: list[dict[str, Any]]) -> list[tuple[str, str, str, str]]:
@@ -1362,6 +2172,12 @@ def _canonical_definition_helpers(
                 raise ValueError(f"recursive_definition_links_malformed: invalid link {link!r}")
             if source is None or target is None or field is None:
                 raise ValueError(f"recursive_definition_links_malformed: incomplete link {link!r}")
+            target_record = next((item for item in records if item["id"] == str(target)), None)
+            if target_record is not None and isinstance(target_record.get("input_shape"), (list, tuple)) and str(field).isdigit():
+                target_inputs = target_record["input_shape"]
+                target_index = int(field)
+                if 0 <= target_index < len(target_inputs) and isinstance(target_inputs[target_index], Mapping):
+                    field = target_inputs[target_index].get("name", field)
             links.append((str(source), str(slot), str(target), str(field)))
         return links
 
@@ -1406,6 +2222,7 @@ def _canonical_definition_helpers(
             lines.append(f"    \"\"\"Typed recursive definition {key}.\"\"\"")
             records = node_records(definition)
             local_vars: dict[str, str] = {}
+            captured_vars: list[str] = []
             child_by_alias = {
                 alias: (child, child_names[index])
                 for index, child in enumerate(nested_entries)
@@ -1421,6 +2238,27 @@ def _canonical_definition_helpers(
                 and str(port.get("scope_path", port.get("scope"))) in {key, scope_path}
                 and str(port.get("direction", "")).lower() == "input"
             }
+            local_link_values = {
+                (target, field): (source, slot)
+                for source, slot, target, field in link_records(definition, records)
+            }
+            # Normalization orders authored definition nodes by identity, not
+            # execution dependency.  Constructor handles must nevertheless be
+            # bound only after their source variable exists.
+            local_edges = link_records(definition, records)
+            dependencies = {record["id"]: set() for record in records}
+            for source, _slot, target, _field in local_edges:
+                if source in dependencies and target in dependencies:
+                    dependencies[target].add(source)
+            ordered: list[dict[str, Any]] = []
+            remaining = list(records)
+            while remaining:
+                ready = [record for record in remaining if not (dependencies[record["id"]] & {item["id"] for item in remaining})]
+                if not ready:
+                    raise ValueError("recursive_definition_links_malformed: cyclic local topology")
+                ordered.extend(ready)
+                remaining = [record for record in remaining if record not in ready]
+            records = ordered
             for index, record in enumerate(records):
                 node_id = record["id"]
                 var = safe_name(node_id, f"local_{index}")
@@ -1434,30 +2272,64 @@ def _canonical_definition_helpers(
                     child_inputs, _child_outputs = interface_members(sg_key(child_def), compose_scope_path((*parents, key, sg_key(child_def))))
                     child_args = [parameter_names.get(str(item.get("name")), "None") for item in child_inputs]
                     lines.append(f"    {var} = {child_function}(wf{', ' if child_args else ''}{', '.join(child_args)})")
+                    captured_vars.append(var)
                     continue
                 wrapper = _wrapper_symbol_for_class(class_type) if _wrapper_module_for_class(class_type) else None
                 call_name = wrapper or "raw_call"
-                args = ["wf"] if wrapper else ["wf", repr(class_type)]
-                args.append(f"_id={node_id!r}")
-                if record.get("uid"):
-                    args.append(f"_uid={str(record['uid'])!r}")
+                args = [] if wrapper else [repr(class_type)]
                 if not wrapper:
                     args.append("pass_raw=True")
-                for field, value in record["values"].items():
+                    if record.get("outputs"):
+                        args.append(f"_outputs={render(record['outputs'])}")
+                if isinstance(record.get("input_shape"), (list, tuple)):
+                    shaped_fields = [
+                        (str(item.get("name")), item.get("value"))
+                        for item in record["input_shape"]
+                        if isinstance(item, Mapping) and isinstance(item.get("name"), str)
+                    ]
+                    shaped_names = {field for field, _value in shaped_fields}
+                    authored_fields = shaped_fields + [
+                        (field, value)
+                        for field, value in record["values"].items()
+                        if field not in shaped_names
+                    ]
+                else:
+                    authored_fields = list(record["values"].items())
+                for field, value in authored_fields:
                     parameter = boundary_inputs.get((node_id, field))
                     if parameter:
                         value_expr = parameter
+                    elif (node_id, field) in local_link_values:
+                        source, slot = local_link_values[(node_id, field)]
+                        source_var = local_vars.get(source)
+                        if source_var is None:
+                            raise ValueError(f"recursive_definition_links_malformed: unknown source {source!r}")
+                        value_expr = f"{source_var}.out({int(slot) if str(slot).isdigit() else 0!r})"
                     elif isinstance(value, (list, tuple)) and len(value) >= 2 and isinstance(value[0], (str, int)) and isinstance(value[1], int):
                         continue
                     else:
                         value_expr = render(value)
-                    if _keyword.iskeyword(field) or not field.isidentifier():
+                    if field in record.get("widget_channels", {}):
+                        value_expr = (
+                            f"authored_channel({value_expr}, "
+                            f"widget={render(record['widget_channels'][field])}, "
+                            f"name={field!r})"
+                        )
+                    if (
+                        _keyword.iskeyword(field)
+                        or not field.isidentifier()
+                        or unicodedata.normalize("NFKC", field) != field
+                    ):
                         args.append(f"**{{{field!r}: {value_expr}}}")
                     else:
                         args.append(f"{field}={value_expr}")
                 lines.append(f"    {var} = {call_name}({', '.join(args)})")
-            for source, slot, target, field in link_records(definition, records):
-                lines.append(f"    wf.connect({source + '.' + slot!r}, {target + '.' + field!r})")
+                captured_vars.append(var)
+            captured_expr = "(" + ", ".join(captured_vars) + (",)" if captured_vars else ")")
+            lines.append(
+                f"    wf._recursive_definition_captures.append(({scope_path!r}, "
+                f"tuple(item for item in {captured_expr})))"
+            )
             boundary_outputs = {
                 str(port.get("name")): (str(port.get("node_uid")), str(port.get("field", "0")))
                 for port in (boundary_ports or ())
@@ -1479,7 +2351,8 @@ def _canonical_definition_helpers(
                     slot = next((i for i, item in enumerate(child_outputs) if str(item.get("name")) == field), 0)
                     output_exprs.append(f"{var}[{slot}]" if len(child_outputs) != 1 else var)
                 else:
-                    output_exprs.append(f"{var}.out({int(field) if str(field).isdigit() else field!r})")
+                    output_slot = int(field) if str(field).isdigit() else 0
+                    output_exprs.append(f"{var}.out({output_slot!r})")
             if not output_exprs:
                 lines.append("    return None")
             elif len(output_exprs) == 1:
@@ -1493,11 +2366,33 @@ def _canonical_definition_helpers(
 
     if not top_entries:
         return [], None
-    [walk(item, ()) for item in top_entries]
+    top_function_names = [walk(item, ()) for item in top_entries]
     if lines and lines[-1] == "":
         lines.pop()
-    # Build owns this literal expression.  No callable is invoked from build.
-    return lines, literal_container(definitions)
+    helper_name = "_build_recursive_definitions"
+    custody_expr = (
+        "wf._canonical_v2_recursive_custody"
+        if external_custody
+        else render(constructor_custody(definitions))
+    )
+    lines.extend([
+        f"def {helper_name}(wf: VibeWorkflow) -> dict[str, Any]:",
+        "    with recursive_definition_scope(wf):",
+    ])
+    for function_name, definition in zip(top_function_names, top_entries):
+        key = sg_key(definition)
+        input_members, _ = interface_members(key, key)
+        args = ", ".join(capture_placeholder(member) for member in input_members)
+        lines.append(f"        {function_name}(wf{', ' if args else ''}{args})")
+    lines.extend([
+        "        _definition_result = wf._materialize_recursive_definitions(",
+        "            wf._recursive_definition_captures,",
+        f"            {custody_expr},",
+        "        )",
+        "    return _definition_result",
+        "",
+    ])
+    return lines, f"{helper_name}(wf)"
 
 
 def _canonical_connection_lines(
@@ -1535,7 +2430,12 @@ def _validate_named_output_edges(workflow: Any) -> None:
         source = workflow.nodes.get(str(edge.from_node))
         if source is None:
             continue
-        names = source.metadata.get("output_names") if isinstance(source.metadata, Mapping) else None
+        # Native rosters are the authoritative socket contract.  Metadata is
+        # only a fallback for older imported workflows that have not retained
+        # the native declaration on the node itself.
+        names = getattr(source, "native_output_names", None)
+        if not isinstance(names, (list, tuple)) or not names:
+            names = source.metadata.get("output_names") if isinstance(source.metadata, Mapping) else None
         if not isinstance(names, (list, tuple)) or not names:
             continue
         output_ref = str(edge.from_output)
@@ -1663,6 +2563,7 @@ def _emit_build_function(
     node_id_prefix: str | None = None,
     required_ids: set[str] | None = None,
     emit_all_ids: bool = False,
+    external_custody: bool = False,
 ) -> list[str]:
     from vibecomfy.porting.emitter import (  # noqa: PLC0415
         EmissionDiagnostic,
@@ -1743,19 +2644,22 @@ def _emit_build_function(
         body_indent = "    "
         continuation_indent = "        "
     else:
-        # new_workflow() eagerly binds the ContextVar, so emit a plain assignment
-        # rather than wrapping the body in `with new_workflow(...) as wf:`.
-        # finalize() releases the binding.
+        # Scope the eager new_workflow() binding with its existing context
+        # manager. finalize() releases it on success; __exit__ releases it
+        # when a constructor or validation step fails.
+        # Root identity is recovered from constructor calls for direct renders
+        # and from the validated sibling companion for bundle publication.
+        custody_argument = ""
         if source_type != "ready_template":
             out_lines.append(
-                f"    wf = new_workflow({workflow_id_expr}, source_path={source_path_expr}, source_type={source_type!r})"
+                f"    with new_workflow({workflow_id_expr}, source_path={source_path_expr}, source_type={source_type!r}{custody_argument}) as wf:"
             )
         else:
             out_lines.append(
-                f"    wf = new_workflow({workflow_id_expr}, source_path={source_path_expr})"
+                f"    with new_workflow({workflow_id_expr}, source_path={source_path_expr}{custody_argument}) as wf:"
             )
-        body_indent = "    "
-        continuation_indent = "        "
+        body_indent = "        "
+        continuation_indent = "            "
     out_lines.append("")
 
     emitted_sections: set[str] = set()
@@ -1798,6 +2702,9 @@ def _emit_build_function(
             if old_id == nid
         }
         preserve_fields.update(public_preserve_fields.get(nid, set()))
+        preserve_fields.update(
+            _canonical_widget_channels(node, prepared.get("name_authority")).keys()
+        )
         # Raw ``_ui`` is presentation evidence.  The kwargs builder also has
         # legacy compact-widget discovery, so give it a detached semantic copy
         # with that evidence removed; authored nodes remain untouched.
@@ -1806,6 +2713,9 @@ def _emit_build_function(
         if isinstance(node_metadata, Mapping) and "_ui" in node_metadata:
             semantic_node = copy.deepcopy(node)
             semantic_node.metadata.pop("_ui", None)
+        exceptional_channels = _exceptional_authored_channels(
+            node, edges_in, prepared.get("name_authority")
+        )
         kwargs = _node_kwargs(
             semantic_node, edges_in, var_names,
             workflow_nodes=workflow_nodes,
@@ -1813,14 +2723,42 @@ def _emit_build_function(
             diagnostics=diagnostics,
             constant_map=constant_map,
             use_ui_widget_aliases=use_shared_helpers,
-            strip_schema_defaults=use_shared_helpers,
-            omit_single_output_metadata=use_shared_helpers,
-            bare_single_output_refs=use_shared_helpers,
+            # Canonical Python is an authored-value surface.  A value equal to
+            # today's provider default is still explicit source authority and
+            # must not disappear when schemas change or are unavailable.
+            strip_schema_defaults=False,
+            # Typed wrappers already carry their schema output roster.  A raw
+            # call does not, so it must retain even a single native output in
+            # ``_outputs`` for rebuilt handles to resolve deterministically.
+            omit_single_output_metadata=use_shared_helpers and wrapper_module is not None,
+            bare_single_output_refs=False,
             emit_reserved_keyword_args=wrapper_module is not None,
             preserve_fields=preserve_fields,
             external_refs=external_refs,
             name_authority=prepared.get("name_authority"),
+            resolve_graph_strings=False,
+            skip_widget_fields={record[0] for record in exceptional_channels.values()},
+            emit_native_ports=emit_all_ids,
         )
+        if exceptional_channels:
+            present = {key for key, _expr in kwargs}
+            missing = sorted(set(exceptional_channels) - present)
+            if missing:
+                raise ValueError(
+                    "ambiguous_authored_channel: effective field "
+                    f"{node.class_type}.{missing[0]} was omitted during emission"
+                )
+            kwargs = [
+                (
+                    key,
+                    (
+                        _format_authored_channel(expr, exceptional_channels[key])
+                        if key in exceptional_channels
+                        else expr
+                    ),
+                )
+                for key, expr in kwargs
+            ]
 
         if use_shared_helpers:
             subgraph = (prepared.get("subgraph_definitions") or {}).get(str(node.class_type))
@@ -1860,39 +2798,13 @@ def _emit_build_function(
                 else:
                     ready_kwargs.append((key, expr))
 
-            # Durable node identity (M2, T13): carry _uid= through the
-            # ready-template emission paths (typed wrapper + raw_call), mirroring
-            # the scratchpad _node() mechanism. node()/raw_call apply it verbatim.
-            uid_arg = ("_uid", repr(node.uid)) if node.uid else None
-            native_ports_arg = (
-                "_native_ports",
-                repr({
-                    "native_input_names": copy.deepcopy(node.native_input_names),
-                    "native_output_names": copy.deepcopy(node.native_output_names),
-                    "native_input_types": copy.deepcopy(node.native_input_types),
-                    "native_output_types": copy.deepcopy(node.native_output_types),
-                    "native_input_optional": copy.deepcopy(node.native_input_optional),
-                    "native_input_asset_kinds": copy.deepcopy(node.native_input_asset_kinds),
-                    "native_output_slots": copy.deepcopy(node.native_output_slots),
-                }),
-            )
-
             if use_wrapper:
                 all_args = []
-                if is_subgraph_function and node_id_prefix is not None:
-                    if _subgraph_node_id_required(node_id_prefix, nid, required_ids):
-                        all_args.append(("_id", repr(_subgraph_emitted_node_id(node_id_prefix, nid))))
-                elif emit_all_ids or emit_top_level_ids:
-                    # Preserve source node ids only when emission order differs from
-                    # the source id order; otherwise auto-assigned ids stay stable
-                    # and the explicit _id noise is unnecessary.
-                    all_args.append(("_id", repr(str(nid))))
                 all_args.extend((_wrapper_kwarg_name(key), expr) for key, expr in ready_kwargs)
+                if emit_all_ids:
+                    all_args.append(("_id", repr(str(nid))))
                 if node_mode_expr is not None:
                     all_args.append(("_mode", node_mode_expr))
-                if uid_arg is not None:
-                    all_args.append(uid_arg)
-                all_args.append(native_ports_arg)
                 # v2.6.4 Fix 3: drop _outputs= for schema-known typed wrappers.
                 # The wrapper class already knows its output names from the
                 # generated schema (vibecomfy/nodes/<pack>.py). Only
@@ -1912,9 +2824,6 @@ def _emit_build_function(
                 all_args.extend(ready_kwargs)
                 if node_mode_expr is not None:
                     all_args.append(("_mode", node_mode_expr))
-                if uid_arg is not None:
-                    all_args.append(uid_arg)
-                all_args.append(native_ports_arg)
                 if extras_expr is not None:
                     all_args.append(("_extras", extras_expr))
                 call_name = "node"
@@ -1928,8 +2837,10 @@ def _emit_build_function(
             else:
                 # v2.6.4 Fix 5: raw_call reads wf from ContextVar (set by
                 # new_workflow context manager); no need to pass wf positional.
-                raw_node_id = _subgraph_emitted_node_id(node_id_prefix, nid) if is_subgraph_function and node_id_prefix is not None else nid
-                call_args = ", ".join([repr(node.class_type), repr(raw_node_id), *kwarg_lines])
+                raw_prefix = [repr(node.class_type)]
+                if emit_all_ids:
+                    raw_prefix.append(repr(str(nid)))
+                call_args = ", ".join([*raw_prefix, *kwarg_lines])
                 call_expr = f"raw_call({call_args})"
             single_line = (
                 f"{body_indent}{assignment_target} = {call_expr}"
@@ -1938,20 +2849,17 @@ def _emit_build_function(
             )
 
             # -- readability diagnostic: long one-line node call ----------
-            # `_native_ports` is an internal custody payload that deliberately
-            # makes every emitted call multiline.  Measure the authored call
-            # surface without that payload so ordinary short nodes do not gain
-            # spurious readability warnings, while genuinely long user values
-            # keep the existing diagnostic.
             readable_kwarg_lines = [
                 f"**{expr}" if key == "**" else f"{key}={expr}"
                 for key, expr in all_args
-                if key != "_native_ports"
             ]
             if use_wrapper:
                 readable_expr = f"{call_name}({', '.join(readable_kwarg_lines)})"
             else:
-                readable_expr = f"raw_call({', '.join([repr(node.class_type), repr(raw_node_id), *readable_kwarg_lines])})"
+                    readable_prefix = [repr(node.class_type)]
+                    if emit_all_ids:
+                        readable_prefix.append(repr(str(nid)))
+                    readable_expr = f"raw_call({', '.join([*readable_prefix, *readable_kwarg_lines])})"
             readable_single_line = (
                 f"{body_indent}{assignment_target} = {readable_expr}"
                 if assignment_target is not None
@@ -1989,11 +2897,11 @@ def _emit_build_function(
                     lines = [head]
                 else:
                     # v2.6.4 Fix 5: drop wf positional from raw_call (ContextVar).
-                    raw_node_id = _subgraph_emitted_node_id(node_id_prefix, nid) if is_subgraph_function and node_id_prefix is not None else nid
+                    raw_id = f" {str(nid)!r}," if emit_all_ids else ""
                     head = (
-                        f"{body_indent}raw_call({node.class_type!r}, {raw_node_id!r},"
+                        f"{body_indent}raw_call({node.class_type!r},{raw_id}"
                         if assignment_target is None
-                        else f"{body_indent}{assignment_target} = raw_call({node.class_type!r}, {raw_node_id!r},"
+                        else f"{body_indent}{assignment_target} = raw_call({node.class_type!r},{raw_id}"
                     )
                     lines = [head]
                 for key, expr in all_args:
@@ -2028,7 +2936,7 @@ def _with_id_map_tail_line(tail_lines: list[str], var_names: dict[str, str]) -> 
     # v2.6.4 fix: id_map is derived at runtime via wf.id_map() (returns
     # {ClassType#N: node_id}). The build() source is the authoritative
     # variable-name binding; storing it again at runtime via _set_id_map
-    # was bloat that scaled linearly with node count (60+ entry one-line
+            # was bloat that scaled linearly with node count (60+ entry one-line
     # dicts on LTX templates). Drop the emission entirely.
     return tail_lines
 

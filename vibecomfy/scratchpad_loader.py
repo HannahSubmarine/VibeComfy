@@ -48,6 +48,20 @@ class _MappedSourceLoader(importlib.abc.SourceLoader):
     def get_data(self, path: str) -> bytes:
         return self.actual_path.read_bytes() if Path(path) == self.logical_path else Path(path).read_bytes()
 
+    def get_code(self, fullname: str) -> Any:
+        """Compile the current source bytes instead of trusting a stale pyc.
+
+        Canonical pair publication can replace a source file with another
+        same-size revision inside Python's timestamp-granularity window.  A
+        normal ``SourceFileLoader`` may then execute the old bytecode while
+        the sibling companion already contains the new generation marker.
+        The scratchpad boundary is a source-reload boundary, so compile the
+        bytes being loaded directly and keep the Python/companion pair bound
+        to one revision.
+        """
+        source = self.actual_path.read_bytes()
+        return self.source_to_code(source, str(self.logical_path))
+
 
 
 class _MappedSourceFinder(importlib.abc.MetaPathFinder):
@@ -122,11 +136,10 @@ def load_scratchpad(
         )
     provenance = provenance_override or _provenance_for_path(exposed_path)
     module_name, import_root = _module_import_context(path)
-    loader = (
-        _MappedSourceLoader(module_name, path, exposed_path)
-        if exposed_path != path
-        else None
-    )
+    # Always use the fresh-source loader, including when the logical and
+    # physical paths are identical.  This avoids stale bytecode after an
+    # atomic same-basename pair rewrite.
+    loader = _MappedSourceLoader(module_name, path, exposed_path)
     spec = importlib.util.spec_from_file_location(
         module_name,
         exposed_path,
@@ -148,6 +161,9 @@ def load_scratchpad(
     )
     if finder is not None:
         sys.meta_path.insert(0, finder)
+    from vibecomfy.workflow_context import active_workflow
+
+    prior_workflow = active_workflow()
     try:
         require_confirmation(
             operation="scratchpad_exec",
@@ -169,6 +185,16 @@ def load_scratchpad(
             )
         return workflow
     finally:
+        current_workflow = active_workflow()
+        if current_workflow is not None and current_workflow is not prior_workflow:
+            token = getattr(current_workflow, "_workflow_context_token", None)
+            if token is not None:
+                from vibecomfy.workflow_context import reset_workflow
+
+                try:
+                    reset_workflow(token)
+                finally:
+                    current_workflow._workflow_context_token = None
         if finder is not None:
             sys.meta_path.remove(finder)
         if inserted_path:

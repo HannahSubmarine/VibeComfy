@@ -73,6 +73,7 @@ def _prepare_workflow_for_emit(
     keep_virtual_wires: bool = False,
     prune_dead_branches: bool = True,
     project_execution_edges: bool = True,
+    omit_terminal_ui_only: bool = False,
     diagnostics: list[Any] | None = None,
 ) -> dict[str, Any]:
     # Preserve fully disconnected canvases. Dead-branch pruning is useful when
@@ -81,27 +82,26 @@ def _prepare_workflow_for_emit(
     if prune_dead_branches and not getattr(workflow, "edges", ()):
         prune_dead_branches = False
 
-    # Pure UI furniture (notes/labels) is normally stripped. Keep it when it is
-    # wired as a live passthrough so fidelity emission never severs an authored
-    # edge. Auxiliary output nodes are semantic graph members and therefore are
-    # not classified as UI-only here, even when their main purpose is preview.
-    ui_only_passthroughs: set[str] = set()
-    if not prune_dead_branches:
-        for edge in workflow.edges:
-            src = workflow.nodes.get(str(edge.from_node))
-            dst = workflow.nodes.get(str(edge.to_node))
-            if (
-                src is not None
-                and dst is not None
-                and src.class_type in UI_ONLY_CLASS_TYPES
-                and dst.class_type not in UI_ONLY_CLASS_TYPES
-            ):
-                ui_only_passthroughs.add(str(edge.from_node))
+    # UI-only classes belong to the presentation/annotation projection, never
+    # executable Python.  A semantic edge involving one is unrepresentable;
+    # fail closed instead of emitting a source file that calls Note nodes.
+    for edge in workflow.edges:
+        src = workflow.nodes.get(str(edge.from_node))
+        dst = workflow.nodes.get(str(edge.to_node))
+        if (
+            (src is not None and src.class_type in UI_ONLY_CLASS_TYPES)
+            or (dst is not None and dst.class_type in UI_ONLY_CLASS_TYPES)
+        ) and not (
+            src is not None and dst is not None
+            and src.class_type in UI_ONLY_CLASS_TYPES
+            and dst.class_type in UI_ONLY_CLASS_TYPES
+        ):
+            raise ConversionParityError("UI-only node cannot participate in semantic execution edges")
     authored_nodes = {
         str(nid): copy.deepcopy(node)
         for nid, node in workflow.nodes.items()
         if (
-            (node.class_type not in UI_ONLY_CLASS_TYPES or str(nid) in ui_only_passthroughs)
+            node.class_type not in UI_ONLY_CLASS_TYPES
         )
     }
     from vibecomfy.workflow import mode_to_litegraph  # noqa: PLC0415
@@ -118,14 +118,160 @@ def _prepare_workflow_for_emit(
     if project_execution_edges:
         # Select one detached execution graph and consume its nodes and edges
         # together.  Authored nodes plus projected edges are a hybrid graph.
-        projection = workflow._execution_projection()
-        workflow_nodes = copy.deepcopy(projection.nodes)
-        emission_edges = copy.deepcopy(projection.edges)
+        # Canonical source describes the authored base graph, not an eagerly
+        # selected default variant.  Recursive definitions remain separately
+        # owned authoring scopes; projecting the root must not inline them and
+        # then also retain their declarations.
+        projection_source = workflow.copy()
+        projection_source.default_variant = None
+        projection_source.definitions = {}
+        projection_source.interfaces = {}
+        projection_source.boundary_ports = []
+        # Build the projection from the same filtered authored graph used by
+        # the emitter.  Filtering only the later ``workflow_nodes`` roster is
+        # insufficient: _execution_projection() would otherwise reintroduce
+        # disconnected UI-only notes/labels into the generated Python.
+        projection_source.nodes = copy.deepcopy(authored_nodes)
+        projection_source.edges = [
+            copy.deepcopy(edge)
+            for edge in workflow.edges
+            if str(edge.from_node) in authored_nodes
+            and str(edge.to_node) in authored_nodes
+        ]
+        # Public descriptors are restored from the authored workflow after
+        # construction.  They must not turn source generation for a valid
+        # unfinished draft into an execution-readiness gate.
+        projection_source.inputs = {}
+        projection_source.outputs = []
+        projection = projection_source._execution_projection()
+        # A disconnected authored canvas is still a real typed workflow.  The
+        # execution projection intentionally lowers resolver helpers, but with
+        # no edges there is no executable topology to project and lowering the
+        # node would make canonical Python emission lose the node entirely.
+        # Preserve the authored node roster so a captured sidecar can round-trip
+        # through emitted Python and revision publication.
+        if not workflow.edges:
+            workflow_nodes = copy.deepcopy(authored_nodes)
+            emission_edges = []
+        else:
+            workflow_nodes = copy.deepcopy(projection.nodes)
+            emission_edges = copy.deepcopy(projection.edges)
+
+        # Broadcast helpers are authored canonical calls, not execution nodes.
+        # The execution projection intentionally lowers them, but canonical
+        # source still needs to retain SetNode/GetNode and the handle wiring
+        # that documents the authored graph. In explicit keep mode, Reroute is
+        # authored virtual-wire furniture too; Primitive lowering remains
+        # projection-owned in every mode.
+        # Flat conversion deliberately lowers broadcast furniture to the
+        # projected runtime edges.  Restoring Set/Get here would reintroduce
+        # an orphaned helper pair after a value primitive has been folded (the
+        # source primitive is intentionally absent from canonical Python).
+        # Explicit keep mode is the presentation-preserving spelling and may
+        # retain the authored helper furniture for a later UI round-trip.
+        restored_helper_types = {"SetNode", "GetNode"} if keep_virtual_wires else set()
+        if keep_virtual_wires:
+            restored_helper_types.add("Reroute")
+        broadcast_ids = {
+            str(nid)
+            for nid, node in authored_nodes.items()
+            if str(node.class_type) in restored_helper_types
+        }
+        if broadcast_ids:
+            workflow_nodes.update(
+                {
+                    nid: copy.deepcopy(authored_nodes[nid])
+                    for nid in broadcast_ids
+                }
+            )
+            preserved_node_ids = broadcast_ids | set(mode_nodes)
+            incident_authored_edges = [
+                copy.deepcopy(edge)
+                for edge in workflow.edges
+                if str(edge.from_node) in preserved_node_ids
+                or str(edge.to_node) in preserved_node_ids
+            ]
+            # The lowered projection may contain a direct edge spanning the
+            # helper chain. Remove that projected edge before restoring the
+            # authored helper edges, avoiding duplicate custody for one link.
+            authored_adjacency: dict[str, list[str]] = {}
+            authored_direct_pairs = {
+                (str(edge.from_node), str(edge.to_node))
+                for edge in workflow.edges
+            }
+            for edge in workflow.edges:
+                authored_adjacency.setdefault(str(edge.from_node), []).append(str(edge.to_node))
+            lowered_helper_spans: set[tuple[str, str]] = set()
+            for source_id in authored_nodes:
+                pending = [(str(source_id), False)]
+                seen: set[tuple[str, bool]] = set()
+                while pending:
+                    current, crossed_helper = pending.pop()
+                    state = (current, crossed_helper)
+                    if state in seen:
+                        continue
+                    seen.add(state)
+                    for target in authored_adjacency.get(current, ()):
+                        target_crossed = crossed_helper or target in broadcast_ids or current in broadcast_ids
+                        if (
+                            target not in broadcast_ids
+                            and target_crossed
+                            and target != str(source_id)
+                            and (str(source_id), target) not in authored_direct_pairs
+                        ):
+                            lowered_helper_spans.add((str(source_id), target))
+                        if target in authored_nodes:
+                            pending.append((target, target_crossed))
+            emission_edges = [
+                edge
+                for edge in emission_edges
+                if (str(edge.from_node), str(edge.to_node)) not in lowered_helper_spans
+            ]
+            emission_edges.extend(incident_authored_edges)
     else:
         # Explicit keep/agent-edit output carries the authored graph unchanged;
         # a rebuilt workflow will lower it through the shared compiler.
         workflow_nodes = authored_nodes
         emission_edges = copy.deepcopy(workflow.edges)
+
+    # Retained non-enabled nodes (for example a bypassed filter feeding a
+    # SetNode) are added after execution projection so they do not affect the
+    # projected runtime graph. They must nevertheless be present before the
+    # edge index is built: authored helper edges depend on those nodes to
+    # preserve broadcast resolution in regenerated Python.
+    workflow_nodes.update(mode_nodes)
+
+    # Keep authored edges touching muted/bypassed nodes in the canonical
+    # source.  The execution projection still removes or rewrites those edges
+    # at compile time, but dropping them here makes a faithful canvas capture
+    # impossible and leaves the presentation sidecar referring to edges the
+    # Python source no longer owns.  Only endpoints that survived preparation
+    # are considered; resolver/UI-only nodes remain governed by their existing
+    # helper rules above.
+    existing_edge_keys = {
+        (str(edge.from_node), str(edge.from_output), str(edge.to_node), str(edge.to_input))
+        for edge in emission_edges
+    }
+    for edge in workflow.edges:
+        source = workflow.nodes.get(str(edge.from_node))
+        target = workflow.nodes.get(str(edge.to_node))
+        if source is None or target is None:
+            continue
+        if str(edge.from_node) not in workflow_nodes or str(edge.to_node) not in workflow_nodes:
+            continue
+        if (
+            mode_to_litegraph(getattr(source, "mode", 0)) == 0
+            and mode_to_litegraph(getattr(target, "mode", 0)) == 0
+        ):
+            continue
+        key = (str(edge.from_node), str(edge.from_output), str(edge.to_node), str(edge.to_input))
+        if key not in existing_edge_keys:
+            emission_edges.append(copy.deepcopy(edge))
+            existing_edge_keys.add(key)
+
+    # PreviewAny is an authored auxiliary-output node, including when it is a
+    # terminal.  Ready, canonical, and scratchpad emission all use this same
+    # preparation path, so terminal-preview retention must not vary by mode.
     _sync_declared_exec_output_metadata(workflow_nodes)
     if not keep_virtual_wires and not project_execution_edges:
         for nid, node in workflow_nodes.items():

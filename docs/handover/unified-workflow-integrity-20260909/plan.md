@@ -1,6 +1,36 @@
 # Canonical workflow integrity + Pythonic emission — unified plan v5
 
-Planning only. [run.yaml](./run.yaml) owns role/model bindings, stage scopes and every review/oracle ceiling. [goal.md](./goal.md) owns authority; [northstar.md](./northstar.md) remains unchanged. The current user amendment absorbs Pythonic emission into this plan and supersedes the prior exclusion. See consolidation.md for criterion/history mapping.
+## Current prepared amendment — 2026-09-11
+
+Also adopt the [focused test-signal plan](test-signal-cleanup-plan.md): six Luna
+audit slices and one Astra high adjudication, integrated into existing owners.
+No broad test cleanup prerequisite, deletion quota, weakened validation or
+new review stage. Keep old coverage until replacements prove distinct defects.
+
+The plan is now active for delivery; the current
+[source-cleanliness direction](canonical-source-cleanliness-direction.md) folds
+in the Luna owner/path investigations and S90 Astra simplification ruling. It
+supersedes older embedded-custody and representation details below. Use its
+ordered custody records, direct construction compatibility checks, concise
+finalizer, existing acquisition/routing owners and typed annotations. The
+[tasklist's current dispatch map](tasklist.md#current-amendment-dispatch-map)
+assigns the remaining work to existing IDs and tests. This is the same plan,
+not an additional workstream or review process.
+
+The path census adds reuse of a single admitted source for CLI analysis and
+conversion, convergence of v2 publication through the bundle owner, and targeted
+tests for output-slot fallback and differing ingress/export contexts. Proposed
+drift is tested before refactoring; UI JSON and execution API JSON remain
+legitimate separate projections. Adjacent risks are bounded checks within those
+tasks, not another repository-wide audit. The current delivery candidate has
+implemented the v2 pair and records acceptance evidence below and in the run
+evidence directory; final reviewer disposition remains the completion gate.
+
+Delivery execution is active. [run.yaml](./run.yaml) owns role/model bindings,
+stage scopes and every review/oracle ceiling. [goal.md](./goal.md) owns
+authority; [northstar.md](./northstar.md) remains unchanged. The current user
+amendment absorbs Pythonic emission into this plan and supersedes the prior
+exclusion. See consolidation.md for criterion/history mapping.
 
 ## First useful outcome
 
@@ -18,7 +48,7 @@ T0 reuses current H3 auxiliary-output/PreviewAny retention and wired-passthrough
 
 E0 first establishes AST/source-edit/helper/custody baselines on current main. E1 implements the one coupled emitter/finalization/identity kernel under adopted emission D1 (Sol XHARD); normal workers prepare tests and integrate evidence. T1 can prepare existing integrity fixtures in parallel, then proves/fixes I1/I2 against the E1 candidate rather than building a second emitter. It uses the existing emitter-preparation owner before constructing canonical bundle/sidecar/revision. Preserve unconditional staged equality against that exact intended result. Verify returned/reloaded content and sidecar/revision binding, including a sidecar-present case; injected unexpected node/edge/widget loss must leave the previous destination pair intact. Accepted normalization identifies affected content using existing diagnostics. It is not permission for arbitrary digest drift.
 
-T2 first tests the existing public export split, then shares any missing needed authority, source and sidecar/materialization checks at public export without imposing persistence of canonical Python/bundle artifacts on plain export. Preserve --out, explicit --persist-sidecar, --from/breadcrumb layout, strict refusal, visible --force-drop, recovery/trust and preview no-write behavior. Draft UI export needs no queue readiness; API JSON remains a projection. CLI --persist-sidecar concerns the .layout.json layout store, not automatic publication of a canonical Python/.vibe.json pair. Test those artifacts separately; pair identity belongs to I1.
+T2 first tests the existing public export split, then shares any missing needed authority, source and sidecar/materialization checks at public export without imposing persistence of canonical Python/bundle artifacts on plain export. Preserve --out, explicit --persist-sidecar, --from/breadcrumb layout, strict refusal, visible --force-drop, recovery/trust and preview no-write behavior. Draft UI export needs no queue readiness; API JSON remains a projection. CLI --persist-sidecar concerns the .layout.json layout store, not automatic publication of a canonical Python/.vibe.json pair. Test those artifacts separately; pair identity belongs to I1. The v2 companion is the canonical partner for converted Python; a legacy layout store remains an explicit compatibility path.
 
 T1 and T2 shared-file mutations serialize. Test preparation can overlap; labels do not create global barriers. S1_READY means C0/T0/E0/E1 resolved, T1/T2 integrated and their required affected checks passed with exact candidate evidence. The save_export_completion stage catches a producer/export mismatch or wrong revision binding before substantial dependents build on it. It includes I8/I9 emitter shape/edit/helper/custody proof alongside I1/I2/I3/I7; it does not require later H3 practical demonstration or docs/parity completion.
 
@@ -73,3 +103,65 @@ The user requested an assessment of actual output elegance. The clean-source cla
 ## Latest Astra sense-check requirements
 
 Apply the two mandatory evidence clarifications in [the acceptance ledger](acceptance-ledger.md#astra-sense-check-acceptance-clarification--2026-09-09): E0 maps the existing ingress owners and establishes cross-entrypoint baseline; E1 corrects only demonstrated shared-owner/emission defects; T3 adds the focused regressions to Q5; E2 saves/reloads and exports the edited H3 graph, asserts presentation/subgraph structure and records inspection of the exact rendered graph and whole Python file. A nested-definition source edit is a recommended optional test choice within existing I8/I9. No added task family or review stage.
+
+## Astra high rework amendment — typed custom-node emission — 2026-09-13
+
+The explicitly authorized Astra-high adjudication found that the inspected H3
+file's four LanPaint `raw_call` fallbacks are avoidable: the pinned LanPaint
+2.1.0 source archive proves their schemas and node mappings. The fifth raw
+call, `MiniMaxH3ImageToVideo`, remains unresolved in the available immutable
+registry/source evidence and stays a narrowly evidenced fallback until its
+schema is proven. The absence of custom-node imports is the same wrapper
+discovery/registration gap, not a separate ingestion path.
+
+Apply this as a bounded extension of the existing task IDs, in order:
+
+- E0/T3 freeze per-class provenance, exact backend field order, frontend-added
+  widget positions, output arity/names/types and unresolved reasons using the
+  existing registry/source owners.
+- E1 reuse `wrappers/discovery.py` and `wrappers/codegen.py` to register a
+  bounded `vibecomfy.nodes.lanpaint` module/stub for all proven in-scope
+  classes, and make the offline schema path consume the same pinned evidence.
+  Do not add runtime wrapper synthesis or generate every installed pack.
+- E1/T1 make the shared emitter select registered wrappers and emit their
+  imports/calls across canonical entrypoints. A raw call is valid only when
+  its class has a specific source/version/digest/reason record.
+- T1/T2/T3/E2/T4 regenerate the exact H3 and affected corpus, then prove
+  source shape, semantics, identity, provenance, editability, native
+  subgraphs, atomic pair lifecycle, failure refusal, whole-file/graph
+  inspection and deterministic repeat generation.
+
+Keep finalization lossless rather than mechanically uniform: use the compact
+`output_node` form only when artifact metadata can be inferred without change;
+retain explicit `OutputSpec` for explicit null metadata, empty outputs and
+ordered multi-output contracts. No new task ID, review stage, representation
+or compatibility framework is introduced. Luna medium owns the normal work;
+Sol high is used only if E1 exposes an inseparable semantic/identity/native-
+port kernel issue.
+
+The focused closure matrix must include importable typed LanPaint wrappers,
+exact field order and output slots, omission/forwarding behavior, dynamic
+choice non-fabrication, complete emitter imports, an exact residual raw-call
+allowlist, malformed/conflicting schema refusal with unchanged bytes, all
+finalizer variants, and fresh H3/corpus lifecycle plus deterministic
+regeneration. Existing green historical suite and H3 artifacts remain
+historical until this amendment's fresh evidence is recorded.
+
+## Latest corpus-completeness amendment — 2026-09-12
+
+The user has amended the completion target: the 20-workflow corpus must work
+through the canonical path unless a workflow is genuinely malformed or
+semantically unresolved. The previous 10-success/10-refusal result is not
+completion evidence under this target. The designated Astra high adjudication
+classified six refusals (01, 02, 11, 13, 15 and 18) as required-positive
+importer fixes, case 14 as a bounded source-format investigation, and cases
+10, 16 and 17 as justified refusals for the supplied bytes. The detailed
+disposition, source evidence, owners, batches and proof matrix are in
+[corpus-completeness-amendment-20260912.md](corpus-completeness-amendment-20260912.md).
+
+Extend the existing E0/E1/T1/T2/T3/E2/T4 assignments and I1–I10 criteria; do
+not add a review stage, reset a counter or create another representation. The
+minimum completion outcome is 16 positive corpus pairs and three contextual,
+atomic refusals, or 17 positives if case 14 is source-proven recoverable. All
+positives require full lifecycle and source-backed value/edge/identity proof;
+all refusals require source-specific diagnostics and unchanged destinations.

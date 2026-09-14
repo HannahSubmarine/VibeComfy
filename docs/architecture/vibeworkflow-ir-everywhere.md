@@ -81,6 +81,29 @@ Comfy API dict    ──from_api()──▶ VibeWorkflow ──to_envelope()─�
 All in `vibecomfy/ingest/normalize.py` + `vibecomfy/porting/emit/ui.py`. These
 are pure functions: same input, same output, testable without a server.
 
+Before `from_ui()` constructs the canonical graph, the import owner recognizes
+supported native ComfyUI subgraph definitions. A definition with both
+`inputNode` and `outputNode` is expanded into namespaced ordinary nodes (such
+as `instance::local`), with instance widget overrides, boundary mappings,
+fan-out, and output slots rewritten into the shared named-edge channel. The
+source hash, `source_kind: comfyui_native_subgraph`, expansion diagnostics, and
+node UID/source identity remain provenance evidence; the native definition is
+not retained as a competing IR.
+
+Expansion is bounded and fail-closed. Unsupported nesting, incomplete or
+ambiguous boundaries, malformed links, contradictory backlinks, and unmapped
+native edges raise `unsupported_boundary_encoding` before canonical publication.
+This is distinct from an unresolved node schema: schema uncertainty may be
+carried by a draft, while strict-ready approval still requires its configured
+schema gates to pass.
+
+For durable authoring, `WorkflowBundle` binds the canonical workflow to its
+semantic digest, source provenance, workflow identity, and revision. The
+canonical Python source and `.vibe.json` are published as an atomic pair and
+reloaded together for approval. A legacy `.layout.json` is an optional,
+presentation-only sidecar used by the UI export path; it can preserve positions,
+groups, and editor furniture but is not semantic or execution authority.
+
 ### 2.3 The clean view — the graph as Python
 
 The model never sees the IR dump, the raw JSON, or a bespoke text projection.
@@ -122,7 +145,8 @@ What this representation gives you:
   Python assignment, read as "node.INPUT = src.SLOT". The chain
   `openpose → depth → canny → KSampler` reads as data flow, not `[17,26,0,3,1,""]`.
 - **Stable identity.** `uid:4` comments anchor nodes across the round-trip;
-  `slots` comments say what each node outputs.
+  `slots` comments say what each node outputs. Source identity, provenance,
+  and revision evidence are bound outside the editable runtime values.
 - **No noise.** No `pos`, `size`, `_ui`, `flags`, `metadata`, `provenance` —
   the emitter renders only what an editor reasons about.
 - **The same language for reading and editing.** The model edits this exact

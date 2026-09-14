@@ -12,18 +12,22 @@ fields this harness needs.
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
+from copy import deepcopy
 from threading import Lock
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from unittest import mock
 
 from vibecomfy import image, load_workflow_any, video
 from vibecomfy.blocks.save import image as save_image
+from vibecomfy.patches.controlnet import controlnet_patch as make_controlnet_patch
 from vibecomfy.patches.controlnet import patch as controlnet_patch
 from vibecomfy.runtime.session import _run_metadata
 from vibecomfy.workflow import VibeWorkflow, WorkflowSource
+from vibecomfy.workflow_bundle import WorkflowBundleError
 
 try:
     from vibecomfy.origin import stamp_workflow_origin
@@ -425,17 +429,38 @@ def build_m3_controlnet_depth_positive_evidence(report_dir: Path) -> dict[str, A
         "m3-controlnet-depth-positive",
         WorkflowSource("m3-controlnet-depth-positive"),
     )
-    positive = workflow.add_node("CLIPTextEncode", text="a basalt arch at sunrise")
-    negative = workflow.add_node("CLIPTextEncode", text="low quality, blurry")
-    sampler = workflow.add_node("KSampler", seed=7, steps=20, cfg=6.5)
-    workflow.connect(f"{positive.id}.0", f"{sampler.id}.positive")
-    workflow.connect(f"{negative.id}.0", f"{sampler.id}.negative")
-
+    checkpoint = workflow.node(
+        "CheckpointLoaderSimple", ckpt_name="sd_xl_base_1.0.safetensors"
+    )
+    positive = workflow.node(
+        "CLIPTextEncode", clip=checkpoint.out("CLIP"), text="a basalt arch at sunrise"
+    )
+    negative = workflow.node(
+        "CLIPTextEncode", clip=checkpoint.out("CLIP"), text="low quality, blurry"
+    )
+    latent = workflow.node(
+        "EmptyLatentImage", width=64, height=64, batch_size=1
+    )
+    image = workflow.node("LoadImage", image="input/control.png")
+    sampler = workflow.node(
+        "KSampler",
+        model=checkpoint.out("MODEL"),
+        positive=positive.out("CONDITIONING"),
+        negative=negative.out("CONDITIONING"),
+        latent_image=latent.out("LATENT"),
+        seed=7,
+        steps=20,
+        cfg=6.5,
+        sampler_name="euler",
+        scheduler="normal",
+        denoise=1.0,
+    )
     output_path = root / "outputs" / "image.png"
     _write_placeholder(output_path, "structural image placeholder\n")
 
-    applies = controlnet_patch.applies_to(workflow)
-    controlnet_patch.apply(workflow)
+    configured_controlnet = make_controlnet_patch(image_node_id=image.node.id)
+    applies = configured_controlnet.applies_to(workflow)
+    configured_controlnet.apply(workflow)
     workflow.finalize_metadata()
 
     evidence = _write_workflow_evidence(
@@ -488,8 +513,12 @@ def build_m3_controlnet_video_noop_evidence(report_dir: Path) -> dict[str, Any]:
         "m3-controlnet-video-noop",
         WorkflowSource("m3-controlnet-video-noop"),
     )
-    source = workflow.add_node("LoadImage", image="input/first-frame.png")
-    sink = workflow.add_node("SaveVideo", filename_prefix="video/m3_controlnet_noop")
+    # Use the authoring builder so the structural fixture carries the same
+    # native socket rosters as a real Python-authored node.  ``add_node`` is a
+    # deliberately low-level escape hatch and does not claim positional socket
+    # authority; the bundle sidecar gate must not have to guess these ports.
+    source = workflow.node("LoadImage", image="input/first-frame.png")
+    sink = workflow.node("SaveVideo", filename_prefix="video/m3_controlnet_noop")
     workflow.connect(f"{source.id}.0", f"{sink.id}.video")
 
     output_path = root / "outputs" / "video.mp4"
@@ -816,6 +845,7 @@ def _write_workflow_evidence(
 ) -> StructuralEvidenceRecord:
     if origin is not None:
         stamp_workflow_origin(workflow, origin[0], origin[1])
+    _refresh_structural_template_schema(workflow)
     compiled_api = workflow.compile("api")
     outputs = [str(output_path)] if output_path is not None else []
     metadata = _build_run_metadata(
@@ -837,6 +867,174 @@ def _write_workflow_evidence(
         metadata_path=str(metadata_path),
         output_path=str(output_path) if output_path is not None else None,
     )
+
+
+def _write_invalid_workflow_evidence(
+    *,
+    root: Path,
+    run_id: str,
+    workflow: Any,
+    output_path: Path | None,
+    origin: tuple[str, str] | None = None,
+) -> StructuralEvidenceRecord:
+    """Freeze API and typed compile failure evidence for an invalid scenario.
+
+    Investigate-tier actors intentionally stop before approval.  They still
+    need the exact API projection and the compiler's refusal recorded, but
+    must not route a known-invalid graph through the approved runtime metadata
+    path.  Production bundle compilation remains strict.
+    """
+    if origin is not None:
+        stamp_workflow_origin(workflow, origin[0], origin[1])
+    _refresh_structural_template_schema(workflow)
+    compiled_api = workflow.compile("api")
+    try:
+        _build_run_metadata(
+            run_id=run_id,
+            workflow=workflow,
+            api_dict=compiled_api,
+            outputs=[str(output_path)] if output_path is not None else [],
+            chain_id=None,
+            parent_run_id=None,
+        )
+    except WorkflowBundleError as exc:
+        compile_error = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+        }
+    else:
+        raise AssertionError("invalid structural workflow unexpectedly compiled")
+
+    serialized = json.dumps(compiled_api, sort_keys=True, default=str)
+    metadata = {
+        "run_id": run_id,
+        "workflow_id": workflow.id,
+        "source": asdict(workflow.source),
+        "workflow_hash": hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
+        "api_digest": workflow.semantic_digest(),
+        "compiled_prompt": compiled_api,
+        "inputs": {name: item.value for name, item in workflow.inputs.items()},
+        "artifact_paths": [str(output_path)] if output_path is not None else [],
+        "outputs": [str(output_path)] if output_path is not None else [],
+        "runtime": "structural",
+        "status": "invalid",
+        "compile_error": compile_error,
+    }
+    entrypoint = workflow.metadata.get("entrypoint")
+    layer = workflow.metadata.get("layer")
+    if isinstance(entrypoint, str) and entrypoint:
+        metadata["entrypoint"] = entrypoint
+    if isinstance(layer, str) and layer:
+        metadata["layer"] = layer
+
+    compiled_api_path = root / "compiled_api.json"
+    metadata_path = root / "metadata.json"
+    compiled_api_path.write_text(json.dumps(compiled_api, indent=2, sort_keys=True), encoding="utf-8")
+    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
+    return StructuralEvidenceRecord(
+        run_id=run_id,
+        compiled_api_path=str(compiled_api_path),
+        metadata_path=str(metadata_path),
+        output_path=str(output_path) if output_path is not None else None,
+    )
+
+
+def _refresh_structural_template_schema(workflow: Any) -> None:
+    """Reconcile legacy ready-template kwargs with the pinned schema cache.
+
+    Several structural scenarios intentionally start from older checked-in
+    ready templates.  Their Python source can retain conditional UI kwargs
+    that are no longer execution inputs, while current schemas can make a
+    loader default explicit.  Only unconnected keys absent from the current
+    schema are removed; connected edges remain authoritative.  The sole
+    schema-less required default handled here is the canonical UNETLoader
+    ``weight_dtype`` value used by the project runtime.
+    """
+    from vibecomfy.schema import get_authoring_schema_provider
+
+    provider = get_authoring_schema_provider(on_demand_schemas=False)
+    connected_inputs = {
+        (str(edge.to_node), str(edge.to_input))
+        for edge in workflow.edges
+    }
+    for node_id, node in workflow.nodes.items():
+        schema = provider.get_schema(str(node.class_type))
+        schema_inputs = getattr(schema, "inputs", None) if schema is not None else None
+        if not isinstance(schema_inputs, Mapping):
+            continue
+        declared = {str(name) for name in schema_inputs}
+        if node.class_type == "LTXVImgToVideoInplaceKJ":
+            raw_count = node.inputs.get("num_images")
+            try:
+                count = int(raw_count) if not isinstance(raw_count, bool) else 0
+            except (TypeError, ValueError):
+                count = 0
+            if count > 0:
+                # Older generated sources flattened the dynamic-combo widget
+                # row into strength_1/index_1/widget_N names.  Reconstruct the
+                # canonical dotted fields from that preserved positional order
+                # before the unknown-key sweep below.
+                legacy_values = [
+                    value
+                    for field_name, value in node.inputs.items()
+                    if (
+                        str(field_name).startswith(("strength_", "index_", "widget_"))
+                        and not str(field_name).startswith("num_images.")
+                    )
+                ]
+                for index in range(1, count + 1):
+                    strength_name = f"num_images.strength_{index}"
+                    index_name = f"num_images.index_{index}"
+                    if strength_name not in node.inputs and index <= len(legacy_values):
+                        node.inputs[strength_name] = deepcopy(legacy_values[index - 1])
+                    index_position = count + index
+                    if index_name not in node.inputs and index_position <= len(legacy_values):
+                        node.inputs[index_name] = deepcopy(legacy_values[index_position - 1])
+        has_autogrow = any(
+            str(getattr(spec, "type", "")) == "COMFY_AUTOGROW_V3"
+            for spec in schema_inputs.values()
+        )
+        for values in (node.inputs, node.widgets):
+            for field_name in list(values):
+                if (
+                    str(field_name) not in declared
+                    and not (has_autogrow and not str(field_name).startswith("widget_"))
+                    and not (
+                        node.class_type == "LTXVImgToVideoInplaceKJ"
+                        and str(field_name).startswith("num_images.")
+                    )
+                    and (str(node_id), str(field_name)) not in connected_inputs
+                ):
+                    values.pop(field_name, None)
+        if has_autogrow:
+            dynamic_names = {
+                str(field_name)
+                for field_name in node.inputs
+                if str(field_name) not in declared and not str(field_name).startswith("widget_")
+            }
+            dynamic_names.update(
+                str(edge.to_input)
+                for edge in workflow.edges
+                if str(edge.to_node) == str(node_id)
+                and str(edge.to_input) not in declared
+                and not str(edge.to_input).startswith("widget_")
+            )
+            if dynamic_names and "variables" in declared and "variables" not in node.inputs:
+                node.inputs["variables"] = ",".join(sorted(dynamic_names))
+        if node.class_type == "UNETLoader" and "weight_dtype" not in node.inputs and (
+            str(node_id), "weight_dtype"
+        ) not in connected_inputs:
+            node.inputs["weight_dtype"] = "default"
+        for field_name, spec in schema_inputs.items():
+            if not bool(getattr(spec, "required", False)):
+                continue
+            if field_name in node.inputs or field_name in node.widgets:
+                continue
+            if (str(node_id), str(field_name)) in connected_inputs:
+                continue
+            default = getattr(spec, "default", None)
+            if default is not None:
+                node.inputs[str(field_name)] = deepcopy(default)
 
 
 def _write_placeholder(path: Path, content: str) -> None:
@@ -965,6 +1163,18 @@ def _build_run_metadata(
         (str(ref["value"]), str(ref["subdir"]))
         for ref in _referenced_model_values(workflow)
     }
+    # Ready-template metadata can carry model declarations that are not
+    # recoverable from runtime node inputs alone (for example, an asset
+    # selected through a custom loader's presentation metadata).  Mirror the
+    # bundle precondition's metadata-model surface in the bounded offline
+    # registry so structural evidence proves the graph contract without
+    # claiming that weights were downloaded or executed.
+    for asset in workflow.metadata.get("model_assets", ()):
+        if isinstance(asset, dict):
+            name = asset.get("name")
+            subdir = asset.get("subdir", asset.get("directory", ""))
+            if isinstance(name, str) and name and isinstance(subdir, str):
+                references.add((name, subdir))
     targets: dict[str, set[str]] = {}
     for name, subdir in references:
         targets.setdefault(name, set()).add(subdir)
@@ -976,11 +1186,24 @@ def _build_run_metadata(
         for name, subdirs in sorted(targets.items())
     )
     bundle = load_bundle(workflow)
+    def _offline_is_present(ref: Any, **_: Any) -> bool:
+        key = (str(ref["name"]), str(ref["subdir"]))
+        if key in references:
+            return True
+        # A requirement-only model reference has no subdir.  The production
+        # gate derives its effective subdir from the first registry target;
+        # mirror that exact target-directory derivation for this bounded
+        # compile-only registry (including model names containing subpaths).
+        for name, subdir in references:
+            target_path = f"{subdir}/{name}"
+            target_dir = target_path.rsplit("/", 1)[0] if "/" in target_path else ""
+            if (name, target_dir) == key:
+                return True
+        return False
+
     with (
         mock.patch("vibecomfy.registry.models_loader.load_registry", return_value=entries),
-        mock.patch("vibecomfy.fetch.is_present", side_effect=lambda ref, **_: (
-            str(ref["name"]), str(ref["subdir"])
-        ) in references),
+        mock.patch("vibecomfy.fetch.is_present", side_effect=_offline_is_present),
     ):
         record = bundle.compile()
     if record.to_dict()["api_projection"] != api_dict:
@@ -1041,6 +1264,9 @@ def _agent_research_result(
         EvidenceLedgerEntry,
         EvidencePack,
     )
+    from vibecomfy.executor.stage_contracts import StagePackage
+    from vibecomfy.executor.tool_contracts import ToolStatus
+    from datetime import datetime, timezone
 
     evidence_id = "harness:agent-research:1"
     artifacts = {
@@ -1086,10 +1312,25 @@ def _agent_research_result(
         status="ok",
         elapsed_seconds=0.0,
     )
+    package = StagePackage(
+        stage_id="research",
+        produced_at=(
+            datetime.now(timezone.utc)
+            .isoformat(timespec="seconds")
+            .replace("+00:00", "Z")
+        ),
+        artifacts=artifacts,
+        diagnostics=(),
+        status=ToolStatus.OK,
+        next_stage_hints=("implement",) if route == "adapt" else (),
+        ledger=ledger,
+        research_attempt="never",
+    )
     return AgentResearchResult(
         route=route,
         trace=trace,
         evidence_pack=pack,
+        package=package,
         decision_memo=(
             {
                 "question": question,
@@ -1619,20 +1860,12 @@ def build_hotshot_16_frames_agent_edit_evidence(report_dir: Path) -> dict[str, A
     responses = iter(
         [
             {
-                "batch": 'research("Hotshot XL ComfyUI workflow 16 frames", sources=["workflows"])',
-                "message": "Found a Hotshot workflow pattern to adapt.",
-            },
-            {
-                "batch": 'research("ComfyUI-AnimateDiff-Evolved Hotshot XL nodes", sources=["registry"])',
-                "message": "Resolved the workflow's missing custom node classes through the registry.",
-            },
-            {
                 "batch": (
                     "hotshot_loader = ADE_AnimateDiffLoaderWithContext(\n"
-                    "    model=checkpointloadersimple.model, near=ksampler\n"
+                    "    model=checkpointloadersimple.model\n"
                     ")\n"
                     "hotshot_sampler = ADE_UseEvolvedSampling(\n"
-                    "    model=hotshot_loader.model, near=ksampler\n"
+                    "    model=hotshot_loader.model\n"
                     ")\n"
                     "ksampler.model = hotshot_sampler.model\n"
                     "done()"
@@ -1646,10 +1879,10 @@ def build_hotshot_16_frames_agent_edit_evidence(report_dir: Path) -> dict[str, A
                 # same edit to land the candidate.
                 "batch": (
                     "hotshot_loader = ADE_AnimateDiffLoaderWithContext(\n"
-                    "    model=checkpointloadersimple.model, near=ksampler\n"
+                    "    model=checkpointloadersimple.model\n"
                     ")\n"
                     "hotshot_sampler = ADE_UseEvolvedSampling(\n"
-                    "    model=hotshot_loader.model, near=ksampler\n"
+                    "    model=hotshot_loader.model\n"
                     ")\n"
                     "ksampler.model = hotshot_sampler.model\n"
                     "done()"
@@ -1871,6 +2104,10 @@ def build_ltx_i2v_audio_research_execute_evidence(report_dir: Path) -> dict[str,
         "ready_templates/video/ltx2_3_runexx_custom_audio.py",
         "ready_templates/video/ltx2_3_runexx_lipsync_custom_audio.py",
     )
+    # The executor's graph input is a LiteGraph UI document.  Keep this
+    # fixture honest: linked inputs belong to the native input roster and
+    # literals belong to widget-backed inputs, rather than using the compact
+    # API ``inputs`` mapping as if it were canvas data.
     starting_graph: dict[str, Any] = {
         "workflow_id": "video/ltx2_3_i2v",
         "nodes": [
@@ -2430,16 +2667,36 @@ def build_save_generated_video_research_execute_evidence(report_dir: Path) -> di
         "workflow_id": "video/wan_t2v",
         "nodes": [
             {"id": 1, "class_type": "CLIPTextEncode", "type": "CLIPTextEncode",
-             "inputs": {"text": "a snowy mountain at sunrise"}},
+             "inputs": [{"name": "text", "widget": {"name": "text"}}],
+             "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [1]}],
+             "widgets_values": ["a snowy mountain at sunrise"]},
             {"id": 2, "class_type": "CLIPTextEncode", "type": "CLIPTextEncode",
-             "inputs": {"text": "low quality, blurry"}},
+             "inputs": [{"name": "text", "widget": {"name": "text"}}],
+             "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [2]}],
+             "widgets_values": ["low quality, blurry"]},
             {"id": 3, "class_type": "EmptyLatentVideo", "type": "EmptyLatentVideo",
-             "inputs": {"width": 832, "height": 480, "length": 33}},
+             "inputs": [
+                 {"name": "width", "widget": {"name": "width"}},
+                 {"name": "height", "widget": {"name": "height"}},
+                 {"name": "length", "widget": {"name": "length"}},
+             ],
+             "outputs": [{"name": "LATENT", "type": "LATENT", "links": [3]}],
+             "widgets_values": [832, 480, 33]},
             {"id": 4, "class_type": "WanT2V", "type": "WanT2V",
-             "inputs": {"positive": [1, 0], "negative": [2, 0], "latent": [3, 0],
-                        "seed": 42, "steps": 30, "cfg": 6.0}},
+             "inputs": [
+                 {"name": "positive", "type": "CONDITIONING", "link": 1},
+                 {"name": "negative", "type": "CONDITIONING", "link": 2},
+                 {"name": "latent", "type": "LATENT", "link": 3},
+                 {"name": "seed", "widget": {"name": "seed"}},
+                 {"name": "steps", "widget": {"name": "steps"}},
+                 {"name": "cfg", "widget": {"name": "cfg"}},
+             ],
+             "outputs": [{"name": "LATENT", "type": "LATENT", "links": [4]}],
+             "widgets_values": [42, 30, 6.0]},
             {"id": 5, "class_type": "VAEDecode", "type": "VAEDecode",
-             "inputs": {"samples": [4, 0]}},
+             "inputs": [{"name": "samples", "type": "LATENT", "link": 4}],
+             "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": []}],
+             "widgets_values": []},
         ],
         "links": [
             [1, 1, 0, 4, 0, "CONDITIONING"],
@@ -2551,11 +2808,12 @@ def build_save_generated_video_research_execute_evidence(report_dir: Path) -> di
             "id": save_node_id,
             "class_type": "VHS_VideoCombine",
             "type": "VHS_VideoCombine",
-            "inputs": {
-                "images": [5, 0],
-                "frame_rate": 16,
-                "filename_prefix": "saved_video_output",
-            },
+            "inputs": [
+                {"name": "images", "type": "IMAGE", "link": 5},
+                {"name": "frame_rate", "widget": {"name": "frame_rate"}},
+                {"name": "filename_prefix", "widget": {"name": "filename_prefix"}},
+            ],
+            "widgets_values": [16, "saved_video_output"],
         }
         graph.setdefault("nodes", []).append(save_node)
         graph.setdefault("links", []).append(

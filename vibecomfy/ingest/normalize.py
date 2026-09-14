@@ -93,6 +93,34 @@ def canonical_node_widgets_values(node: Mapping[str, Any], default: Any = None) 
     return node.get("widgets_values", default)
 
 
+def canonical_ui_node_identities(candidate: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Extract durable captured-node identities at the LiteGraph ingest door.
+
+    The bundle boundary consumes this normalized witness rather than reading
+    raw ``nodes`` structure itself.  Explicit ``properties.vibecomfy_uid``
+    wins; otherwise the captured LiteGraph id is the durable local identity.
+    """
+    raw_nodes = door_get_nodes(candidate)
+    if not isinstance(raw_nodes, list):
+        return ()
+    identities: list[tuple[str, str]] = []
+    seen_uids: set[str] = set()
+    for raw_node in raw_nodes:
+        if not isinstance(raw_node, Mapping):
+            continue
+        raw_id = raw_node.get("id")
+        if raw_id is None or isinstance(raw_id, bool):
+            continue
+        properties = raw_node.get("properties")
+        explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
+        uid = explicit_uid if isinstance(explicit_uid, str) and explicit_uid.strip() else str(raw_id)
+        if uid in seen_uids:
+            raise ValueError(f"captured UI contains duplicate durable node UID {uid!r}")
+        seen_uids.add(uid)
+        identities.append((str(raw_id), uid))
+    return tuple(identities)
+
+
 import warnings
 
 from vibecomfy._compile._graph import is_canonical_api_link
@@ -591,13 +619,75 @@ def _validate_api_shape(
                 and input_provenance.get(name) == "widget"
             ):
                 continue
-            if is_canonical_api_link(value):
+            if is_canonical_api_link(value) or _is_endpoint_backed_api_link_candidate(
+                value,
+                nodes_by_id=nodes_by_id,
+                input_provenance=input_provenance,
+                input_name=name,
+            ):
                 if (not isinstance(value[0], str) or not value[0].strip()
                         or "#" in value[0] or "/" in value[0]
                         or value[0] in {"-10", "-20"}
                         or isinstance(value[1], bool) or not isinstance(value[1], int)
                         or value[1] < 0 or value[0] not in nodes_by_id):
                     raise ValueError(f"node {node_id!r} input {name!r} has malformed API link")
+
+
+def _is_endpoint_backed_api_link_candidate(
+    value: Any,
+    *,
+    nodes_by_id: Mapping[str, Any],
+    input_provenance: Mapping[str, Any] | None = None,
+    input_name: str | None = None,
+) -> bool:
+    """Recognize UI/native links with endpoint or provenance evidence.
+
+    The UI normalizer records an explicit ``edge`` provenance marker.  Native
+    expansion can also produce scoped IDs with nonnumeric local names, so a
+    direct API payload may use that form when its source endpoint is present.
+    An explicit UI widget marker always wins and keeps a two-item literal on
+    the widget channel.
+    """
+    if not (isinstance(value, list) and len(value) == 2 and isinstance(value[0], str)):
+        return False
+    if value[0] not in nodes_by_id:
+        return False
+    provenance = input_provenance.get(input_name) if input_provenance is not None else None
+    if provenance == "widget":
+        return False
+    # Some older Comfy exports use a single-colon numeric scope separator
+    # (for example ``238:224``) instead of the newer ``scope::node`` form.
+    # These are still graph endpoints when the source is present in this
+    # prompt.  Requiring every scope component to be numeric keeps ordinary
+    # two-item literals on the widget channel and avoids re-admitting loose
+    # IDs as edges.
+    parts = value[0].split(":")
+    numeric_scoped_id = len(parts) >= 2 and all(part.isdigit() for part in parts)
+    return provenance == "edge" or "::" in value[0] or numeric_scoped_id
+
+
+def _is_api_input_link(
+    value: Any,
+    *,
+    nodes_by_id: Mapping[str, Any],
+    input_provenance: Mapping[str, Any] | None = None,
+    input_name: str | None = None,
+) -> bool:
+    """Return whether an API input belongs to the edge channel."""
+    if is_canonical_api_link(value):
+        return True
+    if not _is_endpoint_backed_api_link_candidate(
+        value,
+        nodes_by_id=nodes_by_id,
+        input_provenance=input_provenance,
+        input_name=input_name,
+    ):
+        return False
+    return (
+        isinstance(value[1], int)
+        and not isinstance(value[1], bool)
+        and value[1] >= 0
+    )
 
 
 def _definition_entries(raw: Any, *, path: str) -> list[dict[str, Any]]:
@@ -752,19 +842,6 @@ def _normalize_recursive_definitions(raw: Any) -> dict[str, Any]:
                 f"unsupported_boundary_encoding: definition {path!r} contains native inputNode/outputNode markers; "
                 "use an explicit Python-owned boundary mapping"
             )
-        for field in ("config", "extra"):
-            value = source.get(field)
-            def contains_marker(item: Any) -> bool:
-                if isinstance(item, Mapping):
-                    return any(contains_marker(child) for child in item.values())
-                if isinstance(item, (list, tuple)):
-                    return any(contains_marker(child) for child in item)
-                return item in {-10, -20, "-10", "-20"}
-            if contains_marker(value):
-                raise ValueError(
-                    f"unsupported_boundary_encoding: definition {path!r} {field} contains native -10/-20 markers; "
-                    "use an explicit Python-owned boundary mapping"
-                )
         nodes = source.get("nodes", ())
         if isinstance(nodes, Mapping):
             nodes = tuple(nodes.values())
@@ -1079,6 +1156,30 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
     def capture(nodes: Mapping[str, Any], edges: list[VibeEdge], scope: str) -> dict[str, Any]:
         helper_types = {"SetNode", "GetNode", "Reroute", "PrimitiveNode"}
         by_id = {str(key): value for key, value in nodes.items()}
+
+        def named_output(node: Any, value: Any, wire_name: str) -> str:
+            """Translate an authored numeric output slot using its roster.
+
+            LiteGraph edges serialize slots numerically, while the canonical
+            virtual-wire contract intentionally requires named ports.  Use the
+            source node's own output roster as the only authority; never turn a
+            numeric-looking value into a guessed name or relax the compiler's
+            strict roster checks.
+            """
+            if not isinstance(value, str) or not value.strip().isdigit():
+                return str(value)
+            index = int(value.strip())
+            roster = getattr(node, "native_output_names", None)
+            if isinstance(roster, (list, tuple)) and 0 <= index < len(roster):
+                name = roster[index]
+                if isinstance(name, str) and name.strip():
+                    return name
+            # Preserve the authored numeric slot when no roster exists.  The
+            # canonical resolver will then reject it at the execution boundary
+            # with its existing fail-closed unknown-port error.  Capture must
+            # not invent a name merely because a helper channel was present.
+            return str(value)
+
         incoming: dict[str, list[VibeEdge]] = {key: [] for key in by_id}
         outgoing: dict[str, list[VibeEdge]] = {key: [] for key in by_id}
         for edge in edges:
@@ -1086,6 +1187,50 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
                 raise ValueError(f"virtual wire {scope!r} has an unknown edge endpoint")
             incoming[str(edge.to_node)].append(edge)
             outgoing[str(edge.from_node)].append(edge)
+
+        # A schema-less node may not have a native output roster, but an
+        # authored edge is still direct source evidence for the numeric slot
+        # it consumes.  Preserve those witnesses for the shared virtual-wire
+        # resolver; this does not invent names or slots and leaves named
+        # rosters authoritative when present.
+        for node_id, node in by_id.items():
+            if getattr(node, "native_output_slots", None) is not None:
+                continue
+            witnessed = {
+                int(edge.from_output.strip())
+                for edge in outgoing[node_id]
+                if isinstance(edge.from_output, str)
+                and edge.from_output.strip().isdigit()
+            }
+            if witnessed:
+                node.native_output_slots = sorted(witnessed)
+
+        def terminal_targets(node_id: str, input_name: str, seen: frozenset[str] = frozenset()) -> list[tuple[str, str]]:
+            """Resolve a consumer through transparent route fan-out.
+
+            A Reroute/PrimitiveNode can legitimately fan out to several real
+            consumers.  The previous single-successor check treated that
+            presentation topology as ambiguity and blocked otherwise valid
+            captures.  Branch each evidenced successor independently while
+            retaining cycle protection; source-side traversal remains
+            single-inbound because it identifies one producer path.
+            """
+            node = by_id.get(str(node_id))
+            if node is None:
+                raise ValueError(f"virtual wire {scope!r} has an unknown target endpoint")
+            if node.class_type not in {"Reroute", "PrimitiveNode"}:
+                return [(str(node_id), str(input_name))]
+            if str(node_id) in seen:
+                raise ValueError(f"ambiguous virtual-wire target path at {node_id!r}")
+            following = [edge for edge in outgoing[str(node_id)] if edge.to_input != "widget_0"]
+            if not following:
+                raise ValueError(f"ambiguous virtual-wire target path at {node_id!r}")
+            terminals: list[tuple[str, str]] = []
+            next_seen = seen | {str(node_id)}
+            for edge in following:
+                terminals.extend(terminal_targets(str(edge.to_node), edge.to_input, next_seen))
+            return terminals
+
         sets: dict[str, list[tuple[str, VibeEdge]]] = {}
         gets: dict[str, list[str]] = {}
         for node_id, node in by_id.items():
@@ -1119,7 +1264,6 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
                         continue
                     for consumer in consumers:
                         source_id, source_output = str(producer_edge.from_node), producer_edge.from_output
-                        target_id, target_input = str(consumer.to_node), consumer.to_input
                         # Traverse only evidenced helper passthroughs. This is
                         # capture, not lowering: authored nodes/edges remain.
                         seen: set[str] = set()
@@ -1129,18 +1273,13 @@ def _capture_import_virtual_wires(workflow: VibeWorkflow) -> None:
                             seen.add(source_id)
                             prior = incoming[source_id][0]
                             source_id, source_output = str(prior.from_node), prior.from_output
-                        seen.clear()
-                        while by_id[target_id].class_type in {"Reroute", "PrimitiveNode"}:
-                            if target_id in seen or len(outgoing[target_id]) != 1:
-                                raise ValueError(f"ambiguous virtual-wire target path at {target_id!r}")
-                            seen.add(target_id)
-                            following = outgoing[target_id][0]
-                            target_id, target_input = str(following.to_node), following.to_input
-                        if by_id[source_id].class_type in helper_types or by_id[target_id].class_type in helper_types:
-                            raise ValueError(f"virtual-wire {name!r} has no real producer/consumer")
-                        legs.append({"scope_path": scope, "leg_index": len(legs), "occurrence_index": 0,
-                                     "from_node": source_id, "from_output": source_output,
-                                     "to_node": target_id, "to_input": target_input})
+                        for target_id, target_input in terminal_targets(str(consumer.to_node), consumer.to_input):
+                            if by_id[source_id].class_type in helper_types or by_id[target_id].class_type in helper_types:
+                                raise ValueError(f"virtual-wire {name!r} has no real producer/consumer")
+                            resolved_output = named_output(by_id[source_id], source_output, name)
+                            legs.append({"scope_path": scope, "leg_index": len(legs), "occurrence_index": 0,
+                                         "from_node": source_id, "from_output": resolved_output,
+                                         "to_node": target_id, "to_input": target_input})
             if legs:
                 wires[name] = {"legs": legs}
         return wires
@@ -1457,6 +1596,43 @@ def _native_input_optionality(node: Mapping[str, Any]) -> list[bool] | None:
     return optional
 
 
+def _promote_ui_native_port_carriers(
+    node: dict[str, Any], ui_node: Mapping[str, Any] | None
+) -> None:
+    """Fill absent canonical native-port carriers from exact LiteGraph evidence.
+
+    Carrier presence is authoritative: an explicitly supplied value, including
+    ``None`` or an empty roster, is never replaced by the UI witness.  The
+    existing extraction/constructor validators remain responsible for rejecting
+    malformed names, duplicate names, holes with misaligned companion rosters,
+    and other conflicts.
+    """
+    if not isinstance(ui_node, Mapping):
+        return
+    extractors = {
+        "native_input_names": lambda: _native_port_names(ui_node, "inputs"),
+        "native_output_names": lambda: _native_port_names(ui_node, "outputs"),
+        "native_input_types": lambda: _native_port_types(ui_node, "inputs"),
+        "native_output_types": lambda: _native_port_types(ui_node, "outputs"),
+        "native_input_optional": lambda: _native_input_optionality(ui_node),
+    }
+    for field_name, extract in extractors.items():
+        if field_name not in node:
+            value = extract()
+            if value is not None:
+                node[field_name] = value
+
+
+def _node_ui_carrier(node: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """Return the supported LiteGraph furniture carrier for an API node."""
+    direct = node.get("_ui")
+    if isinstance(direct, Mapping):
+        return direct
+    metadata = node.get("metadata")
+    nested = metadata.get("_ui") if isinstance(metadata, Mapping) else None
+    return nested if isinstance(nested, Mapping) else None
+
+
 def _native_input_asset_kinds(
     node: Mapping[str, Any],
     schema_provider: SchemaProvider | None,
@@ -1568,11 +1744,25 @@ def _normalize_ui_to_api(raw: dict[str, Any], *, schema_provider: SchemaProvider
             # first value when it collides with the linked socket.  Partial UI
             # rosters still fall back to schema evidence for compatibility
             # with UI-only controls such as ``control_after_generate``.
-            widget_names = (
-                ui_widget_names
-                if len(ui_widget_names) == len(widgets)
-                else _schema_input_names(schema_provider, class_type)
-            )
+            schema_widget_names = _schema_input_names(schema_provider, class_type)
+            dynamic_ui_names = [
+                name for name in ui_widget_names if name.startswith("values.")
+            ]
+            if (
+                dynamic_ui_names
+                and len(widgets) == len(schema_widget_names) + len(dynamic_ui_names)
+                and len(ui_widget_names) == len(dynamic_ui_names)
+            ):
+                # ComfyMathExpression serializes its expression widget before
+                # the named dynamic input descriptors, even though the latter
+                # are the only physical input rows carrying widget metadata.
+                widget_names = schema_widget_names + dynamic_ui_names
+            else:
+                widget_names = (
+                    ui_widget_names
+                    if len(ui_widget_names) == len(widgets)
+                    else schema_widget_names
+                )
             for idx, value in enumerate(widgets):
                 if idx < len(widget_names):
                     name = _normalize_widget_input_name(widget_names, idx, value)
@@ -1653,6 +1843,10 @@ def _merge_vibe_node_widget_evidence(raw: dict[str, Any], api: dict[str, Any]) -
             api_node.setdefault("_raw_widgets", deepcopy(raw_widgets))
         metadata = rich_node.get("metadata")
         raw_ui = metadata.get("_ui") if isinstance(metadata, dict) else rich_node.get("_ui")
+        if isinstance(raw_ui, dict):
+            api_node.setdefault("metadata", {})
+            if isinstance(api_node["metadata"], dict):
+                api_node["metadata"].setdefault("_ui", deepcopy(raw_ui))
         if (
             isinstance(raw_widgets, dict)
             and bool(raw_widgets.get("has_dict_rows"))
@@ -1733,11 +1927,7 @@ def _merge_slim_ui(
                     if _f in raw_node:
                         slim[_f] = raw_node[_f]
                 node_data.setdefault("_ui", slim)
-                node_data["native_input_names"] = _native_port_names(raw_node, "inputs")
-                node_data["native_output_names"] = _native_port_names(raw_node, "outputs")
-                node_data["native_input_types"] = _native_port_types(raw_node, "inputs")
-                node_data["native_output_types"] = _native_port_types(raw_node, "outputs")
-                node_data["native_input_optional"] = _native_input_optionality(raw_node)
+                _promote_ui_native_port_carriers(node_data, raw_node)
                 node_data["native_input_asset_kinds"] = _native_input_asset_kinds(
                     raw_node, schema_provider, str(raw_node.get("type") or raw_node.get("class_type") or "")
                 )
@@ -2001,6 +2191,11 @@ def _decode_serialized_vibe(
 
     # ── nodes ──────────────────────────────────────────────────────────────
     for key, entry in nodes_raw.items():
+        # Hydration below is internal IR enrichment. Work on a detached node
+        # payload so the lossless-door snapshot still sees the exact envelope
+        # supplied by the caller; otherwise absence-only roster promotion
+        # becomes an accidental wire mutation on the first round trip.
+        node_entry = deepcopy(entry)
         node_id = entry.get("id")
         if not isinstance(node_id, str) or not node_id.strip():
             raise ValueError(f"node {key!r}: id must be a nonblank string")
@@ -2062,6 +2257,20 @@ def _decode_serialized_vibe(
         # decoded node is tagged untrusted_source. Unconditional set — never
         # `setdefault` — so hostile JSON cannot pre-declare itself trusted.
         node_metadata[PROVENANCE_KEY] = "untrusted_source"
+        # Rich envelopes retain the LiteGraph roster canonically under the
+        # node metadata. Promote only absent execution carriers before the
+        # virtual-wire capture pass; explicit entry values stay authoritative.
+        _promote_ui_native_port_carriers(
+            node_entry,
+            _node_ui_carrier({"metadata": node_metadata, "_ui": node_entry.get("_ui")}),
+        )
+        if schema_provider is not None:
+            from vibecomfy.porting.widgets.aliases import promote_positional_widget_aliases
+
+            promote_positional_widget_aliases(
+                {"inputs": node_entry["inputs"], "widgets": node_entry["widgets"], "metadata": node_metadata},
+                class_type,
+            )
         # Mode is first-class: prefer the serialized node-level ``mode`` field
         # (written by to_envelope's dataclass walk), falling back to the legacy
         # ``_ui.mode`` / ``metadata["mode"]`` locations for old envelopes.
@@ -2069,19 +2278,19 @@ def _decode_serialized_vibe(
         node_mode = _decode_envelope_node_mode(entry, node_metadata)
         node_pos = _decode_envelope_geometry(entry, node_metadata, "pos", node_id)
         node_size = _decode_envelope_geometry(entry, node_metadata, "size", node_id)
-        native_input_names = entry.get("native_input_names")
-        native_output_names = entry.get("native_output_names")
-        native_input_types = entry.get("native_input_types")
-        native_output_types = entry.get("native_output_types")
-        native_input_optional = entry.get("native_input_optional")
-        native_input_asset_kinds = entry.get("native_input_asset_kinds")
-        native_output_slots = entry.get("native_output_slots")
+        native_input_names = node_entry.get("native_input_names")
+        native_output_names = node_entry.get("native_output_names")
+        native_input_types = node_entry.get("native_input_types")
+        native_output_types = node_entry.get("native_output_types")
+        native_input_optional = node_entry.get("native_input_optional")
+        native_input_asset_kinds = node_entry.get("native_input_asset_kinds")
+        native_output_slots = node_entry.get("native_output_slots")
         workflow.nodes[str(key)] = VibeNode(
             id=node_id,
             class_type=class_type,
             pack=pack,
-            inputs=deepcopy(entry["inputs"]),
-            widgets=deepcopy(entry["widgets"]),
+            inputs=deepcopy(node_entry["inputs"]),
+            widgets=deepcopy(node_entry["widgets"]),
             metadata=node_metadata,
             uid=uid,
             raw_widgets=raw_widget_payload,
@@ -2194,6 +2403,51 @@ def _decode_serialized_vibe(
     outputs_raw = raw.get("outputs")
     if not isinstance(outputs_raw, list):
         raise ValueError("serialized vibe envelope 'outputs' must be a list")
+    # External Comfy UI records have no authored public-output contract. A
+    # legacy envelope may nevertheless contain descriptors mechanically
+    # inferred from every terminal node before exact UI modes were hydrated.
+    # Recognize only that source-backed, complete, unnamed shape; named or
+    # partial descriptors remain authored and stay fail-closed.
+    source_metadata = raw.get("metadata")
+    source_inferred_output_ids: set[str] = set()
+    if (
+        source.source_type == "api"
+        and isinstance(source_metadata, Mapping)
+        and source_metadata.get("external_workflow") is True
+        and source.provenance.get("workflow_format") == "comfy_ui"
+    ):
+        terminal_ids = {
+            str(node_id)
+            for node_id, node in workflow.nodes.items()
+            if node.class_type in OUTPUT_NODE_NAMES
+        }
+        candidate_ids: set[str] = set()
+        source_inferred = len(outputs_raw) == len(terminal_ids)
+        for entry in outputs_raw:
+            if not isinstance(entry, dict):
+                source_inferred = False
+                break
+            node_id = entry.get("node_id")
+            node = workflow.nodes.get(str(node_id)) if isinstance(node_id, str) else None
+            if node is None or node.class_type not in OUTPUT_NODE_NAMES:
+                source_inferred = False
+                break
+            if any(
+                entry.get(field) is not None
+                for field in (
+                    "name", "artifact_kind", "mime_type", "filename_prefix",
+                    "expected_cardinality",
+                )
+            ):
+                source_inferred = False
+                break
+            if entry.get("output_type") != node.class_type:
+                source_inferred = False
+                break
+            candidate_ids.add(str(node_id))
+        if source_inferred and candidate_ids == terminal_ids:
+            source_inferred_output_ids = candidate_ids
+
     for index, entry in enumerate(outputs_raw):
         if not isinstance(entry, dict):
             raise ValueError(
@@ -2209,6 +2463,11 @@ def _decode_serialized_vibe(
             )
         if not isinstance(output_type, str) or not output_type.strip():
             raise ValueError(f"output {index}: output_type must be a nonblank string")
+        if (
+            node_id in source_inferred_output_ids
+            and mode_to_litegraph(workflow.nodes[node_id].mode) in (2, 4)
+        ):
+            continue
         for field_name in ("name", "artifact_kind", "mime_type", "filename_prefix"):
             value = entry.get(field_name)
             if value is not None and not isinstance(value, str):
@@ -2311,14 +2570,90 @@ def from_ui(
 ) -> VibeWorkflow:
     """Ingest a LiteGraph list-nodes graph into a :class:`VibeWorkflow`."""
     raw = deepcopy(raw)
+    # Validate the two root LiteGraph collections before any boundary-marker
+    # inspection.  Besides giving malformed UI a stable product error, this
+    # prevents ``None`` from escaping into the marker walk as an untyped
+    # ``TypeError``.
+    if not isinstance(raw.get("nodes"), list):
+        raise ValueError("UI nodes must be a list")
+    if not isinstance(raw.get("links", []), list):
+        raise ValueError("UI links must be a list")
+    # Native ComfyUI subgraph definitions have one supported materialization
+    # owner.  Let that owner consume supported definitions before applying the
+    # generic refusal, so the remainder of this function stays the sole UI
+    # normalization/schema/emitter path for the expanded graph.
+    def contains_native_marker(value: Any) -> bool:
+        """Inspect only graph-boundary carriers, never arbitrary payload values."""
+        if not isinstance(value, Mapping):
+            return False
+
+        def endpoint_marker(link: Any) -> bool:
+            if isinstance(link, Mapping):
+                endpoints = (link.get("origin_id"), link.get("target_id"))
+            elif isinstance(link, (list, tuple)) and len(link) == 6:
+                endpoints = (link[1], link[3])
+            else:
+                endpoints = ()
+            return any(str(endpoint) in {"-10", "-20"} for endpoint in endpoints)
+
+        def definition_marker(definition: Any) -> bool:
+            if not isinstance(definition, Mapping):
+                return False
+            if "inputNode" in definition or "outputNode" in definition:
+                return True
+            nodes = definition.get("nodes", ())
+            if isinstance(nodes, Mapping):
+                nodes = nodes.values()
+            if isinstance(nodes, (list, tuple)) and any(
+                isinstance(node, Mapping) and str(node.get("id")) in {"-10", "-20"}
+                for node in nodes
+            ):
+                return True
+            if any(endpoint_marker(link) for link in (definition.get("links", ()) or ())):
+                return True
+            nested = definition.get("definitions")
+            entries = nested.get("subgraphs", ()) if isinstance(nested, Mapping) else nested
+            return isinstance(entries, (list, tuple)) and any(definition_marker(item) for item in entries)
+
+        nodes = value.get("nodes", ())
+        if isinstance(nodes, Mapping):
+            nodes = nodes.values()
+        if isinstance(nodes, (list, tuple)) and any(
+            isinstance(node, Mapping) and str(node.get("id")) in {"-10", "-20"}
+            for node in nodes
+        ):
+            return True
+        if any(endpoint_marker(link) for link in (value.get("links", ()) or ())):
+            return True
+        definitions = value.get("definitions")
+        entries = definitions.get("subgraphs", ()) if isinstance(definitions, Mapping) else definitions
+        return isinstance(entries, (list, tuple)) and any(definition_marker(item) for item in entries)
+
     native_source = raw
     from vibecomfy.ingest.native_subgraph import expand_native_subgraphs
     try:
         raw = expand_native_subgraphs(raw)
     except Exception as exc:
         if type(exc).__name__ == "NativeSubgraphError":
+            # A malformed native expansion can fail before the generic marker
+            # check below gets a chance to report the stable boundary error.
+            # Preserve the single public refusal for sources that still carry
+            # native inputNode/outputNode or -10/-20 markers; do not leak an
+            # expansion-internal detail as the boundary contract.
+            if contains_native_marker(native_source):
+                raise ValueError(
+                    "unsupported_boundary_encoding: UI source contains native "
+                    "inputNode/outputNode markers that were not consumed; "
+                    "use an explicit Python-owned boundary mapping"
+                ) from exc
             raise ValueError(f"unsupported_boundary_encoding: {exc}") from exc
         raise
+    if contains_native_marker(raw):
+        raise ValueError(
+            "unsupported_boundary_encoding: UI source contains native "
+            "inputNode/outputNode or -10/-20 markers that were not consumed; "
+            "use an explicit Python-owned boundary mapping"
+        )
     api = _ui_graph_to_api(
         raw,
         schema_provider=schema_provider,
@@ -2480,6 +2815,9 @@ def _from_api_impl(
     for node_id, node in api_workflow.items():
         if not isinstance(node, dict):
             continue
+        _promote_ui_native_port_carriers(
+            node, _node_ui_carrier(node)
+        )
         raw_inputs = dict(node.get("inputs", {}))
         input_provenance = (
             node.get("_input_provenance")
@@ -2492,7 +2830,12 @@ def _from_api_impl(
         widgets: dict[str, Any] = {}
         class_type = str(node.get("class_type", "Unknown"))
         for key, value in raw_inputs.items():
-            if input_provenance.get(key) != "widget" and is_canonical_api_link(value):
+            if input_provenance.get(key) != "widget" and _is_api_input_link(
+                value,
+                nodes_by_id=api_workflow,
+                input_provenance=input_provenance,
+                input_name=key,
+            ):
                 continue
             if key.startswith("widget_") or _is_exec_widget_key(class_type, key):
                 widgets[key] = value
@@ -2657,7 +3000,12 @@ def _from_api_impl(
         if not isinstance(input_provenance, dict):
             input_provenance = {}
         for name, value in dict(node.get("inputs", {})).items():
-            if input_provenance.get(name) != "widget" and is_canonical_api_link(value):
+            if input_provenance.get(name) != "widget" and _is_api_input_link(
+                value,
+                nodes_by_id=api_workflow,
+                input_provenance=input_provenance,
+                input_name=name,
+            ):
                 workflow.edges.append(VibeEdge(str(value[0]), str(value[1]), str(node_id), name))
 
     workflow.requirements = _infer_requirements(workflow)

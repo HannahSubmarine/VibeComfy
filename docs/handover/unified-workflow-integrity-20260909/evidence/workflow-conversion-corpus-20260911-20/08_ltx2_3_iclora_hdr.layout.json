@@ -1,0 +1,731 @@
+{
+  "store_version": 2,
+  "vibecomfy_version": "2.8.0",
+  "schema_hash": "4e171992d8e27611",
+  "entries": {
+    "1241": {
+      "pos": [
+        -2827,
+        3450
+      ],
+      "size": [
+        210,
+        78
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.28",
+        "Node name for S&R": "LTXVConditioning"
+      }
+    },
+    "4828": {
+      "pos": [
+        -1370,
+        3344
+      ],
+      "size": [
+        270,
+        114
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "CFGGuider"
+      }
+    },
+    "4832": {
+      "pos": [
+        -1365,
+        3211
+      ],
+      "size": [
+        280,
+        82
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "RandomNoise"
+      }
+    },
+    "5022": {
+      "pos": [
+        -3541,
+        3127
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 4,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "PrimitiveString"
+      }
+    },
+    "4831": {
+      "pos": [
+        -1369,
+        3492
+      ],
+      "size": [
+        270,
+        74
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "KSamplerSelect"
+      }
+    },
+    "5023": {
+      "pos": [
+        -3535,
+        3449
+      ],
+      "size": [
+        320,
+        116
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "LTXAVTextEncoderLoader"
+      }
+    },
+    "5108": {
+      "pos": [
+        186,
+        3140
+      ],
+      "size": [
+        210,
+        78
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "CreateVideo"
+      }
+    },
+    "4829": {
+      "pos": [
+        -1030,
+        3251
+      ],
+      "size": [
+        212,
+        106
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "SamplerCustomAdvanced"
+      }
+    },
+    "5025": {
+      "pos": [
+        -1359,
+        3617
+      ],
+      "size": [
+        500,
+        67
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "ManualSigmas"
+      }
+    },
+    "5013": {
+      "pos": [
+        -765,
+        3252
+      ],
+      "size": [
+        188,
+        101
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "LTXVCropGuides"
+      }
+    },
+    "5109": {
+      "pos": [
+        199,
+        3292
+      ],
+      "size": [
+        627,
+        500
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1"
+      }
+    },
+    "5111": {
+      "pos": [
+        -4157,
+        3965
+      ],
+      "size": [
+        210,
+        98
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "SimpleMath+"
+      }
+    },
+    "5029": {
+      "pos": [
+        -3850,
+        4127
+      ],
+      "size": [
+        170,
+        85
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.16.0",
+        "Node name for S&R": "GetImageSize"
+      }
+    },
+    "5112": {
+      "pos": [
+        -4155,
+        4116
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.16.0",
+        "Node name for S&R": "ResizeImageMaskNode"
+      }
+    },
+    "5105": {
+      "pos": [
+        -4419,
+        3953
+      ],
+      "size": [
+        194,
+        66
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.75",
+        "Node name for S&R": "GetVideoComponents"
+      }
+    },
+    "3059": {
+      "pos": [
+        -2399,
+        3472
+      ],
+      "size": [
+        210,
+        194
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.43",
+        "Node name for S&R": "EmptyLTXVLatentVideo"
+      }
+    },
+    "5012": {
+      "pos": [
+        -1817,
+        3274
+      ],
+      "size": [
+        317,
+        282
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "LTXAddVideoICLoRAGuide",
+        "cnr_id": "ComfyUI-LTXVideo",
+        "ver": "82bd963cdeb66d023bed8c99324a307020907ef8"
+      }
+    },
+    "5117": {
+      "pos": [
+        -129,
+        2961
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "mode": 0,
+      "properties": {}
+    },
+    "5118": {
+      "pos": [
+        493,
+        3171
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "mode": 0,
+      "properties": {}
+    },
+    "5119": {
+      "pos": [
+        -4432,
+        3276
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "mode": 0,
+      "properties": {}
+    },
+    "5113": {
+      "pos": [
+        -4733,
+        4258
+      ],
+      "size": [
+        299,
+        203
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "mode": 0,
+      "properties": {}
+    },
+    "5011": {
+      "pos": [
+        -4164,
+        3243
+      ],
+      "size": [
+        500,
+        131
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "LTXICLoRALoaderModelOnly",
+        "cnr_id": "ComfyUI-LTXVideo",
+        "ver": "82bd963cdeb66d023bed8c99324a307020907ef8"
+      }
+    },
+    "5125": {
+      "pos": [
+        -4157,
+        3066
+      ],
+      "size": [
+        500,
+        131
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "LTXICLoRALoaderModelOnly",
+        "cnr_id": "ComfyUI-LTXVideo",
+        "ver": "82bd963cdeb66d023bed8c99324a307020907ef8"
+      }
+    },
+    "3940": {
+      "pos": [
+        -4584,
+        3073
+      ],
+      "size": [
+        383,
+        109
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.56",
+        "Node name for S&R": "CheckpointLoaderSimple"
+      }
+    },
+    "5114": {
+      "pos": [
+        -207,
+        3123
+      ],
+      "size": [
+        352,
+        174
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "LTXVHDRDecodePostprocess"
+      }
+    },
+    "5121": {
+      "pos": [
+        -504,
+        2965
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "mode": 0,
+      "properties": {}
+    },
+    "4851": {
+      "pos": [
+        -518,
+        3125
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.14.1",
+        "Node name for S&R": "VAEDecodeTiled"
+      }
+    },
+    "5120": {
+      "pos": [
+        -116,
+        3352
+      ],
+      "size": [
+        210,
+        88
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#653",
+      "mode": 0,
+      "properties": {}
+    },
+    "5020": {
+      "pos": [
+        -3001,
+        3219
+      ],
+      "size": [
+        337,
+        160
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 4,
+      "properties": {
+        "Node name for S&R": "GemmaAPITextEncode",
+        "cnr_id": "ComfyUI-LTXVideo",
+        "ver": "82bd963cdeb66d023bed8c99324a307020907ef8"
+      }
+    },
+    "5021": {
+      "pos": [
+        -3381,
+        3225
+      ],
+      "size": [
+        347,
+        160
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 4,
+      "properties": {
+        "Node name for S&R": "GemmaAPITextEncode",
+        "cnr_id": "ComfyUI-LTXVideo",
+        "ver": "82bd963cdeb66d023bed8c99324a307020907ef8"
+      }
+    },
+    "2483": {
+      "pos": [
+        -3178,
+        3450
+      ],
+      "size": [
+        307,
+        204
+      ],
+      "flags": {},
+      "color": "#232",
+      "bgcolor": "#353",
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.28",
+        "Node name for S&R": "CLIPTextEncode"
+      }
+    },
+    "2612": {
+      "pos": [
+        -3183,
+        3707
+      ],
+      "size": [
+        310,
+        120
+      ],
+      "flags": {},
+      "color": "#322",
+      "bgcolor": "#533",
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.28",
+        "Node name for S&R": "CLIPTextEncode"
+      }
+    },
+    "5106": {
+      "pos": [
+        -4749,
+        3954
+      ],
+      "size": [
+        283,
+        243
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.10.0",
+        "Node name for S&R": "LoadVideo"
+      }
+    }
+  },
+  "groups": [
+    {
+      "id": 54,
+      "title": "Set prompts     -> use API nodes to save on memory",
+      "bounding": [
+        -3550.82992899398,
+        3056.3835974138815,
+        943.4464338669131,
+        781.0969963391614
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {},
+      "nodes": [
+        1241,
+        5022,
+        5023,
+        5020,
+        5021,
+        2483,
+        2612
+      ]
+    },
+    {
+      "id": 106,
+      "title": "Preprocess",
+      "bounding": [
+        -2481.3784499715503,
+        3199.9822209450444,
+        1021.7363502001899,
+        476.0742560707637
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {},
+      "nodes": [
+        3059,
+        5012
+      ]
+    },
+    {
+      "id": 110,
+      "title": "Load Models",
+      "bounding": [
+        -4569.272369215781,
+        2985.5884155316703,
+        923.5408529724591,
+        411.7024469678196
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {},
+      "nodes": [
+        5119,
+        5011,
+        5125,
+        3940
+      ]
+    },
+    {
+      "id": 147,
+      "title": "Generate",
+      "bounding": [
+        -1380.222061201338,
+        3137.3164680280265,
+        812.4243576070752,
+        556.8679025772241
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {},
+      "nodes": [
+        4828,
+        4832,
+        4831,
+        4829,
+        5025,
+        5013
+      ]
+    },
+    {
+      "id": 150,
+      "title": "Decode",
+      "bounding": [
+        -528.1273243034603,
+        3049.064085282371,
+        1363.7029178345972,
+        753.139966041903
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {},
+      "nodes": [
+        5108,
+        5109,
+        5118,
+        5114,
+        4851,
+        5120
+      ]
+    },
+    {
+      "id": 151,
+      "title": "Load Video",
+      "bounding": [
+        -4772.246638055613,
+        3862.3051369647715,
+        1123.4092996076465,
+        412.27301110276585
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {},
+      "nodes": [
+        5111,
+        5029,
+        5112,
+        5105,
+        5106
+      ]
+    }
+  ],
+  "extra": {},
+  "lastRerouteId": null,
+  "definitions": {},
+  "virtual_wires": {}
+}

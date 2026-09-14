@@ -103,6 +103,135 @@ def test_port_convert_ready_template_emits_structured_custom_node_refs():
     assert "abc123" in result.text
 
 
+def test_ready_requirements_do_not_keep_edited_model_value_stale() -> None:
+    wf = _wf("edited-model")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "new-model.safetensors"
+    wf.metadata["model_assets"] = [{"name": "old-model.safetensors", "url": "https://example.test/old"}]
+    wf.requirements.models = ["new-model.safetensors"]
+
+    requirements = convert_module._ready_requirements(wf)
+
+    assert requirements["models"] == ["new-model.safetensors"]
+
+
+def test_ready_requirements_refreshes_mixed_models_without_stale_assets() -> None:
+    wf = _wf("mixed-models")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "new.safetensors"
+    wf.nodes["2"] = _regular_node("2", "LoraLoader")
+    wf.nodes["2"].inputs["lora_name"] = "kept.safetensors"
+    wf.metadata["model_assets"] = [
+        {"name": "kept.safetensors", "url": "https://example.test/kept", "subdir": "loras"},
+        {"name": "stale.safetensors", "url": "https://example.test/stale"},
+    ]
+
+    requirements = convert_module._ready_requirements(wf)
+
+    assert requirements["models"] == ["new.safetensors", {
+        "name": "kept.safetensors", "url": "https://example.test/kept", "subdir": "loras",
+    }]
+
+
+def test_ready_requirements_collapses_duplicate_inferred_picker_names() -> None:
+    wf = _wf("shared-picker-model")
+    for node_id in ("1", "2"):
+        wf.nodes[node_id] = _regular_node(node_id, "CheckpointLoaderSimple")
+        wf.nodes[node_id].inputs["ckpt_name"] = "shared.safetensors"
+
+    assert convert_module._ready_requirements(wf)["models"] == ["shared.safetensors"]
+
+
+def test_ready_requirements_preserves_authored_duplicates_and_adds_new_names_once() -> None:
+    wf = _wf("authored-duplicate-model")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "shared.safetensors"
+    wf.nodes["2"] = _regular_node("2", "CheckpointLoaderSimple")
+    wf.nodes["2"].inputs["ckpt_name"] = "new.safetensors"
+    wf.requirements.models = ["shared.safetensors", "shared.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == [
+        "shared.safetensors", "shared.safetensors", "new.safetensors",
+    ]
+
+
+def test_ready_requirements_refreshes_one_of_two_shared_loaders() -> None:
+    wf = _wf("edited-shared-picker-model")
+    for node_id, value in (("1", "old.safetensors"), ("2", "new.safetensors")):
+        wf.nodes[node_id] = _regular_node(node_id, "CheckpointLoaderSimple")
+        wf.nodes[node_id].inputs["ckpt_name"] = value
+    wf.requirements.models = ["old.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == [
+        "old.safetensors", "new.safetensors",
+    ]
+
+
+def test_ready_requirements_keeps_no_picker_fallback() -> None:
+    wf = _wf("no-picker-fallback")
+    wf.requirements.models = ["authored.safetensors"]
+
+    assert convert_module._ready_requirements(wf)["models"] == ["authored.safetensors"]
+
+
+def test_scratchpad_pair_uses_picker_model_requirements_for_v2_rebuild(
+    tmp_path,
+) -> None:
+    """The preflight and external-companion rebuild must share one witness."""
+    wf = _wf("model-requirement-pair")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "repeated.safetensors"
+    wf.nodes["2"] = _regular_node("2", "CheckpointLoaderSimple")
+    wf.nodes["2"].inputs["ckpt_name"] = "repeated.safetensors"
+    wf.nodes["3"] = _regular_node("3", "CheckpointLoaderSimple")
+    wf.nodes["3"].inputs["ckpt_name"] = "second.safetensors"
+    wf.metadata["model_assets"] = [
+        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints"},
+        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints"},
+    ]
+    # This is the stale source witness that previously made the external v2
+    # rebuild fail its staged semantic-digest check.
+    wf.requirements.models = ["repeated.safetensors"]
+    before = wf.copy()
+
+    result = port_convert_workflow(wf, validate=False)
+    assert wf == before
+    assert "canonical_requirements" not in result.text
+
+    from vibecomfy.porting.convert import _build_emitted_workflow_from_text
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
+
+    staged = _build_emitted_workflow_from_text(result.text)
+    destination = tmp_path / "model-requirement-pair.py"
+    emit_bundle_with_candidate(staged, destination, {"operation": "authored"}, None)
+    reloaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow
+    assert reloaded.requirements.models == [
+        {"name": "repeated.safetensors", "url": "https://example.test/repeated", "subdir": "checkpoints"},
+        {"name": "second.safetensors", "url": "https://example.test/second", "subdir": "checkpoints"},
+    ]
+
+
+def test_scratchpad_pair_preserves_explicit_empty_model_requirements(tmp_path) -> None:
+    wf = _wf("empty-model-requirements")
+    wf.nodes["1"] = _regular_node("1", "CheckpointLoaderSimple")
+    wf.nodes["1"].inputs["ckpt_name"] = "picker.safetensors"
+    wf.requirements.models = []
+
+    result = port_convert_workflow(wf, validate=False)
+    assert "canonical_requirements" not in result.text
+
+    from vibecomfy.porting.convert import _build_emitted_workflow_from_text
+    from vibecomfy.security.provenance import Provenance
+    from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
+
+    staged = _build_emitted_workflow_from_text(result.text)
+    destination = tmp_path / "empty-model-requirements.py"
+    emit_bundle_with_candidate(staged, destination, {"operation": "authored"}, None)
+    reloaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED).workflow
+    assert reloaded.requirements.models == []
+
+
 def test_port_convert_does_not_mutate_caller_owned_workflow_or_raw_evidence():
     wf = _wf("caller-owned")
     wf.nodes["1"] = VibeNode("1", "PrimitiveInt", inputs={"value": 7})

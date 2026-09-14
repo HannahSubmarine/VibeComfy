@@ -27,21 +27,21 @@ def _scenario(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_authoritative_manifest_selects_and_hashes_exactly_100_scenarios() -> None:
+def test_authoritative_manifest_selects_and_hashes_the_active_corpus() -> None:
     paths = discover_manifest_scenarios()
     manifest = json.loads(DEFAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
     entries = manifest["entries"]
 
-    assert len(paths) == manifest["scenario_count"] == len(entries) == 100
-    assert len({entry["id"] for entry in entries}) == 100
-    assert len({entry["path"] for entry in entries}) == 100
+    assert len(paths) == manifest["scenario_count"] == len(entries) == 200
+    assert len({entry["id"] for entry in entries}) == 200
+    assert len({entry["path"] for entry in entries}) == 200
     assert all(entry["id"] == Path(entry["path"]).stem for entry in entries)
     assert all(entry["inclusion_status"] == "included" for entry in entries)
     assert {entry["revision_status"] for entry in entries} == {"matched", "revised"}
     assert {entry["id"] for entry in entries if entry["revision_status"] == "revised"} == CORRECTED_EDITS
 
     source_entries = [entry for entry in entries if entry["source_workflow"]]
-    assert len(source_entries) == 98
+    assert len(source_entries) == 198
     for entry in source_entries:
         source = entry["source_workflow"]
         source_path = Path(__file__).parents[1] / source["path"]
@@ -49,17 +49,17 @@ def test_authoritative_manifest_selects_and_hashes_exactly_100_scenarios() -> No
         assert source["sha256"] == sha256_file(source_path)
 
 
-def test_d13_no_change_reconciliation_and_rubric_contract() -> None:
+def test_no_change_reconciliation_and_rubric_contract() -> None:
     scenarios = [_scenario(path) for path in discover_manifest_scenarios()]
     semantic = [s for s in scenarios if (s.get("classification") or {}).get("kind") == "semantic_product"]
     controls = [s for s in scenarios if (s.get("classification") or {}).get("kind") == "health_control"]
     corrected = [s for s in scenarios if s["id"] in CORRECTED_EDITS]
 
-    assert len(semantic) == 35
+    assert len(semantic) == 23
     assert len(controls) == 2
     assert len(corrected) == 3
-    assert len(semantic) + len(controls) + len(corrected) == 40
-    assert {s["_tags"]["query_type"] for s in semantic} == {"research", "explain", "diagnose"}
+    assert len(semantic) + len(controls) + len(corrected) == 28
+    assert {s["_tags"]["query_type"] for s in semantic} == {"research", "explain"}
     assert all(s["assessment"]["expect_graph_changed"] is False for s in semantic + controls)
     assert all(s["classification"]["excluded_from_semantic_product_rates"] is True for s in controls)
     assert all(s["assessment"]["expect_graph_changed"] is True and s["apply"] is True for s in corrected)
@@ -73,7 +73,13 @@ def test_d13_no_change_reconciliation_and_rubric_contract() -> None:
         assert "grounded" in rubric["pass_condition"]
         assert len(rubric["fail_conditions"]) == 5
 
-    desired_edits = [s for s in scenarios if s.get("desired")]
+    desired_scenarios = [s for s in scenarios if s.get("desired")]
+    answer_only = [s for s in desired_scenarios if s.get("interaction_mode") == "answer_only"]
+    for scenario in answer_only:
+        assert scenario["apply"] is False, scenario["id"]
+        assert scenario["assessment"]["expect_graph_changed"] is False, scenario["id"]
+        assert scenario["desired"].get("answer_guidance"), scenario["id"]
+    desired_edits = [s for s in desired_scenarios if s.get("interaction_mode") != "answer_only"]
     assert desired_edits
     for scenario in desired_edits:
         assessment = scenario["assessment"]

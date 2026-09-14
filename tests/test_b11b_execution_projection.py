@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 import sys
 import types
 
@@ -18,6 +19,8 @@ from vibecomfy.workflow import (
     WorkflowCompileError,
     WorkflowSource,
 )
+from vibecomfy.security.provenance import Provenance
+from vibecomfy.workflow_bundle import emit_bundle, load_bundle
 
 
 def _chain(mode: object) -> VibeWorkflow:
@@ -129,7 +132,9 @@ def test_set_get_bypass_projection_agrees_across_api_graphbuilder_and_python(
     assert api == expected
     assert workflow.compile("graphbuilder") == expected
 
-    converted = port_convert_workflow(workflow, validate=True, prune_dead_branches=False)
+    converted = port_convert_workflow(
+        workflow, validate=True, prune_dead_branches=False, preserve_node_ids=True
+    )
     assert converted.validation is not None
     assert converted.validation.parity_ok is True
     namespace: dict[str, object] = {"__file__": "b11b_set_get.py"}
@@ -839,22 +844,42 @@ def test_conversion_primitive_parity_uses_coherent_lens() -> None:
     workflow.nodes["s"] = VibeNode("s", "Sink", inputs={"x": 1})
     workflow.edges = [VibeEdge("p", "0", "s", "x")]
     expected = workflow.compile("api")
-    default = port_convert_workflow(workflow, validate=True, prune_dead_branches=False, keep_virtual_wires=False)
+    default = port_convert_workflow(
+        workflow,
+        validate=True,
+        prune_dead_branches=False,
+        keep_virtual_wires=False,
+        preserve_node_ids=True,
+    )
     assert default.validation and default.validation.parity_ok
-    assert "PrimitiveInt" in default.text
+    assert "raw_call('PrimitiveInt'" not in default.text
+    assert "HELPER_CUSTODY" not in default.text
     ns: dict[str, object] = {"__file__": "primitive_parity.py"}
     exec(compile(default.text, "primitive parity", "exec"), ns)  # noqa: S102
     rebuilt = ns["build"]()
-    assert rebuilt.nodes["p"].class_type == "PrimitiveInt"
+    assert "p" not in rebuilt.nodes
+    assert "resolver_helper_custody" not in rebuilt.metadata
     assert rebuilt.compile("api") == expected
 
-    kept = port_convert_workflow(workflow, validate=True, prune_dead_branches=False, keep_virtual_wires=True)
-    assert "PrimitiveInt" in kept.text
+    kept = port_convert_workflow(
+        workflow,
+        validate=True,
+        prune_dead_branches=False,
+        keep_virtual_wires=True,
+        preserve_node_ids=True,
+    )
+    assert "raw_call('PrimitiveInt'" not in kept.text
     ns = {"__file__": "primitive_parity_keep.py"}
     exec(compile(kept.text, "primitive parity keep", "exec"), ns)  # noqa: S102
     assert ns["build"]().compile("api") == expected
-    ready = emit_ready_template_python(workflow, ready_metadata={"ready_template": "test/primitive"}, ready_requirements={}, template_id="test/primitive")
-    assert "PrimitiveInt" in ready
+    ready = emit_ready_template_python(
+        workflow,
+        ready_metadata={"ready_template": "test/primitive"},
+        ready_requirements={},
+        template_id="test/primitive",
+        preserve_node_ids=True,
+    )
+    assert "raw_call('PrimitiveInt'" not in ready
     ns = {"__file__": "primitive_parity_ready.py"}
     exec(compile(ready, "primitive parity ready", "exec"), ns)  # noqa: S102
     assert ns["build"]().compile("api") == expected
@@ -870,7 +895,11 @@ def test_conversion_channel_collision_keeps_semantic_input_over_widget_and_ui() 
     assert expected["sink"]["inputs"]["x"] == 7
 
     scratchpad = port_convert_workflow(
-        workflow, validate=True, prune_dead_branches=False, keep_virtual_wires=False
+        workflow,
+        validate=True,
+        prune_dead_branches=False,
+        keep_virtual_wires=False,
+        preserve_node_ids=True,
     )
     assert scratchpad.validation and scratchpad.validation.parity_ok
     ns: dict[str, object] = {"__file__": "channel_collision.py"}
@@ -881,14 +910,15 @@ def test_conversion_channel_collision_keeps_semantic_input_over_widget_and_ui() 
         ready_metadata={"ready_template": "test/channel-collision"},
         ready_requirements={},
         template_id="test/channel-collision",
+        preserve_node_ids=True,
     )
     ns = {"__file__": "channel_collision_ready.py"}
     exec(compile(ready, "channel collision ready", "exec"), ns)  # noqa: S102
     assert ns["build"]().compile("api") == expected
 
 
-def test_ready_emission_ignores_raw_ui_widget_aliases() -> None:
-    def build(ui_names: list[str]) -> tuple[dict[str, dict[str, object]], str]:
+def test_ready_emission_ignores_raw_ui_widget_aliases(tmp_path: Path) -> None:
+    def build(ui_names: list[str], filename: str) -> tuple[dict[str, dict[str, object]], str]:
         workflow = VibeWorkflow("ui-independent", WorkflowSource("ui-independent"))
         workflow.nodes["s"] = VibeNode(
             "s", "UnknownSink", widgets={"widget_0": 1},
@@ -900,22 +930,23 @@ def test_ready_emission_ignores_raw_ui_widget_aliases() -> None:
             ready_requirements={},
             template_id="test/primitive",
         )
-        namespace: dict[str, object] = {"__file__": "ui-independent.py"}
-        exec(compile(ready, "ui-independent", "exec"), namespace)  # noqa: S102
-        return namespace["build"]().compile("api"), ready
+        workflow.nodes["s"].uid = "s"
+        path = tmp_path / filename
+        emit_bundle(workflow, path, {"operation": "authored"})
+        return load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow.compile("api"), ready
 
-    first, first_text = build(["x"])
-    second, second_text = build(["y"])
+    first, first_text = build(["x"], "ui_x.py")
+    second, second_text = build(["y"], "ui_y.py")
     assert first == second == {"s": {"class_type": "UnknownSink", "inputs": {"widget_0": 1}}}
     assert "widget_0=1" in first_text
     assert "widget_0=1" in second_text
 
 
-def test_ready_public_inputs_ignore_raw_ui_titles() -> None:
-    def build(title: str) -> tuple[list[str], list[str], str]:
+def test_ready_public_inputs_ignore_raw_ui_titles(tmp_path: Path) -> None:
+    def build(title: str, filename: str) -> tuple[list[str], list[str], str]:
         workflow = VibeWorkflow("title-independent", WorkflowSource("title-independent"))
         workflow.nodes["text"] = VibeNode(
-            "text", "CLIPTextEncode", inputs={"text": "hello"},
+            "text", "CLIPTextEncode", inputs={"text": "hello"}, uid="text",
             metadata={"_ui": {"title": title}},
         )
         ready = emit_ready_template_python(
@@ -924,16 +955,17 @@ def test_ready_public_inputs_ignore_raw_ui_titles() -> None:
             ready_requirements={},
             template_id="test/primitive",
         )
-        namespace: dict[str, object] = {"__file__": "title-independent.py"}
-        exec(compile(ready, "title-independent", "exec"), namespace)  # noqa: S102
-        rebuilt = namespace["build"]()
-        return sorted(namespace["PUBLIC_INPUT_METADATA"]), sorted(rebuilt.inputs), ready
+        path = tmp_path / filename
+        emit_bundle(workflow, path, {"operation": "authored"})
+        rebuilt = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+        return [], sorted(rebuilt.inputs), ready
 
-    positive_inputs, positive_authored_inputs, positive_text = build("positive")
-    negative_inputs, negative_authored_inputs, negative_text = build("negative")
-    assert positive_inputs == negative_inputs == ["prompt"]
+    positive_inputs, positive_authored_inputs, positive_text = build("positive", "title_positive.py")
+    negative_inputs, negative_authored_inputs, negative_text = build("negative", "title_negative.py")
+    assert positive_inputs == negative_inputs == []
     assert positive_authored_inputs == negative_authored_inputs == []
-    assert "'prompt'" in positive_text and "'prompt'" in negative_text
+    assert "PUBLIC_INPUT_METADATA" not in positive_text
+    assert "PUBLIC_INPUT_METADATA" not in negative_text
     assert positive_text == negative_text
 
 

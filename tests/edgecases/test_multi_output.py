@@ -29,10 +29,12 @@ def test_multi_output_node_edges_preserved() -> None:
     assert result.validation is not None
     assert result.validation.ok
 
-    # Both output slots should be referenced in the emitted text
+    # Both output slots should be expressed at the constructor boundary.  The
+    # canonical source has no post-build replay tail or graph API calls.
     text = result.text
-    assert "wf.connect('1.0', '2.images')" in text
-    assert "wf.connect('1.1', '3.images')" in text
+    assert "wf.connect(" not in text
+    assert "images=loadimage.out('IMAGE')" in text
+    assert "images=loadimage.out('MASK')" in text
 
 
 def test_single_output_node_no_edge_ambiguity() -> None:

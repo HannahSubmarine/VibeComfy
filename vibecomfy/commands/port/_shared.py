@@ -26,6 +26,10 @@ from vibecomfy.schema.cache import latest_object_info_cache_path
 PORT_HELP = """Cheap preflight and Python materialization for ComfyUI workflow ports.
 
 Use `port check` before manual template editing or expensive RunPod validation.
+Complete native inputNode/outputNode subgraphs are materialized into the shared
+canonical path; malformed or unsupported boundaries fail closed with an
+`unsupported_boundary_encoding` diagnostic. Unresolved schemas may remain in
+draft conversion reports, while strict-ready promotion still gates on them.
 Use `port convert` to turn source workflows into Python scratchpads; pass
 `--ready-id kind/name` only when intentionally producing a ready-template
 candidate. Use `doctor`/`validate` after conversion, `nodes install-plan` for

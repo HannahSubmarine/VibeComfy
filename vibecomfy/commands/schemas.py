@@ -137,9 +137,11 @@ def _extract_class_types_from_source_json(source_path: str | Path) -> list[str]:
     if not isinstance(raw, dict):
         raise ValueError("workflow source must be a JSON object")
     from vibecomfy.ingest.native_subgraph import expand_native_subgraphs
+    from vibecomfy.ingest.normalize import door_get_nodes
+
     expanded = expand_native_subgraphs(raw)
     classes: list[str] = []
-    for node in expanded.get("nodes", []):
+    for node in door_get_nodes(expanded, []):
         if isinstance(node, dict) and isinstance(node.get("type"), str):
             classes.append(node["type"])
     return classes

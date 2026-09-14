@@ -53,7 +53,14 @@ def _is_link(value: Any) -> bool:
     if not isinstance(slot, int):
         return False
     nid_s = str(nid)
-    return all(p.isdigit() for p in nid_s.split(":"))
+    # Recursive definitions compile to scoped IDs such as ``1926::1618``.
+    # Empty scope components are structural separators, not evidence that the
+    # value is a literal.  Keep the numeric-ID guard while admitting the same
+    # scoped identity vocabulary used by VibeWorkflow.compile().
+    parts = nid_s.split(":")
+    return bool(nid_s) and any(part.isdigit() for part in parts) and all(
+        not part or part.isdigit() for part in parts
+    )
 
 
 def _is_ui_only(class_type: str) -> bool:

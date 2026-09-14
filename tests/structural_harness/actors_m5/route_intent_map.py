@@ -18,6 +18,7 @@ from vibecomfy.executor.agent_research_stage import AgentResearchTrace
 from vibecomfy.executor.contracts import (
     ClassifyDecision,
     ExecutorRequest,
+    ExecutorHostPorts,
     ImplementationResult,
 )
 from vibecomfy.executor.core import run_executor
@@ -95,6 +96,32 @@ def _fake_implementation(
     return ImplementationResult(message="Edited graph.", graph=request.graph)
 
 
+def _structural_host_ports() -> ExecutorHostPorts:
+    """Return deterministic host seams for this fully synthetic actor.
+
+    The route map patches every model/implementation seam.  It must therefore
+    not lazily construct the production ComfyUI adapter: that adapter owns
+    process-wide capture and session state which unrelated tests may have
+    replaced.  Keeping the synthetic actor on the neutral host contract makes
+    the evidence builder repeatable in the full suite as well as in isolation.
+    """
+    def unused(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("unused synthetic host operation")
+
+    return ExecutorHostPorts(
+        handle_agent_edit=unused,
+        payload_hash=lambda _payload: "synthetic-route-intent-hash",
+        classify_failure=unused,
+        failure_envelope=unused,
+        begin_deepseek_usage_capture=lambda: "synthetic-usage",
+        snapshot_deepseek_usage_capture=lambda: ({}, True),
+        end_deepseek_usage_capture=lambda _token: None,
+        begin_model_attempt_capture=lambda: "synthetic-attempts",
+        snapshot_model_attempt_capture=lambda: (),
+        end_model_attempt_capture=lambda _token: None,
+    )
+
+
 def build_m5_route_intent_map_evidence(report_dir: Path) -> dict[str, Any]:
     """Freeze executor envelopes for all four canonical routes."""
     root = report_dir.resolve()
@@ -114,14 +141,26 @@ def build_m5_route_intent_map_evidence(report_dir: Path) -> dict[str, Any]:
             query=query,
             graph={"nodes": [{"id": 1, "class_type": "KSampler"}]},
             profile="default",
+            # This actor patches the staged executor seams below.  Declare the
+            # matching mode at the request boundary so evidence is independent
+            # of any ambient pipeline-mode setting left by another scenario.
+            pipeline_mode="staged",
         )
-        with (
-            mock.patch("vibecomfy.executor.core.run_classify_turn", side_effect=classify_fn),
-            mock.patch("vibecomfy.executor.core.run_reply_turn", side_effect=_fake_reply),
-            mock.patch("vibecomfy.executor.core.run_agent_research_stage", side_effect=_fake_agent_research),
-            mock.patch("vibecomfy.executor.core._run_implement", side_effect=_fake_implementation),
+        # Patch the globals used by the imported ``run_executor`` function,
+        # rather than resolving a possibly reloaded module by import path.
+        # Some preceding contract tests deliberately reload executor modules;
+        # path-based patches can then miss the function's original globals and
+        # accidentally dispatch a real provider from this synthetic actor.
+        with mock.patch.dict(
+            run_executor.__globals__,
+            {
+                "run_classify_turn": mock.Mock(side_effect=classify_fn),
+                "run_reply_turn": mock.Mock(side_effect=_fake_reply),
+                "run_agent_research_stage": mock.Mock(side_effect=_fake_agent_research),
+                "_run_implement": mock.Mock(side_effect=_fake_implementation),
+            },
         ):
-            result = run_executor(request)
+            result = run_executor(request, host_ports=_structural_host_ports())
 
         records.append({
             "expected_route": route,

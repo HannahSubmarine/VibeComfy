@@ -576,6 +576,11 @@ def _existing_parameter_tweak_targets_from_graph(
     from vibecomfy.porting.edit.editable_surface import editable_surface_for
 
     nodes: Any = getattr(graph, "nodes", None)
+    if nodes is None and isinstance(graph, Mapping):
+        # The diagnostic is intentionally usable with the UI-shaped graph
+        # handed to the legacy compatibility seam as well as with retained
+        # IR.  Attribute lookup alone silently treated a mapping as empty.
+        nodes = door_get_nodes(graph)
     if isinstance(nodes, Mapping) and nodes:
         node_items = list(nodes.values())
         edges = getattr(graph, "edges", None)

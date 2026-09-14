@@ -28,6 +28,7 @@ from vibecomfy.porting.convert import port_convert_workflow
 from vibecomfy.porting.layout_store import read_store, write_layout
 from vibecomfy.porting.emit.ui import emit_ui_json
 from vibecomfy.scratchpad_loader import load_scratchpad
+from vibecomfy.schema import InputSpec, NodeSchema, OutputSpec
 from vibecomfy.workflow import VibeEdge, VibeNode, VibeWorkflow, WorkflowSource
 
 # ---------------------------------------------------------------------------
@@ -144,6 +145,54 @@ def _canonical_json(obj: dict) -> str:
     return json.dumps(norm, indent=2, sort_keys=True)
 
 
+def _canonical_execution_api(api: dict) -> dict:
+    """Compare execution shape while ignoring generated node-id allocation."""
+    node_ids = sorted(str(node_id) for node_id in api)
+    remap = {node_id: str(index + 1) for index, node_id in enumerate(node_ids)}
+    normalized = {}
+    for node_id in node_ids:
+        node = api[node_id]
+        inputs = {}
+        for name, value in node.get("inputs", {}).items():
+            if isinstance(value, list) and len(value) == 2 and str(value[0]) in remap:
+                inputs[name] = [remap[str(value[0])], value[1]]
+            else:
+                inputs[name] = value
+        normalized[remap[node_id]] = {
+            "class_type": node["class_type"],
+            "inputs": inputs,
+        }
+    return normalized
+
+
+class _VirtualWireSchemaProvider:
+    """Schema witness for the synthetic helper nodes used by this test."""
+
+    def get_schema(self, class_type: str):
+        if class_type == "SetNode":
+            return NodeSchema(
+                class_type,
+                "rgthree-comfy",
+                {"name": InputSpec("STRING"), "broadcast_in": InputSpec("*")},
+                [OutputSpec("*", "*")],
+            )
+        if class_type == "GetNode":
+            return NodeSchema(
+                class_type,
+                "rgthree-comfy",
+                {"name": InputSpec("STRING"), "broadcast_out": InputSpec("*")},
+                [OutputSpec("*", "*")],
+            )
+        if class_type == "Reroute":
+            return NodeSchema(
+                class_type,
+                "comfy-core",
+                {"0": InputSpec("*")},
+                [OutputSpec("*", "*")],
+            )
+        return None
+
+
 def _zero_link_ids(obj: dict) -> None:
     """Zero out link IDs in a litegraph envelope."""
     links = obj.get("links")
@@ -162,6 +211,15 @@ def _zero_node_ids(obj: dict) -> None:
         for node in nodes:
             if isinstance(node, dict) and "id" in node:
                 node["id"] = 0
+                properties = node.get("properties")
+                if isinstance(properties, dict) and "vibecomfy_uid" in properties:
+                    properties["vibecomfy_uid"] = "0"
+    links = obj.get("links")
+    if isinstance(links, list):
+        for link in links:
+            if isinstance(link, list) and len(link) >= 4:
+                link[1] = 0
+                link[3] = 0
     if isinstance(obj.get("last_node_id"), int):
         obj["last_node_id"] = 0
 
@@ -189,7 +247,9 @@ def test_default_convert_round_trip(tmp_path: Path):
     assert wf.edges == caller_edges_before
     py_path.write_text(result.text, encoding="utf-8")
     wf_reloaded = load_scratchpad(py_path, provenance_override="user_confirmed")
-    assert wf_reloaded.compile("api") == wf.compile("api")
+    assert _canonical_execution_api(wf_reloaded.compile("api")) == _canonical_execution_api(
+        wf.compile("api")
+    )
 
 
 def test_failed_convert_does_not_mutate_authored_virtual_wire_graph() -> None:
@@ -241,6 +301,7 @@ def test_keep_virtual_wires_round_trip(tmp_path: Path):
     store = read_store(py_path)
     ui_b = emit_ui_json(
         wf_reloaded,
+        schema_provider=_VirtualWireSchemaProvider(),
         include_virtual_wires=True,
         prior_store=store,
     )
@@ -256,6 +317,7 @@ def test_keep_virtual_wires_round_trip(tmp_path: Path):
     # virtual wires were retained in Python source or resolved during conversion.
     ui_b_flat = emit_ui_json(
         wf_reloaded,
+        schema_provider=_VirtualWireSchemaProvider(),
         include_virtual_wires=False,
         prior_store=store,
     )
@@ -275,6 +337,7 @@ def test_keep_virtual_wires_round_trip(tmp_path: Path):
     store_a2 = read_store(py_a2)
     ui_a_flat = emit_ui_json(
         wf_a2_reloaded,
+        schema_provider=_VirtualWireSchemaProvider(),
         include_virtual_wires=False,
         prior_store=store_a2,
     )

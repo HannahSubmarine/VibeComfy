@@ -855,6 +855,13 @@ def _compact_batch_system_prompt(
         if active_tool_phase == PHASE_THREADED
         else "Agent tool calls (no edit lands) — implement phase only:\n"
     )
+    tool_budget_guidance = (
+        "Tool budget: 3 searches, 6 fetches, 1 registry lookup, and a ~90s phase "
+        "deadline; exhaustion is a typed refusal that preserves gathered evidence.\n"
+        if active_tool_phase == PHASE_THREADED
+        else "Tool budget: 6 fetches and a ~90s phase deadline; exhaustion is a typed "
+        "refusal that preserves gathered evidence.\n"
+    )
     interaction_contract = (
         "Interaction contract: answer_only. You may inspect and research in this "
         "same conversation, but you must not add, change, delete, rewire, or "
@@ -879,10 +886,13 @@ def _compact_batch_system_prompt(
         "- `search(focus_types=[\"ClassName\"])` for exact authoring schemas; "
         "existing nodes are shown above, so do NOT search for them\n"
         f"{tool_heading}{tool_catalog_docs(active_tool_phase)}\n"
+        f"{tool_budget_guidance}"
         "- `python()` — view the current workflow Python\n"
         "- `done()` — commit landed edits\n"
         "- `done(final_answer=\"...\", evidence_refs=[\"...\"])` — finalize a "
         "substantive non-edit answer; cite only exact IDs from the evidence ledger\n"
+        "Prior evidence IDs are provenance labels, not callable handles; never repeat raw "
+        "tool bodies.\n"
         "Output rule: name output slots, e.g. `up.IMAGE`, never bare `up`.\n\n"
         f"{render_prompt_doc()}\n\n"
         "Known limits: use only visible fields/sockets or exact schema results; "
@@ -893,6 +903,14 @@ def _compact_batch_system_prompt(
         "internal wiring as explicit constraints.\n"
         "Effective surface rule: edit the value that controls output. If a target is "
         "linked, edit its effective source or clarify when no defensible local edit exists.\n\n"
+        "Question / explanation mode: if the user only asks a question, put the complete "
+        "answer in `done(final_answer=\"...\", evidence_refs=[\"...\"])`; ground every "
+        "claim in the visible render's node ids, link ids, and widget keys/values; never "
+        "invent parameters or connections.\n\n"
+        "Before done(), state downstream acceptance explicitly: required inputs are wired, "
+        "terminal continuity is preserved, and the requested behavior is satisfied; "
+        "deterministic validation owns that, and unsupported nodes must not become queue "
+        "blockers.\n\n"
         "If research is thin, empty, never, UNAVAILABLE, or exhausted, apply a "
         "graph-local edit that is fully justified by the attached IR. Refuse only "
         "architectural invention. Never use positional widget indices when a named "
@@ -905,6 +923,8 @@ def _compact_batch_system_prompt(
         f"or a guessed class. {code_rule} The `io` JSON widget declares typed inputs "
         "and outputs; use physical `in_0`/`out_0` slots and wire named outputs. PIL is "
         "supported through the typed `vibecomfy.exec` surface.\n\n"
+        "rank_edit_targets and suggest_seed_nodes are lossy advisory hints — they never "
+        "override your judgment.\n\n"
         "Envelope: start with one user-facing prose sentence, then exactly one ```batch "
         "fence. Never respond with only a fenced block; include `done()` or a typed "
         "`clarify(\"...\")`. When you explicitly want the staged executor to research "

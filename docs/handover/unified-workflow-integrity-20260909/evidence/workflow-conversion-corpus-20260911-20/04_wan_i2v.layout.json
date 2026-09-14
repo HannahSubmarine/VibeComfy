@@ -1,0 +1,346 @@
+{
+  "store_version": 2,
+  "vibecomfy_version": "2.8.0",
+  "schema_hash": "4e171992d8e27611",
+  "entries": {
+    "37": {
+      "pos": [
+        20,
+        70
+      ],
+      "size": [
+        347,
+        82
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "UNETLoader",
+        "models": [
+          {
+            "name": "wan2.1_i2v_480p_14B_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/diffusion_models/wan2.1_i2v_480p_14B_fp16.safetensors",
+            "directory": "diffusion_models"
+          }
+        ]
+      }
+    },
+    "38": {
+      "pos": [
+        20,
+        190
+      ],
+      "size": [
+        350,
+        110
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPLoader",
+        "models": [
+          {
+            "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+            "directory": "text_encoders"
+          }
+        ]
+      }
+    },
+    "39": {
+      "pos": [
+        20,
+        350
+      ],
+      "size": [
+        350,
+        60
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "wan_2.1_vae.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors",
+            "directory": "vae"
+          }
+        ]
+      }
+    },
+    "49": {
+      "pos": [
+        20,
+        460
+      ],
+      "size": [
+        350,
+        60
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPVisionLoader",
+        "models": [
+          {
+            "name": "clip_vision_h.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/clip_vision/clip_vision_h.safetensors",
+            "directory": "clip_vision"
+          }
+        ]
+      }
+    },
+    "6": {
+      "pos": [
+        410,
+        80
+      ],
+      "size": [
+        423,
+        164
+      ],
+      "flags": {},
+      "color": "#232",
+      "bgcolor": "#353",
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      }
+    },
+    "54": {
+      "pos": [
+        860,
+        30
+      ],
+      "size": [
+        290,
+        60
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "ModelSamplingSD3"
+      }
+    },
+    "55": {
+      "pos": [
+        1190,
+        30
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      }
+    },
+    "3": {
+      "pos": [
+        860,
+        140
+      ],
+      "size": [
+        315,
+        262
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "KSampler"
+      }
+    },
+    "8": {
+      "pos": [
+        960,
+        450
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    "56": {
+      "pos": [
+        1200,
+        160
+      ],
+      "size": [
+        740,
+        540
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      }
+    },
+    "50": {
+      "pos": [
+        460,
+        560
+      ],
+      "size": [
+        320,
+        220
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "WanImageToVideo"
+      }
+    },
+    "51": {
+      "pos": [
+        460,
+        860
+      ],
+      "size": [
+        254,
+        78
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPVisionEncode"
+      }
+    },
+    "7": {
+      "pos": [
+        410,
+        280
+      ],
+      "size": [
+        425,
+        181
+      ],
+      "flags": {},
+      "color": "#223",
+      "bgcolor": "#335",
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      }
+    },
+    "57": {
+      "pos": [
+        -600,
+        30
+      ],
+      "size": [
+        590,
+        430
+      ],
+      "flags": {},
+      "color": "#432",
+      "bgcolor": "#000",
+      "mode": 0,
+      "properties": {}
+    },
+    "52": {
+      "pos": [
+        30,
+        620
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "color": null,
+      "bgcolor": null,
+      "mode": 0,
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      }
+    }
+  },
+  "groups": [
+    {
+      "id": 1,
+      "title": "Step1 - Load models",
+      "bounding": [
+        10,
+        0,
+        370,
+        533.5999755859375
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "Step2 - Upload start_image",
+      "bounding": [
+        10,
+        550,
+        370,
+        400
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "Step4 - Prompt",
+      "bounding": [
+        400,
+        0,
+        445.27801513671875,
+        467.2060852050781
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "Step3 - Video size",
+      "bounding": [
+        400,
+        480,
+        440,
+        310
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "extra": {},
+  "lastRerouteId": null,
+  "definitions": {},
+  "virtual_wires": {}
+}

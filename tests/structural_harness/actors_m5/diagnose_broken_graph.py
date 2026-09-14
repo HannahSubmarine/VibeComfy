@@ -8,8 +8,8 @@ from typing import Any
 from tests.structural_harness.actors import (
     _write_actions,
     _write_command_log_jsonl,
+    _write_invalid_workflow_evidence,
     _write_placeholder,
-    _write_workflow_evidence,
 )
 from vibecomfy import load_workflow_any
 
@@ -41,7 +41,7 @@ def build_m5_diagnose_broken_graph_evidence(
     output_path = root / "outputs" / "video.mp4"
     _write_placeholder(output_path, "structural video placeholder\n")
 
-    evidence = _write_workflow_evidence(
+    evidence = _write_invalid_workflow_evidence(
         root=root,
         run_id="m5-diagnose-broken-graph",
         workflow=workflow,

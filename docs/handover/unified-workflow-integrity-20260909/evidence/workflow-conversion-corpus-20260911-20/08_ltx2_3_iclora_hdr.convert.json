@@ -1,0 +1,2545 @@
+/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/vibecomfy/templates.py:990: UserWarning: ReadyMetadata.build requirements['models'] differs from MODELS-derived model assets
+  derived_requirements = _requirements_with_models(requirements, model_assets)
+{
+  "conversion": {
+    "mode": "scratchpad",
+    "ready_id": null,
+    "validation": {
+      "api_node_count": 24,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAVTextEncoderLoader",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 122
+          },
+          "message": "node call for 'LTXAVTextEncoderLoader' (node 5023) would be a single line of 122 chars (>120); multi-line formatting preferred.",
+          "node_id": "5023",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LoadVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "upload",
+            "schema_inputs": [
+              "file"
+            ]
+          },
+          "message": "Node 5106 (LoadVideo) emits schema-unknown kwarg 'upload'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5106",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5113 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5113",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 294
+          },
+          "message": "node call for 'Note' (node 5113) would be a single line of 294 chars (>120); multi-line formatting preferred.",
+          "node_id": "5113",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5117 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5117",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 141
+          },
+          "message": "node call for 'Note' (node 5117) would be a single line of 141 chars (>120); multi-line formatting preferred.",
+          "node_id": "5117",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5118 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5118",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 135
+          },
+          "message": "node call for 'Note' (node 5118) would be a single line of 135 chars (>120); multi-line formatting preferred.",
+          "node_id": "5118",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5119 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5119",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 153
+          },
+          "message": "node call for 'Note' (node 5119) would be a single line of 153 chars (>120); multi-line formatting preferred.",
+          "node_id": "5119",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5120 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5120",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 144
+          },
+          "message": "node call for 'Note' (node 5120) would be a single line of 144 chars (>120); multi-line formatting preferred.",
+          "node_id": "5120",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5121 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5121",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 2483 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "2483",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 2612 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "2612",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "lora_name",
+              "strength_model"
+            ]
+          },
+          "message": "Node 5125 (LTXICLoRALoaderModelOnly) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5125",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 156
+          },
+          "message": "node call for 'LTXICLoRALoaderModelOnly' (node 5125) would be a single line of 156 chars (>120); multi-line formatting preferred.",
+          "node_id": "5125",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVConditioning",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "frame_rate"
+            ]
+          },
+          "message": "Node 1241 (LTXVConditioning) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "1241",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVConditioning",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "frame_rate"
+            ]
+          },
+          "message": "Node 1241 (LTXVConditioning) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "1241",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVConditioning",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 173
+          },
+          "message": "node call for 'LTXVConditioning' (node 1241) would be a single line of 173 chars (>120); multi-line formatting preferred.",
+          "node_id": "1241",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "lora_name",
+              "strength_model"
+            ]
+          },
+          "message": "Node 5011 (LTXICLoRALoaderModelOnly) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5011",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 154
+          },
+          "message": "node call for 'LTXICLoRALoaderModelOnly' (node 5011) would be a single line of 154 chars (>120); multi-line formatting preferred.",
+          "node_id": "5011",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ResizeImageMaskNode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "input",
+            "linked": true,
+            "schema_inputs": [
+              "resize_type",
+              "scale_method"
+            ]
+          },
+          "message": "Node 5112 (ResizeImageMaskNode) emits schema-unknown linked kwarg 'input'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5112",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ResizeImageMaskNode",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 194
+          },
+          "message": "node call for 'ResizeImageMaskNode' (node 5112) would be a single line of 194 chars (>120); multi-line formatting preferred.",
+          "node_id": "5112",
+          "severity": "warning"
+        },
+        {
+          "class_type": "EmptyLTXVLatentVideo",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 168
+          },
+          "message": "node call for 'EmptyLTXVLatentVideo' (node 3059) would be a single line of 168 chars (>120); multi-line formatting preferred.",
+          "node_id": "3059",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_downscale_factor",
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown kwarg 'latent_downscale_factor'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "image",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'latent'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "vae",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'vae'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 386
+          },
+          "message": "node call for 'LTXAddVideoICLoRAGuide' (node 5012) would be a single line of 386 chars (>120); multi-line formatting preferred.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg"
+            ]
+          },
+          "message": "Node 4828 (CFGGuider) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg"
+            ]
+          },
+          "message": "Node 4828 (CFGGuider) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg"
+            ]
+          },
+          "message": "Node 4828 (CFGGuider) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 188
+          },
+          "message": "node call for 'CFGGuider' (node 4828) would be a single line of 188 chars (>120); multi-line formatting preferred.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SamplerCustomAdvanced",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 238
+          },
+          "message": "node call for 'SamplerCustomAdvanced' (node 4829) would be a single line of 238 chars (>120); multi-line formatting preferred.",
+          "node_id": "4829",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVCropGuides",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 177
+          },
+          "message": "node call for 'LTXVCropGuides' (node 5013) would be a single line of 177 chars (>120); multi-line formatting preferred.",
+          "node_id": "5013",
+          "severity": "warning"
+        },
+        {
+          "class_type": "VAEDecodeTiled",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "samples",
+            "linked": true,
+            "schema_inputs": [
+              "overlap",
+              "temporal_overlap",
+              "temporal_size",
+              "tile_size"
+            ]
+          },
+          "message": "Node 4851 (VAEDecodeTiled) emits schema-unknown linked kwarg 'samples'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4851",
+          "severity": "warning"
+        },
+        {
+          "class_type": "VAEDecodeTiled",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "vae",
+            "linked": true,
+            "schema_inputs": [
+              "overlap",
+              "temporal_overlap",
+              "temporal_size",
+              "tile_size"
+            ]
+          },
+          "message": "Node 4851 (VAEDecodeTiled) emits schema-unknown linked kwarg 'vae'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4851",
+          "severity": "warning"
+        },
+        {
+          "class_type": "VAEDecodeTiled",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 177
+          },
+          "message": "node call for 'VAEDecodeTiled' (node 4851) would be a single line of 177 chars (>120); multi-line formatting preferred.",
+          "node_id": "4851",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVHDRDecodePostprocess",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 195
+          },
+          "message": "node call for 'LTXVHDRDecodePostprocess' (node 5114) would be a single line of 195 chars (>120); multi-line formatting preferred.",
+          "node_id": "5114",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "audio",
+            "linked": true,
+            "schema_inputs": [
+              "fps"
+            ]
+          },
+          "message": "Node 5108 (CreateVideo) emits schema-unknown linked kwarg 'audio'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5108",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "images",
+            "linked": true,
+            "schema_inputs": [
+              "fps"
+            ]
+          },
+          "message": "Node 5108 (CreateVideo) emits schema-unknown linked kwarg 'images'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5108",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 136
+          },
+          "message": "node call for 'CreateVideo' (node 5108) would be a single line of 136 chars (>120); multi-line formatting preferred.",
+          "node_id": "5108",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "video",
+            "linked": true,
+            "schema_inputs": [
+              "codec",
+              "filename_prefix",
+              "format"
+            ]
+          },
+          "message": "Node 5109 (SaveVideo) emits schema-unknown linked kwarg 'video'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5109",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "CFGGuider": 1,
+        "CLIPTextEncode": 2,
+        "CheckpointLoaderSimple": 1,
+        "CreateVideo": 1,
+        "EmptyLTXVLatentVideo": 1,
+        "GetImageSize": 1,
+        "GetVideoComponents": 1,
+        "KSamplerSelect": 1,
+        "LTXAVTextEncoderLoader": 1,
+        "LTXAddVideoICLoRAGuide": 1,
+        "LTXICLoRALoaderModelOnly": 2,
+        "LTXVConditioning": 1,
+        "LTXVCropGuides": 1,
+        "LTXVHDRDecodePostprocess": 1,
+        "LoadVideo": 1,
+        "ManualSigmas": 1,
+        "RandomNoise": 1,
+        "ResizeImageMaskNode": 1,
+        "SamplerCustomAdvanced": 1,
+        "SaveVideo": 1,
+        "SimpleMath+": 1,
+        "VAEDecodeTiled": 1
+      },
+      "emitted_model_snapshot": {
+        "3940:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5011:lora_name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors",
+        "5023:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5023:text_encoder": "comfy_gemma_3_12B_it.safetensors",
+        "5125:lora_name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+      },
+      "emitted_output_count": 24,
+      "emitted_topology_snapshot": 36,
+      "emitted_widget_value_snapshot": 26,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "CFGGuider": 1,
+        "CLIPTextEncode": 2,
+        "CheckpointLoaderSimple": 1,
+        "CreateVideo": 1,
+        "EmptyLTXVLatentVideo": 1,
+        "GetImageSize": 1,
+        "GetVideoComponents": 1,
+        "KSamplerSelect": 1,
+        "LTXAVTextEncoderLoader": 1,
+        "LTXAddVideoICLoRAGuide": 1,
+        "LTXICLoRALoaderModelOnly": 2,
+        "LTXVConditioning": 1,
+        "LTXVCropGuides": 1,
+        "LTXVHDRDecodePostprocess": 1,
+        "LoadVideo": 1,
+        "ManualSigmas": 1,
+        "RandomNoise": 1,
+        "ResizeImageMaskNode": 1,
+        "SamplerCustomAdvanced": 1,
+        "SaveVideo": 1,
+        "SimpleMath+": 1,
+        "VAEDecodeTiled": 1
+      },
+      "source_model_snapshot": {
+        "3940:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5011:lora_name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors",
+        "5023:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5023:text_encoder": "comfy_gemma_3_12B_it.safetensors",
+        "5125:lora_name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+      },
+      "source_output_count": 24,
+      "source_topology_snapshot": 36,
+      "source_widget_value_snapshot": 26,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "ltx-2.3-22b-dev.safetensors",
+        "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+        "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors"
+      ]
+    }
+  },
+  "out": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/08_ltx2_3_iclora_hdr.py",
+  "report": {
+    "artifacts": [],
+    "asset_candidates": [
+      {
+        "class_type": "LTXAVTextEncoderLoader",
+        "metadata": {
+          "input": "text_encoder",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "comfy_gemma_3_12B_it.safetensors",
+        "node_id": "5023",
+        "source": "api_prompt",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "CheckpointLoaderSimple",
+        "metadata": {
+          "input": "ckpt_name",
+          "sources": [
+            "api_prompt",
+            "ready_requirements"
+          ]
+        },
+        "name": "ltx-2.3-22b-dev.safetensors",
+        "node_id": "3940",
+        "source": "api_prompt",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "LTXICLoRALoaderModelOnly",
+        "metadata": {
+          "input": "lora_name",
+          "sources": [
+            "api_prompt",
+            "ready_requirements"
+          ]
+        },
+        "name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+        "node_id": "5125",
+        "source": "api_prompt",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "LTXICLoRALoaderModelOnly",
+        "metadata": {
+          "input": "lora_name",
+          "sources": [
+            "api_prompt",
+            "ready_requirements"
+          ]
+        },
+        "name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors",
+        "node_id": "5011",
+        "source": "api_prompt",
+        "subdir": "checkpoints",
+        "url": null
+      }
+    ],
+    "asset_checks": [],
+    "contract": {
+      "comfy_configuration": {},
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "custom_nodes": [],
+      "graph_contract": {
+        "edge_count": 39,
+        "named_output_count": 0,
+        "output_count": 1,
+        "runtime_class_types": [
+          "CFGGuider",
+          "CLIPTextEncode",
+          "CheckpointLoaderSimple",
+          "CreateVideo",
+          "EmptyLTXVLatentVideo",
+          "GemmaAPITextEncode",
+          "GetImageSize",
+          "GetVideoComponents",
+          "KSamplerSelect",
+          "LTXAVTextEncoderLoader",
+          "LTXAddVideoICLoRAGuide",
+          "LTXICLoRALoaderModelOnly",
+          "LTXVConditioning",
+          "LTXVCropGuides",
+          "LTXVHDRDecodePostprocess",
+          "LoadVideo",
+          "ManualSigmas",
+          "PrimitiveString",
+          "RandomNoise",
+          "ResizeImageMaskNode",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "SimpleMath+",
+          "VAEDecodeTiled"
+        ],
+        "runtime_node_count": 27,
+        "schema_sources": [],
+        "unresolved_positional_outputs": [],
+        "unresolved_widgets": []
+      },
+      "inputs": [
+        "model",
+        "prompt",
+        "seed"
+      ],
+      "metadata": {
+        "capability": null,
+        "coverage_tier": null,
+        "ready_template": null
+      },
+      "model_assets": [
+        {
+          "name": "ltx-2.3-22b-dev.safetensors"
+        },
+        {
+          "name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+        },
+        {
+          "name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors"
+        }
+      ],
+      "outputs": [
+        {
+          "node_id": "5109",
+          "output_type": "SaveVideo"
+        }
+      ],
+      "public_inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "ckpt_name",
+          "media_semantics": null,
+          "name": "model",
+          "node_id": "5023",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "ckpt_name",
+            "node_id": "5023"
+          },
+          "type": null,
+          "value": "ltx-2.3-22b-dev.safetensors"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "text",
+          "media_semantics": null,
+          "name": "prompt",
+          "node_id": "2483",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "text",
+            "node_id": "2483"
+          },
+          "type": null,
+          "value": "HDR footage"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "noise_seed",
+          "media_semantics": null,
+          "name": "seed",
+          "node_id": "4832",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "noise_seed",
+            "node_id": "4832"
+          },
+          "type": null,
+          "value": 42
+        }
+      ],
+      "public_outputs": [
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "5109",
+          "output_type": "SaveVideo"
+        }
+      ],
+      "readiness_level": "unknown",
+      "runtime_class_types": [
+        "CFGGuider",
+        "CLIPTextEncode",
+        "CheckpointLoaderSimple",
+        "CreateVideo",
+        "EmptyLTXVLatentVideo",
+        "GemmaAPITextEncode",
+        "GetImageSize",
+        "GetVideoComponents",
+        "KSamplerSelect",
+        "LTXAVTextEncoderLoader",
+        "LTXAddVideoICLoRAGuide",
+        "LTXICLoRALoaderModelOnly",
+        "LTXVConditioning",
+        "LTXVCropGuides",
+        "LTXVHDRDecodePostprocess",
+        "LoadVideo",
+        "ManualSigmas",
+        "PrimitiveString",
+        "RandomNoise",
+        "ResizeImageMaskNode",
+        "SamplerCustomAdvanced",
+        "SaveVideo",
+        "SimpleMath+",
+        "VAEDecodeTiled"
+      ],
+      "runtime_nodes": [
+        "1241",
+        "2483",
+        "2612",
+        "3059",
+        "3940",
+        "4828",
+        "4829",
+        "4831",
+        "4832",
+        "4851",
+        "5011",
+        "5012",
+        "5013",
+        "5020",
+        "5021",
+        "5022",
+        "5023",
+        "5025",
+        "5029",
+        "5105",
+        "5106",
+        "5108",
+        "5109",
+        "5111",
+        "5112",
+        "5114",
+        "5125"
+      ],
+      "runtime_packages": [],
+      "source": {
+        "id": "LTX-2.3_ICLoRA_HDR_Distilled",
+        "path": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
+        "provenance": {},
+        "source_type": "api"
+      },
+      "version": 1,
+      "workflow_id": "LTX-2.3_ICLoRA_HDR_Distilled"
+    },
+    "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+    "diagnostics": [
+      {
+        "class_type": "PrimitiveString",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveString node 5022 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "5022",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "Note",
+        "code": "ui_only_node_stripped",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "Note node 5113 is UI-only and will be omitted from runtime prompts.",
+        "node_id": "5113",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "Note",
+        "code": "ui_only_node_stripped",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "Note node 5117 is UI-only and will be omitted from runtime prompts.",
+        "node_id": "5117",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "Note",
+        "code": "ui_only_node_stripped",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "Note node 5118 is UI-only and will be omitted from runtime prompts.",
+        "node_id": "5118",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "Note",
+        "code": "ui_only_node_stripped",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "Note node 5119 is UI-only and will be omitted from runtime prompts.",
+        "node_id": "5119",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "Note",
+        "code": "ui_only_node_stripped",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "Note node 5120 is UI-only and will be omitted from runtime prompts.",
+        "node_id": "5120",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "Note",
+        "code": "ui_only_node_stripped",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "Note node 5121 is UI-only and will be omitted from runtime prompts.",
+        "node_id": "5121",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "LTXAVTextEncoderLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "text_encoder",
+          "name": "comfy_gemma_3_12B_it.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'comfy_gemma_3_12B_it.safetensors' has no source URL.",
+        "node_id": "5023",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "CheckpointLoaderSimple",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "ckpt_name",
+          "name": "ltx-2.3-22b-dev.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt",
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'ltx-2.3-22b-dev.safetensors' has no source URL.",
+        "node_id": "3940",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "LTXICLoRALoaderModelOnly",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "lora_name",
+          "name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt",
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors' has no source URL.",
+        "node_id": "5125",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "LTXICLoRALoaderModelOnly",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "lora_name",
+          "name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt",
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors' has no source URL.",
+        "node_id": "5011",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "ResizeImageMaskNode",
+        "code": "unknown_input",
+        "detail": {
+          "category": "schema",
+          "input": "resize_type.multiple"
+        },
+        "message": "Node 5112 (ResizeImageMaskNode) has unknown input resize_type.multiple.",
+        "node_id": "5112",
+        "recommendation": null,
+        "severity": "error"
+      },
+      {
+        "class_type": "LoadVideo",
+        "code": "unknown_input",
+        "detail": {
+          "category": "schema",
+          "input": "upload"
+        },
+        "message": "Node 5106 (LoadVideo) has unknown input upload.",
+        "node_id": "5106",
+        "recommendation": null,
+        "severity": "error"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "5112",
+          "from_output": "0",
+          "input_type": "IMAGE",
+          "output_type": "COMFY_MATCHTYPE_V3",
+          "to_input": "image",
+          "to_node": "5029"
+        },
+        "message": "Edge 5112.0 -> 5029.image connects COMFY_MATCHTYPE_V3 to IMAGE.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "5105",
+          "from_output": "0",
+          "input_type": "COMFY_MATCHTYPE_V3",
+          "output_type": "IMAGE",
+          "to_input": "input",
+          "to_node": "5112"
+        },
+        "message": "Edge 5105.0 -> 5112.input connects IMAGE to COMFY_MATCHTYPE_V3.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "5112",
+          "from_output": "0",
+          "input_type": "IMAGE",
+          "output_type": "COMFY_MATCHTYPE_V3",
+          "to_input": "image",
+          "to_node": "5012"
+        },
+        "message": "Edge 5112.0 -> 5012.image connects COMFY_MATCHTYPE_V3 to IMAGE.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": "Note",
+        "code": "schema_backed_widget_alias_not_resolved",
+        "detail": {
+          "category": "readability",
+          "widget_keys": [
+            "widget_0"
+          ]
+        },
+        "message": "Node 5117 (Note) has 1 unresolved widget_N key(s) (widget_0) - no schema aliases available.",
+        "node_id": "5117",
+        "recommendation": "Add the class to the widget schema or provide schema-source evidence.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "Note",
+        "code": "schema_backed_widget_alias_not_resolved",
+        "detail": {
+          "category": "readability",
+          "widget_keys": [
+            "widget_0"
+          ]
+        },
+        "message": "Node 5118 (Note) has 1 unresolved widget_N key(s) (widget_0) - no schema aliases available.",
+        "node_id": "5118",
+        "recommendation": "Add the class to the widget schema or provide schema-source evidence.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "Note",
+        "code": "schema_backed_widget_alias_not_resolved",
+        "detail": {
+          "category": "readability",
+          "widget_keys": [
+            "widget_0"
+          ]
+        },
+        "message": "Node 5119 (Note) has 1 unresolved widget_N key(s) (widget_0) - no schema aliases available.",
+        "node_id": "5119",
+        "recommendation": "Add the class to the widget schema or provide schema-source evidence.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "Note",
+        "code": "schema_backed_widget_alias_not_resolved",
+        "detail": {
+          "category": "readability",
+          "widget_keys": [
+            "widget_0"
+          ]
+        },
+        "message": "Node 5113 (Note) has 1 unresolved widget_N key(s) (widget_0) - no schema aliases available.",
+        "node_id": "5113",
+        "recommendation": "Add the class to the widget schema or provide schema-source evidence.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "Note",
+        "code": "schema_backed_widget_alias_not_resolved",
+        "detail": {
+          "category": "readability",
+          "widget_keys": [
+            "widget_0"
+          ]
+        },
+        "message": "Node 5121 (Note) has 1 unresolved widget_N key(s) (widget_0) - no schema aliases available.",
+        "node_id": "5121",
+        "recommendation": "Add the class to the widget schema or provide schema-source evidence.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "Note",
+        "code": "schema_backed_widget_alias_not_resolved",
+        "detail": {
+          "category": "readability",
+          "widget_keys": [
+            "widget_0"
+          ]
+        },
+        "message": "Node 5120 (Note) has 1 unresolved widget_N key(s) (widget_0) - no schema aliases available.",
+        "node_id": "5120",
+        "recommendation": "Add the class to the widget schema or provide schema-source evidence.",
+        "severity": "warning"
+      }
+    ],
+    "graph_contract": {
+      "edge_count": 39,
+      "named_output_count": 0,
+      "output_count": 1,
+      "runtime_class_types": [
+        "CFGGuider",
+        "CLIPTextEncode",
+        "CheckpointLoaderSimple",
+        "CreateVideo",
+        "EmptyLTXVLatentVideo",
+        "GemmaAPITextEncode",
+        "GetImageSize",
+        "GetVideoComponents",
+        "KSamplerSelect",
+        "LTXAVTextEncoderLoader",
+        "LTXAddVideoICLoRAGuide",
+        "LTXICLoRALoaderModelOnly",
+        "LTXVConditioning",
+        "LTXVCropGuides",
+        "LTXVHDRDecodePostprocess",
+        "LoadVideo",
+        "ManualSigmas",
+        "PrimitiveString",
+        "RandomNoise",
+        "ResizeImageMaskNode",
+        "SamplerCustomAdvanced",
+        "SaveVideo",
+        "SimpleMath+",
+        "VAEDecodeTiled"
+      ],
+      "runtime_node_count": 27,
+      "schema_sources": [],
+      "unresolved_positional_outputs": [],
+      "unresolved_widgets": []
+    },
+    "metadata": {
+      "contract": {
+        "comfy_configuration": {},
+        "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+        "custom_nodes": [],
+        "graph_contract": {
+          "edge_count": 39,
+          "named_output_count": 0,
+          "output_count": 1,
+          "runtime_class_types": [
+            "CFGGuider",
+            "CLIPTextEncode",
+            "CheckpointLoaderSimple",
+            "CreateVideo",
+            "EmptyLTXVLatentVideo",
+            "GemmaAPITextEncode",
+            "GetImageSize",
+            "GetVideoComponents",
+            "KSamplerSelect",
+            "LTXAVTextEncoderLoader",
+            "LTXAddVideoICLoRAGuide",
+            "LTXICLoRALoaderModelOnly",
+            "LTXVConditioning",
+            "LTXVCropGuides",
+            "LTXVHDRDecodePostprocess",
+            "LoadVideo",
+            "ManualSigmas",
+            "PrimitiveString",
+            "RandomNoise",
+            "ResizeImageMaskNode",
+            "SamplerCustomAdvanced",
+            "SaveVideo",
+            "SimpleMath+",
+            "VAEDecodeTiled"
+          ],
+          "runtime_node_count": 27,
+          "schema_sources": [],
+          "unresolved_positional_outputs": [],
+          "unresolved_widgets": []
+        },
+        "inputs": [
+          "model",
+          "prompt",
+          "seed"
+        ],
+        "metadata": {
+          "capability": null,
+          "coverage_tier": null,
+          "ready_template": null
+        },
+        "model_assets": [
+          {
+            "name": "ltx-2.3-22b-dev.safetensors"
+          },
+          {
+            "name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+          },
+          {
+            "name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors"
+          }
+        ],
+        "outputs": [
+          {
+            "node_id": "5109",
+            "output_type": "SaveVideo"
+          }
+        ],
+        "public_inputs": [
+          {
+            "aliases": [],
+            "default": null,
+            "field": "ckpt_name",
+            "media_semantics": null,
+            "name": "model",
+            "node_id": "5023",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "ckpt_name",
+              "node_id": "5023"
+            },
+            "type": null,
+            "value": "ltx-2.3-22b-dev.safetensors"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "text",
+            "media_semantics": null,
+            "name": "prompt",
+            "node_id": "2483",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "text",
+              "node_id": "2483"
+            },
+            "type": null,
+            "value": "HDR footage"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "noise_seed",
+            "media_semantics": null,
+            "name": "seed",
+            "node_id": "4832",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "noise_seed",
+              "node_id": "4832"
+            },
+            "type": null,
+            "value": 42
+          }
+        ],
+        "public_outputs": [
+          {
+            "artifact_kind": null,
+            "expected_cardinality": null,
+            "filename_prefix": null,
+            "mime_type": null,
+            "name": null,
+            "node_id": "5109",
+            "output_type": "SaveVideo"
+          }
+        ],
+        "readiness_level": "unknown",
+        "runtime_class_types": [
+          "CFGGuider",
+          "CLIPTextEncode",
+          "CheckpointLoaderSimple",
+          "CreateVideo",
+          "EmptyLTXVLatentVideo",
+          "GemmaAPITextEncode",
+          "GetImageSize",
+          "GetVideoComponents",
+          "KSamplerSelect",
+          "LTXAVTextEncoderLoader",
+          "LTXAddVideoICLoRAGuide",
+          "LTXICLoRALoaderModelOnly",
+          "LTXVConditioning",
+          "LTXVCropGuides",
+          "LTXVHDRDecodePostprocess",
+          "LoadVideo",
+          "ManualSigmas",
+          "PrimitiveString",
+          "RandomNoise",
+          "ResizeImageMaskNode",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "SimpleMath+",
+          "VAEDecodeTiled"
+        ],
+        "runtime_nodes": [
+          "1241",
+          "2483",
+          "2612",
+          "3059",
+          "3940",
+          "4828",
+          "4829",
+          "4831",
+          "4832",
+          "4851",
+          "5011",
+          "5012",
+          "5013",
+          "5020",
+          "5021",
+          "5022",
+          "5023",
+          "5025",
+          "5029",
+          "5105",
+          "5106",
+          "5108",
+          "5109",
+          "5111",
+          "5112",
+          "5114",
+          "5125"
+        ],
+        "runtime_packages": [],
+        "source": {
+          "id": "LTX-2.3_ICLoRA_HDR_Distilled",
+          "path": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
+          "provenance": {},
+          "source_type": "api"
+        },
+        "version": 1,
+        "workflow_id": "LTX-2.3_ICLoRA_HDR_Distilled"
+      },
+      "custom_node_analysis": {
+        "diagnostics": [],
+        "helper_class_types_excluded": [
+          "Note"
+        ],
+        "missing_runtime_class_types": [],
+        "runtime_class_types": [
+          "CFGGuider",
+          "CLIPTextEncode",
+          "CheckpointLoaderSimple",
+          "CreateVideo",
+          "EmptyLTXVLatentVideo",
+          "GemmaAPITextEncode",
+          "GetImageSize",
+          "GetVideoComponents",
+          "KSamplerSelect",
+          "LTXAVTextEncoderLoader",
+          "LTXAddVideoICLoRAGuide",
+          "LTXICLoRALoaderModelOnly",
+          "LTXVConditioning",
+          "LTXVCropGuides",
+          "LTXVHDRDecodePostprocess",
+          "LoadVideo",
+          "ManualSigmas",
+          "PrimitiveString",
+          "RandomNoise",
+          "ResizeImageMaskNode",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "SimpleMath+",
+          "VAEDecodeTiled"
+        ],
+        "status": "analyzed",
+        "suggestions": [],
+        "unresolved_runtime_class_types": []
+      },
+      "runtime_class_types": [
+        "CFGGuider",
+        "CLIPTextEncode",
+        "CheckpointLoaderSimple",
+        "CreateVideo",
+        "EmptyLTXVLatentVideo",
+        "GemmaAPITextEncode",
+        "GetImageSize",
+        "GetVideoComponents",
+        "KSamplerSelect",
+        "LTXAVTextEncoderLoader",
+        "LTXAddVideoICLoRAGuide",
+        "LTXICLoRALoaderModelOnly",
+        "LTXVConditioning",
+        "LTXVCropGuides",
+        "LTXVHDRDecodePostprocess",
+        "LoadVideo",
+        "ManualSigmas",
+        "PrimitiveString",
+        "RandomNoise",
+        "ResizeImageMaskNode",
+        "SamplerCustomAdvanced",
+        "SaveVideo",
+        "SimpleMath+",
+        "VAEDecodeTiled"
+      ],
+      "schema_source": {
+        "object_info_cache": "out/cache/object_info.comfy-core.0.25.0.json",
+        "provider": "ConversionSchemaProvider",
+        "runtime_enabled": false,
+        "server_url": null
+      },
+      "schema_validation": {
+        "issue_count": 5,
+        "ok": false,
+        "schema_provider": true
+      },
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
+      "widget_analysis": {
+        "missing_compiled_widget_inputs": [],
+        "suggestions": [],
+        "unresolved_widget_aliases": []
+      }
+    },
+    "node_counts": {
+      "CFGGuider": 1,
+      "CLIPTextEncode": 2,
+      "CheckpointLoaderSimple": 1,
+      "CreateVideo": 1,
+      "EmptyLTXVLatentVideo": 1,
+      "GemmaAPITextEncode": 2,
+      "GetImageSize": 1,
+      "GetVideoComponents": 1,
+      "KSamplerSelect": 1,
+      "LTXAVTextEncoderLoader": 1,
+      "LTXAddVideoICLoRAGuide": 1,
+      "LTXICLoRALoaderModelOnly": 2,
+      "LTXVConditioning": 1,
+      "LTXVCropGuides": 1,
+      "LTXVHDRDecodePostprocess": 1,
+      "LoadVideo": 1,
+      "ManualSigmas": 1,
+      "Note": 6,
+      "PrimitiveString": 1,
+      "RandomNoise": 1,
+      "ResizeImageMaskNode": 1,
+      "SamplerCustomAdvanced": 1,
+      "SaveVideo": 1,
+      "SimpleMath+": 1,
+      "VAEDecodeTiled": 1
+    },
+    "node_pack_suggestions": [],
+    "ok": false,
+    "output_mode": "analysis",
+    "provenance": {
+      "indexed_id": null,
+      "raw_workflow_shape": "ui",
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
+      "source_ref": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
+      "workflow_source_id": "LTX-2.3_ICLoRA_HDR_Distilled",
+      "workflow_source_type": "api"
+    },
+    "public_inputs": [
+      {
+        "aliases": [],
+        "default": null,
+        "field": "ckpt_name",
+        "media_semantics": null,
+        "name": "model",
+        "node_id": "5023",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "ckpt_name",
+          "node_id": "5023"
+        },
+        "type": null,
+        "value": "ltx-2.3-22b-dev.safetensors"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "text",
+        "media_semantics": null,
+        "name": "prompt",
+        "node_id": "2483",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "text",
+          "node_id": "2483"
+        },
+        "type": null,
+        "value": "HDR footage"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "noise_seed",
+        "media_semantics": null,
+        "name": "seed",
+        "node_id": "4832",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "noise_seed",
+          "node_id": "4832"
+        },
+        "type": null,
+        "value": 42
+      }
+    ],
+    "public_outputs": [
+      {
+        "artifact_kind": null,
+        "expected_cardinality": null,
+        "filename_prefix": null,
+        "mime_type": null,
+        "name": null,
+        "node_id": "5109",
+        "output_type": "SaveVideo"
+      }
+    ],
+    "recommendations": [
+      "Run `vibecomfy validate ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json` after port fixes.",
+      "Run `vibecomfy nodes install-plan ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json` before installing custom nodes.",
+      "Use `vibecomfy port convert ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json --out out/scratchpads/<name>.py` for Python scratchpad materialization.",
+      "Review model assets before RunPod validation; use `vibecomfy fetch ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json --dry-run` for URL-backed assets.",
+      "Resolve error diagnostics before spending RunPod GPU time."
+    ],
+    "source": "ready_templates/sources/custom_nodes/ltxvideo/lightricks_2_3/LTX-2.3_ICLoRA_HDR_Distilled.json",
+    "source_hash": "sha256:63dfbf9819ccbc4189964b6adccec84199e9763621c40ba0dd0f2eb0e462fd25",
+    "workflow_id": "LTX-2.3_ICLoRA_HDR_Distilled",
+    "workflow_shape": {
+      "edges": 39,
+      "helper_nodes": 6,
+      "inputs": 3,
+      "nodes": 33,
+      "outputs": 1,
+      "runtime_nodes": 27
+    }
+  },
+  "status": "ok",
+  "strict_ready_diagnostics": [],
+  "strict_ready_ok": null,
+  "write": {
+    "diff": null,
+    "diff_forced_dry_run": false,
+    "diff_requested": false,
+    "dry_run": false,
+    "target": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/08_ltx2_3_iclora_hdr.py",
+    "target_exists": false,
+    "validation": {
+      "api_node_count": 24,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAVTextEncoderLoader",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 122
+          },
+          "message": "node call for 'LTXAVTextEncoderLoader' (node 5023) would be a single line of 122 chars (>120); multi-line formatting preferred.",
+          "node_id": "5023",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LoadVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "upload",
+            "schema_inputs": [
+              "file"
+            ]
+          },
+          "message": "Node 5106 (LoadVideo) emits schema-unknown kwarg 'upload'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5106",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5113 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5113",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 294
+          },
+          "message": "node call for 'Note' (node 5113) would be a single line of 294 chars (>120); multi-line formatting preferred.",
+          "node_id": "5113",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5117 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5117",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 141
+          },
+          "message": "node call for 'Note' (node 5117) would be a single line of 141 chars (>120); multi-line formatting preferred.",
+          "node_id": "5117",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5118 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5118",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 135
+          },
+          "message": "node call for 'Note' (node 5118) would be a single line of 135 chars (>120); multi-line formatting preferred.",
+          "node_id": "5118",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5119 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5119",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 153
+          },
+          "message": "node call for 'Note' (node 5119) would be a single line of 153 chars (>120); multi-line formatting preferred.",
+          "node_id": "5119",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5120 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5120",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 144
+          },
+          "message": "node call for 'Note' (node 5120) would be a single line of 144 chars (>120); multi-line formatting preferred.",
+          "node_id": "5120",
+          "severity": "warning"
+        },
+        {
+          "class_type": "Note",
+          "code": "schema_backed_widget_alias_not_resolved",
+          "detail": {
+            "schema_source": {
+              "cache_path": null,
+              "confidence": 0.0,
+              "hash": null,
+              "package": null,
+              "path": null,
+              "provider": "",
+              "server_url": null,
+              "version": null
+            },
+            "widget_keys": [
+              "widget_0"
+            ]
+          },
+          "message": "Node 5121 (Note) has 1 unresolved widget_N keys despite schema being available.",
+          "node_id": "5121",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 2483 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "2483",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 2612 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "2612",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "lora_name",
+              "strength_model"
+            ]
+          },
+          "message": "Node 5125 (LTXICLoRALoaderModelOnly) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5125",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 156
+          },
+          "message": "node call for 'LTXICLoRALoaderModelOnly' (node 5125) would be a single line of 156 chars (>120); multi-line formatting preferred.",
+          "node_id": "5125",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVConditioning",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "frame_rate"
+            ]
+          },
+          "message": "Node 1241 (LTXVConditioning) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "1241",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVConditioning",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "frame_rate"
+            ]
+          },
+          "message": "Node 1241 (LTXVConditioning) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "1241",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVConditioning",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 173
+          },
+          "message": "node call for 'LTXVConditioning' (node 1241) would be a single line of 173 chars (>120); multi-line formatting preferred.",
+          "node_id": "1241",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "lora_name",
+              "strength_model"
+            ]
+          },
+          "message": "Node 5011 (LTXICLoRALoaderModelOnly) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5011",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXICLoRALoaderModelOnly",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 154
+          },
+          "message": "node call for 'LTXICLoRALoaderModelOnly' (node 5011) would be a single line of 154 chars (>120); multi-line formatting preferred.",
+          "node_id": "5011",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ResizeImageMaskNode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "input",
+            "linked": true,
+            "schema_inputs": [
+              "resize_type",
+              "scale_method"
+            ]
+          },
+          "message": "Node 5112 (ResizeImageMaskNode) emits schema-unknown linked kwarg 'input'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5112",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ResizeImageMaskNode",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 194
+          },
+          "message": "node call for 'ResizeImageMaskNode' (node 5112) would be a single line of 194 chars (>120); multi-line formatting preferred.",
+          "node_id": "5112",
+          "severity": "warning"
+        },
+        {
+          "class_type": "EmptyLTXVLatentVideo",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 168
+          },
+          "message": "node call for 'EmptyLTXVLatentVideo' (node 3059) would be a single line of 168 chars (>120); multi-line formatting preferred.",
+          "node_id": "3059",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_downscale_factor",
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown kwarg 'latent_downscale_factor'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "image",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'latent'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "vae",
+            "linked": true,
+            "schema_inputs": [
+              "crop",
+              "frame_idx",
+              "strength",
+              "tile_overlap",
+              "tile_size",
+              "use_tiled_encode"
+            ]
+          },
+          "message": "Node 5012 (LTXAddVideoICLoRAGuide) emits schema-unknown linked kwarg 'vae'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXAddVideoICLoRAGuide",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 386
+          },
+          "message": "node call for 'LTXAddVideoICLoRAGuide' (node 5012) would be a single line of 386 chars (>120); multi-line formatting preferred.",
+          "node_id": "5012",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg"
+            ]
+          },
+          "message": "Node 4828 (CFGGuider) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg"
+            ]
+          },
+          "message": "Node 4828 (CFGGuider) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg"
+            ]
+          },
+          "message": "Node 4828 (CFGGuider) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CFGGuider",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 188
+          },
+          "message": "node call for 'CFGGuider' (node 4828) would be a single line of 188 chars (>120); multi-line formatting preferred.",
+          "node_id": "4828",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SamplerCustomAdvanced",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 238
+          },
+          "message": "node call for 'SamplerCustomAdvanced' (node 4829) would be a single line of 238 chars (>120); multi-line formatting preferred.",
+          "node_id": "4829",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVCropGuides",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 177
+          },
+          "message": "node call for 'LTXVCropGuides' (node 5013) would be a single line of 177 chars (>120); multi-line formatting preferred.",
+          "node_id": "5013",
+          "severity": "warning"
+        },
+        {
+          "class_type": "VAEDecodeTiled",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "samples",
+            "linked": true,
+            "schema_inputs": [
+              "overlap",
+              "temporal_overlap",
+              "temporal_size",
+              "tile_size"
+            ]
+          },
+          "message": "Node 4851 (VAEDecodeTiled) emits schema-unknown linked kwarg 'samples'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4851",
+          "severity": "warning"
+        },
+        {
+          "class_type": "VAEDecodeTiled",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "vae",
+            "linked": true,
+            "schema_inputs": [
+              "overlap",
+              "temporal_overlap",
+              "temporal_size",
+              "tile_size"
+            ]
+          },
+          "message": "Node 4851 (VAEDecodeTiled) emits schema-unknown linked kwarg 'vae'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "4851",
+          "severity": "warning"
+        },
+        {
+          "class_type": "VAEDecodeTiled",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 177
+          },
+          "message": "node call for 'VAEDecodeTiled' (node 4851) would be a single line of 177 chars (>120); multi-line formatting preferred.",
+          "node_id": "4851",
+          "severity": "warning"
+        },
+        {
+          "class_type": "LTXVHDRDecodePostprocess",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 195
+          },
+          "message": "node call for 'LTXVHDRDecodePostprocess' (node 5114) would be a single line of 195 chars (>120); multi-line formatting preferred.",
+          "node_id": "5114",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "audio",
+            "linked": true,
+            "schema_inputs": [
+              "fps"
+            ]
+          },
+          "message": "Node 5108 (CreateVideo) emits schema-unknown linked kwarg 'audio'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5108",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "images",
+            "linked": true,
+            "schema_inputs": [
+              "fps"
+            ]
+          },
+          "message": "Node 5108 (CreateVideo) emits schema-unknown linked kwarg 'images'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5108",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CreateVideo",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 136
+          },
+          "message": "node call for 'CreateVideo' (node 5108) would be a single line of 136 chars (>120); multi-line formatting preferred.",
+          "node_id": "5108",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveVideo",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "video",
+            "linked": true,
+            "schema_inputs": [
+              "codec",
+              "filename_prefix",
+              "format"
+            ]
+          },
+          "message": "Node 5109 (SaveVideo) emits schema-unknown linked kwarg 'video'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "5109",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "CFGGuider": 1,
+        "CLIPTextEncode": 2,
+        "CheckpointLoaderSimple": 1,
+        "CreateVideo": 1,
+        "EmptyLTXVLatentVideo": 1,
+        "GetImageSize": 1,
+        "GetVideoComponents": 1,
+        "KSamplerSelect": 1,
+        "LTXAVTextEncoderLoader": 1,
+        "LTXAddVideoICLoRAGuide": 1,
+        "LTXICLoRALoaderModelOnly": 2,
+        "LTXVConditioning": 1,
+        "LTXVCropGuides": 1,
+        "LTXVHDRDecodePostprocess": 1,
+        "LoadVideo": 1,
+        "ManualSigmas": 1,
+        "RandomNoise": 1,
+        "ResizeImageMaskNode": 1,
+        "SamplerCustomAdvanced": 1,
+        "SaveVideo": 1,
+        "SimpleMath+": 1,
+        "VAEDecodeTiled": 1
+      },
+      "emitted_model_snapshot": {
+        "3940:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5011:lora_name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors",
+        "5023:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5023:text_encoder": "comfy_gemma_3_12B_it.safetensors",
+        "5125:lora_name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+      },
+      "emitted_output_count": 24,
+      "emitted_topology_snapshot": 36,
+      "emitted_widget_value_snapshot": 26,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "CFGGuider": 1,
+        "CLIPTextEncode": 2,
+        "CheckpointLoaderSimple": 1,
+        "CreateVideo": 1,
+        "EmptyLTXVLatentVideo": 1,
+        "GetImageSize": 1,
+        "GetVideoComponents": 1,
+        "KSamplerSelect": 1,
+        "LTXAVTextEncoderLoader": 1,
+        "LTXAddVideoICLoRAGuide": 1,
+        "LTXICLoRALoaderModelOnly": 2,
+        "LTXVConditioning": 1,
+        "LTXVCropGuides": 1,
+        "LTXVHDRDecodePostprocess": 1,
+        "LoadVideo": 1,
+        "ManualSigmas": 1,
+        "RandomNoise": 1,
+        "ResizeImageMaskNode": 1,
+        "SamplerCustomAdvanced": 1,
+        "SaveVideo": 1,
+        "SimpleMath+": 1,
+        "VAEDecodeTiled": 1
+      },
+      "source_model_snapshot": {
+        "3940:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5011:lora_name": "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors",
+        "5023:ckpt_name": "ltx-2.3-22b-dev.safetensors",
+        "5023:text_encoder": "comfy_gemma_3_12B_it.safetensors",
+        "5125:lora_name": "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors"
+      },
+      "source_output_count": 24,
+      "source_topology_snapshot": 36,
+      "source_widget_value_snapshot": 26,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "ltx-2.3-22b-dev.safetensors",
+        "ltxv/ltx2/ltx-2.3-22b-distilled-lora-384-1.1.safetensors",
+        "ltxv/ltx2/ltx-2.3-22b-ic-lora-hdr-0.9.safetensors"
+      ]
+    },
+    "written": true
+  }
+}

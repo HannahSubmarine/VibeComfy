@@ -134,6 +134,7 @@ def test_public_input_specs_do_not_create_bogus_blank_alias_inputs(
             {"name": "seed", "widget": {"name": "seed"}},
         ]
     }
+    sampler.metadata["schema_source"] = {"source": "test", "confidence": 1.0}
     sampler.widgets.update(
         {
             "widget_1": 986337553816914,

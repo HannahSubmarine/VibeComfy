@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
@@ -45,7 +46,7 @@ def _nonempty_workflow(workflow_id: str = "bundle-test") -> VibeWorkflow:
     return workflow
 
 
-def test_revision_uses_exact_root_preimage_and_missing_sidecar_is_empty(tmp_path: Path) -> None:
+def test_revision_uses_exact_root_preimage_and_emitted_companion(tmp_path: Path) -> None:
     workflow = _nonempty_workflow()
     bundle = emit_bundle(workflow, tmp_path / "workflow.py", {"operation": "authored", "timestamp": "drop"})
 
@@ -53,13 +54,104 @@ def test_revision_uses_exact_root_preimage_and_missing_sidecar_is_empty(tmp_path
         canonical_json([
             workflow.id,
             bundle.semantic_digest,
-            "",
+            bundle.ui_digest,
             {"operation": "authored"},
             "",
         ]).encode("utf-8")
     ).hexdigest()
-    assert bundle.ui_digest == ""
+    assert bundle.ui_sidecar is not None
+    assert bundle.ui_sidecar["format_version"] == 2
+    assert bundle.ui_digest == hashlib.sha256(
+        canonical_json(bundle.ui_sidecar["presentation"]).encode()
+    ).hexdigest()
     assert bundle.revision_id == expected
+
+
+def test_reemitting_a_loaded_pair_is_byte_deterministic(tmp_path: Path) -> None:
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+
+    emit_bundle(_nonempty_workflow("deterministic-pair"), first_dir / "workflow.py", {"operation": "authored"})
+    loaded = load_bundle(first_dir / "workflow.py", trust=Provenance.USER_CONFIRMED)
+    emit_bundle(loaded.workflow, second_dir / "workflow.py", {"operation": "authored"})
+
+    assert (first_dir / "workflow.py").read_bytes() == (second_dir / "workflow.py").read_bytes()
+    assert (first_dir / "workflow.vibe.json").read_bytes() == (second_dir / "workflow.vibe.json").read_bytes()
+
+
+@pytest.mark.parametrize("corpus_id", ["352066ccef9dbe37", "8800a945cff8d090"])
+def test_cli_convert_corpus_pair_admits_through_real_loader_path(
+    corpus_id: str, tmp_path: Path
+) -> None:
+    """The CLI loader/converter path must pass v2 first-build admission."""
+    from tests.live_agentic_harness.source_layouts import resolve_corpus_record_path
+    from vibecomfy.porting.convert import (
+        _build_emitted_workflow_from_text,
+        port_convert_workflow,
+    )
+    from vibecomfy.porting.workbench import analyze_source, load_port_source
+
+    source = resolve_corpus_record_path(
+        f"tests/fixtures/live_agentic_corpus/corpus/{corpus_id}.json"
+    )
+    assert source is not None and source.is_file()
+    loaded = load_port_source(str(source), use_comfy_converter=False)
+    report = analyze_source(str(source), loaded_source=loaded, mode="auto")
+    result = port_convert_workflow(
+        loaded.workflow,
+        source_path=loaded.source_path,
+        provenance=report.provenance,
+        source_hash=report.source_hash,
+        workflow_shape=report.workflow_shape,
+        registered_inputs={},
+        schema_provider=None,
+        keep_virtual_wires=False,
+        preserve_node_ids=True,
+    )
+    emitted = _build_emitted_workflow_from_text(result.text)
+
+    bundle = emit_bundle_with_candidate(
+        emitted,
+        tmp_path / f"{corpus_id}.py",
+        report.provenance,
+        None,
+        operation="authored",
+        source_provenance={
+            "source_hash": report.source_hash,
+            "workflow_shape": report.workflow_shape,
+            "source_type": loaded.source_kind,
+        },
+        source_format="scratchpad",
+    )
+    assert bundle.semantic_digest
+
+
+def test_load_workflow_any_promotes_source_widget_aliases_for_digest_admission() -> None:
+    """The real CLI loader admits the remaining UI-backed positional case."""
+    from vibecomfy.cli_loader import load_workflow_any
+    from vibecomfy.porting.convert import port_convert_workflow
+
+    source = Path(__file__).parent / "fixtures/live_agentic_corpus/corpus/1cc45704dcffe34a.json"
+    workflow = load_workflow_any(str(source))
+
+    assert workflow.nodes["369"].inputs["width"] == 832
+    assert workflow.nodes["408"].inputs["context_length"] == 13
+    assert workflow.nodes["380"].inputs["device"] == "cpu"
+    assert workflow.nodes["500"].inputs["expression"] == "(a - 1) / 4 + 1"
+
+    result = port_convert_workflow(
+        workflow,
+        source_path=str(source),
+        registered_inputs={},
+        preserve_node_ids=True,
+    )
+    assert result.validation is not None
+    assert result.validation.import_ok
+    assert result.validation.build_ok
+    assert result.validation.compile_ok
+    assert result.validation.parity_ok
 
 
 def test_provenance_is_closed_and_excludes_operational_fields() -> None:
@@ -754,6 +846,160 @@ def test_atomic_pair_rolls_back_after_second_replacement(tmp_path: Path, monkeyp
     assert not list(tmp_path.glob(".*.tmp"))
 
 
+def test_first_build_semantic_drift_preserves_existing_pair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The private canonicalization preflight must fail before publication."""
+    workflow = _nonempty_workflow("first-build-drift")
+    destination = tmp_path / "first-build-drift.py"
+    emit_bundle(workflow, destination, {"operation": "authored"})
+    python_before = destination.read_bytes()
+    sidecar_before = destination.with_suffix(".vibe.json").read_bytes()
+    real_load_scratchpad = load_scratchpad
+
+    def load_with_first_build_drift(*args, **kwargs):
+        loaded = real_load_scratchpad(*args, **kwargs)
+        loaded.nodes["1"].inputs["value"] = 8
+        return loaded
+
+    monkeypatch.setattr(
+        "vibecomfy.scratchpad_loader.load_scratchpad",
+        load_with_first_build_drift,
+    )
+    candidate = {
+        "format_version": 1,
+        "bind": {"workflow_identity": workflow.id, "semantic_digest": workflow.semantic_digest()},
+        "nodes": {}, "links": [], "groups": [], "canvas": {},
+    }
+    with pytest.raises(WorkflowBundleError, match="first-build semantic digest"):
+        emit_bundle_with_candidate(
+            workflow, destination, {"operation": "authored"}, candidate,
+        )
+    assert destination.read_bytes() == python_before
+    assert destination.with_suffix(".vibe.json").read_bytes() == sidecar_before
+
+
+def test_helper_custody_preserves_source_backed_canvas_geometry(tmp_path: Path) -> None:
+    """Lowered helpers stay inspectable in the companion without Python bloat."""
+    workflow = _workflow("helper-geometry")
+    workflow.nodes["source"] = VibeNode(
+        "source", "SchemaLessSource", uid="source", native_output_names=["IMAGE"],
+    )
+    workflow.nodes["reroute"] = VibeNode(
+        "reroute", "Reroute", uid="reroute", pos=[5, 6], size=[75, 26],
+    )
+    workflow.nodes["sink"] = VibeNode(
+        "sink", "SchemaLessSink", uid="sink", inputs={"image": None},
+        native_input_names=["image"],
+    )
+    workflow.edges = [
+        VibeEdge("source", "0", "reroute", "0"),
+        VibeEdge("reroute", "0", "sink", "image"),
+    ]
+    first_path = tmp_path / "helper-geometry.py"
+    emit_bundle(workflow, first_path, {"operation": "authored"})
+    first = load_bundle(first_path, trust=Provenance.USER_CONFIRMED)
+    helper = first.ui_sidecar["custody"]["scopes"][0]["helpers"][0]
+    assert helper["uid"] == "reroute"
+    assert helper["pos"] == [5.0, 6.0]
+    assert helper["size"] == [75.0, 26.0]
+
+    second_path = tmp_path / "helper-geometry-copy.py"
+    emit_bundle(first.workflow, second_path, {"operation": "authored"})
+    second = load_bundle(second_path, trust=Provenance.USER_CONFIRMED)
+    assert second.ui_sidecar["custody"]["scopes"][0]["helpers"][0]["pos"] == [5.0, 6.0]
+
+
+def test_recursive_companion_scopes_match_recursive_definitions(tmp_path: Path) -> None:
+    from tests.test_b11b_execution_projection import _depth_two_sibling_workflow
+    from vibecomfy.workflow_bundle import _validate_v2_custody
+
+    workflow, inner_key, outer_key = _depth_two_sibling_workflow()
+    path = tmp_path / "recursive-scopes.py"
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    custody = copy.deepcopy(bundle.ui_sidecar["custody"])
+    custody["scopes"] = [
+        scope
+        for scope in custody["scopes"]
+        if scope["scope_path"] != f"{outer_key}/{inner_key}"
+    ]
+    with pytest.raises(WorkflowBundleError, match="scopes do not match definitions"):
+        _validate_v2_custody(custody)
+
+
+def test_recursive_companion_is_closed_and_structural_only(tmp_path: Path) -> None:
+    """Recursive custody cannot become a hidden graph/value replay channel."""
+    from tests.test_b11b_execution_projection import _depth_two_sibling_workflow
+    from vibecomfy.workflow_bundle import _validate_v2_custody
+
+    workflow, _inner_key, _outer_key = _depth_two_sibling_workflow()
+    bundle = emit_bundle(workflow, tmp_path / "recursive-closed.py", {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    base = copy.deepcopy(bundle.ui_sidecar["custody"])
+    definition = base["definitions"]["subgraphs"][0]
+    record = definition["definitions"]["subgraphs"][0]["_constructor_nodes"][0]
+
+    cases = (
+        ("runtime payload", lambda custody: custody["definitions"]["subgraphs"][0].update(
+            {"runtime_payload": {"nodes": [{"id": "999"}], "value": 7}}
+        )),
+        ("record extension", lambda custody: custody["definitions"]["subgraphs"][0]["_constructor_nodes"][0].update(
+            {"replay_values": {"x": 7}}
+        )),
+        ("shape extension", lambda custody: custody["definitions"]["subgraphs"][0]["definitions"]["subgraphs"][0]
+            ["_constructor_nodes"][0]["input_shape"][0].update({"value": 7})),
+        ("nested container extension", lambda custody: custody["definitions"]["subgraphs"][0].update(
+            {"definitions": {"subgraphs": [], "edges": []}}
+        )),
+    )
+    assert record["input_shape"]
+    for label, mutate in cases:
+        candidate = copy.deepcopy(base)
+        mutate(candidate)
+        with pytest.raises(WorkflowBundleError, match="unknown field|only subgraphs"):
+            _validate_v2_custody(candidate)
+
+
+def test_rewriting_existing_pair_preserves_authored_presentation(tmp_path: Path) -> None:
+    """Editing semantic Python must retain the existing companion's canvas."""
+    workflow = _nonempty_workflow("presentation-rewrite")
+    destination = tmp_path / "presentation-rewrite.py"
+    candidate = {
+        "format_version": 1,
+        "bind": {
+            "workflow_identity": workflow.id,
+            "semantic_digest": workflow.semantic_digest(),
+        },
+        "nodes": {
+            "integer-node": {"id": 7, "pos": [101, 202], "class_type": "Integer"},
+            "note": {"id": 8, "pos": [303, 404], "class_type": "MarkdownNote"},
+        },
+        "links": [],
+        "groups": [],
+        "canvas": {},
+        "annotations": [{
+        "annotation_id": "note",
+        "scope_path": "",
+        "owner": {"kind": "node", "uid": "note"},
+        "class_type": "MarkdownNote",
+        "title": "Authored note",
+        "content": "Keep this through an edit",
+        }],
+    }
+    emit_bundle_with_candidate(workflow, destination, {"operation": "captured"}, candidate)
+
+    loaded = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
+    loaded.workflow.nodes["1"].inputs["value"] = 8
+    emit_bundle(loaded.workflow, destination, {"operation": "authored"})
+    rewritten = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
+    presentation = rewritten.ui_sidecar["presentation"]
+    assert rewritten.workflow.nodes["1"].inputs["value"] == 8
+    assert presentation["nodes"]["integer-node"]["pos"] == [101.0, 202.0]
+    assert presentation["nodes"]["note"]["pos"] == [303.0, 404.0]
+    assert presentation["annotations"][0]["content"] == "Keep this through an edit"
+
+
 def test_sidecar_groups_are_sorted_and_duplicate_identity_rejected() -> None:
     workflow = _connected_workflow()
     sidecar = _strict_sidecar(workflow)
@@ -889,15 +1135,17 @@ def test_capture_preserves_ui_fidelity_and_rejects_known_raw_properties(
     }
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(graph, tmp_path / "capture.py", {"operation": "captured"})
-    assert bundle.ui_sidecar["nodes"]["source"]["collapsed"] is True
-    assert bundle.ui_sidecar["nodes"]["source"]["group"] == "7"
-    assert bundle.ui_sidecar["groups"][0]["presentation_id"] == "7"
-    assert bundle.ui_sidecar["canvas"] == {"zoom": 1.5, "pan": [11.0, 12.0]}
-    assert "reroute" not in bundle.ui_sidecar["links"][0]
+    presentation = bundle.ui_sidecar["presentation"]
+    assert presentation["nodes"]["source"]["collapsed"] is True
+    assert presentation["nodes"]["source"]["group"] == "7"
+    assert presentation["groups"][0]["presentation_id"] == "7"
+    assert presentation["canvas"] == {"zoom": 1.5, "pan": [11.0, 12.0]}
+    assert "reroute" not in presentation["links"][0]
     graph["nodes"][0]["properties"]["widget_ue_connectable"] = True
     extra = capture_bundle(graph, tmp_path / "extra-prop.py", {"operation": "captured"})
-    assert extra.ui_sidecar["nodes"]["source"]["id"] == 1
-    assert "widget_ue_connectable" not in extra.ui_sidecar["nodes"]["source"]
+    extra_presentation = extra.ui_sidecar["presentation"]
+    assert extra_presentation["nodes"]["source"]["id"] == 1
+    assert "widget_ue_connectable" not in extra_presentation["nodes"]["source"]
 
 
 def test_capture_coerces_oversized_node_size_pair(
@@ -930,39 +1178,52 @@ def test_capture_coerces_oversized_node_size_pair(
     }
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(graph, tmp_path / "size.py", {"operation": "captured"})
-    assert bundle.ui_sidecar["nodes"]["source"]["size"] == [3.0, 4.0]
-    assert bundle.ui_sidecar["nodes"]["source"]["pos"] == [1.0, 2.0]
+    presentation = bundle.ui_sidecar["presentation"]
+    assert presentation["nodes"]["source"]["size"] == [3.0, 4.0]
+    assert presentation["nodes"]["source"]["pos"] == [1.0, 2.0]
 
 
-def test_emit_bundle_does_not_fail_closed_on_semantic_digest_drift(
+def test_emit_bundle_rejects_semantic_digest_drift_before_replacement(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Emit→load semantic digest drift must not abort publication.
-
-    Implement apply fail-closed with "staged Python identity or semantic
-    digest differs from intended bundle" on representable graphs whose emit
-    roundtrip is lossy (same workflow id, different semantic digest).
-    """
+    """A staged semantic mismatch leaves both existing artifacts untouched."""
     workflow = _workflow("drift-id")
     workflow.add_node("Integer", uid="integer-node", value=7)
     destination = tmp_path / "drift.py"
+    baseline = emit_bundle(workflow, destination, {"operation": "authored"})
     real_load_scratchpad = load_scratchpad
 
+    load_calls = 0
+
     def load_with_diagnostic_drift(*args, **kwargs):
+        nonlocal load_calls
         loaded = real_load_scratchpad(*args, **kwargs)
-        loaded.nodes["1"].inputs["value"] = 8
+        load_calls += 1
+        # Pair canonicalization performs one private staged load.  Drift on
+        # the later visible publication preflight must still abort atomically.
+        if load_calls >= 2:
+            loaded.nodes["1"].inputs["value"] = 8
         return loaded
 
     monkeypatch.setattr(
         "vibecomfy.scratchpad_loader.load_scratchpad",
         load_with_diagnostic_drift,
     )
-    bundle = emit_bundle(workflow, destination, {"operation": "authored"})
-    assert destination.is_file()
-    loaded = real_load_scratchpad(destination, provenance_override=Provenance.USER_CONFIRMED)
-    assert loaded.id == workflow.id == bundle.workflow.id
-    assert loaded.semantic_digest() == workflow.semantic_digest()
+    sidecar = destination.with_suffix(".vibe.json")
+    sidecar_payload = {
+        "format_version": 1,
+        "bind": {"workflow_identity": workflow.id, "semantic_digest": baseline.semantic_digest},
+        "nodes": {}, "links": [], "groups": [], "canvas": {},
+    }
+    sidecar.write_text(json.dumps(sidecar_payload, sort_keys=True) + "\n", encoding="utf-8")
+    python_before = destination.read_bytes()
+    sidecar_before = sidecar.read_bytes()
+    with pytest.raises(WorkflowBundleError, match="semantic digest"):
+        emit_bundle(workflow, destination, {"operation": "authored"})
+    assert destination.read_bytes() == python_before
+    assert sidecar.read_bytes() == sidecar_before
+    assert baseline.workflow.id == workflow.id
 
 
 @pytest.mark.parametrize(
@@ -1061,7 +1322,7 @@ def test_capture_unknown_node_keeps_local_fallback_properties_out_of_sidecar(
     }
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(graph, tmp_path / "unknown.py", {"operation": "captured"})
-    assert bundle.ui_sidecar["nodes"]["u"] == {"id": 1}
+    assert bundle.ui_sidecar["presentation"]["nodes"]["u"] == {"id": 1}
 
 
 def test_staged_sidecar_corruption_and_first_replace_failure_preserve_old_pair(
@@ -1134,7 +1395,381 @@ def test_api_capture_separates_identity_envelope(tmp_path: Path, monkeypatch: py
     monkeypatch.setattr("vibecomfy.ingest.normalize._named_import", lambda *args, **kwargs: workflow)
     bundle = capture_bundle(api, tmp_path / "api.py", {"operation": "captured"})
     assert bundle.workflow_identity == workflow.id
-    assert bundle.ui_sidecar is None
+    assert bundle.ui_sidecar is not None
+    assert bundle.ui_sidecar["format_version"] == 2
+    assert bundle.ui_sidecar["presentation"] == {
+        "nodes": {}, "links": [], "groups": [], "canvas": {}, "annotations": []
+    }
+
+
+def test_v2_companion_keeps_generated_python_small_and_round_trippable(tmp_path: Path) -> None:
+    workflow = _nonempty_workflow("v2-shape")
+    path = tmp_path / "v2-shape.py"
+
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    source = path.read_text(encoding="utf-8")
+
+    assert path.with_suffix(".vibe.json").is_file()
+    assert bundle.ui_sidecar is not None
+    assert set(bundle.ui_sidecar) == {"format_version", "bind", "custody", "presentation"}
+    assert all(
+        token not in source
+        for token in (
+            "CANONICAL_CUSTODY",
+            "HELPER_CUSTODY",
+            "resolver_helper_custody",
+            "wf.connect(",
+            "wf.nodes[",
+        )
+    )
+    assert "wf = wf.finalize({}, outputs=[])" in source
+    loaded = load_bundle(path, trust=Provenance.USER_CONFIRMED)
+    assert loaded.semantic_digest == bundle.semantic_digest
+    assert loaded.ui_digest == bundle.ui_digest
+    assert validate_sidecar(loaded.ui_sidecar, loaded.workflow) == loaded.ui_sidecar
+
+
+def _assert_clean_v2_source(source: str) -> None:
+    """Apply the whole-file readability contract used by the v2 evidence gate."""
+    tree = ast.parse(source)
+    def literal_keys(node: ast.AST) -> set[str]:
+        if not isinstance(node, ast.Dict):
+            return set()
+        return {
+            key.value for key in node.keys
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        }
+
+    # Custody is an external companion concern.  Detect its shape rather than
+    # banning ordinary constants/helpers merely because of their names.
+    graph_payload_keys = {"nodes", "links", "edges", "helpers", "scopes"}
+    for statement in tree.body:
+        if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            continue
+        value = statement.value
+        keys = literal_keys(value)
+        assert not (
+            {"scopes"} <= keys
+            or {"generation_id", "custody_digest"} <= keys
+            or len(keys & graph_payload_keys) >= 2
+        )
+    assert not any(
+        isinstance(node, ast.Name) and "custody" in node.id.casefold()
+        for node in ast.walk(tree)
+    )
+    replay_ops = {"connect", "finalize"}
+    for statement in ast.walk(tree):
+        if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)) or statement.name == "build":
+            continue
+        assert not any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in replay_ops
+            for node in ast.walk(statement)
+        )
+        assert not any(
+            isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Attribute)
+            and node.value.attr == "nodes"
+            for node in ast.walk(statement)
+        )
+    build = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "build")
+    graph_names = {
+        target.id
+        for node in ast.walk(build)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Name)
+        and node.value.func.id == "new_workflow"
+        for target in node.targets
+        if isinstance(target, ast.Name)
+    }
+    graph_names.update(
+        item.optional_vars.id
+        for node in ast.walk(build)
+        if isinstance(node, ast.With)
+        for item in node.items
+        if isinstance(item.optional_vars, ast.Name)
+        and isinstance(item.context_expr, ast.Call)
+        and isinstance(item.context_expr.func, ast.Name)
+        and item.context_expr.func.id == "new_workflow"
+    )
+    assert graph_names
+    assert not any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "connect"
+        for node in ast.walk(build)
+    )
+    assert not any(
+        isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Attribute)
+        and node.value.attr == "nodes"
+        for node in ast.walk(build)
+    )
+
+    finalizers = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "finalize"
+    ]
+    assert len(finalizers) == 1
+    assert len(finalizers[0].args) == 1
+    assert {keyword.arg for keyword in finalizers[0].keywords} == {"outputs"}
+
+    marker_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "build"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "ReadyMetadata"
+    ]
+    assert len(marker_calls) == 1
+    source_bundle = next(
+        keyword.value
+        for keyword in marker_calls[0].keywords
+        if keyword.arg == "source_bundle"
+    )
+    assert isinstance(source_bundle, ast.Dict)
+    marker_keys = {
+        key.value for key in source_bundle.keys if isinstance(key, ast.Constant)
+    }
+    assert marker_keys == {"format_version", "generation_id", "custody_digest"}
+
+
+def test_v2_source_contract_rejects_whole_file_integrity_mutations(tmp_path: Path) -> None:
+    """Mutation evidence covers hidden custody, replay tails, and bloated finalizers."""
+    path = tmp_path / "source-contract.py"
+    emit_bundle(_nonempty_workflow("source-contract"), path, {"operation": "authored"})
+    source = path.read_text(encoding="utf-8")
+    _assert_clean_v2_source(source)
+    anchor = "        wf = wf.finalize({}, outputs=[] )"
+    if anchor not in source:
+        anchor = "        wf = wf.finalize({}, outputs=[])"
+    assert anchor in source
+
+    mutations = {
+        "hidden custody": source.replace(
+            "def build() -> VibeWorkflow:\n",
+            "def build() -> VibeWorkflow:\n    helper_custody = {}\n",
+            1,
+        ),
+        "replay topology": source.replace(
+            anchor,
+                "        wf.connect('integer-node.0', 'integer-node.value')\n" + anchor,
+            1,
+        ),
+        "renamed graph topology": source.replace(
+            anchor,
+                "        graph.connect('integer-node.0', 'integer-node.value')\n" + anchor,
+            1,
+        ),
+        "duplicate runtime value": source.replace(
+            anchor,
+                "        wf.nodes['replay'] = object()\n" + anchor,
+            1,
+        ),
+        "bloated finalizer": source.replace(
+            anchor,
+            anchor[:-1] + ", canonical_custody={})",
+            1,
+        ),
+        "module custody payload": source.replace(
+            "from vibecomfy.workflow import VibeWorkflow\n",
+            "from vibecomfy.workflow import VibeWorkflow\n"
+            "MODULE_PAYLOAD = {'scopes': [], 'unexpected': {'nodes': []}}\n",
+            1,
+        ),
+        "neutral module graph payload": source.replace(
+            "from vibecomfy.workflow import VibeWorkflow\n",
+            "from vibecomfy.workflow import VibeWorkflow\n"
+            "MODULE_DATA = {'nodes': [], 'links': []}\n",
+            1,
+        ),
+        "module replay helper": source.replace(
+            "def build() -> VibeWorkflow:\n",
+            "def replay_graph(wf):\n    return wf.finalize({}, outputs=[])\n\n"
+            "def build() -> VibeWorkflow:\n",
+            1,
+        ),
+        "nested module replay helper": source.replace(
+            "def build() -> VibeWorkflow:\n",
+            "def wrapper(wf):\n"
+            "    def replay(wf):\n"
+            "        return wf.nodes['replay']\n"
+            "    return replay(wf)\n\n"
+            "def build() -> VibeWorkflow:\n",
+            1,
+        ),
+    }
+    for label, mutated in mutations.items():
+        with pytest.raises(AssertionError):
+            _assert_clean_v2_source(mutated)
+
+
+def test_v2_custody_rejects_open_or_graph_shaped_generated_provenance() -> None:
+    from vibecomfy.workflow_bundle import _validate_v2_custody
+
+    def custody(*, metadata=None, helper_provenance=None) -> dict:
+        node = {
+            "label": "node", "id": "1", "uid": "node", "class_type": "Integer",
+            "metadata": metadata or {"provenance": "untrusted_source"},
+        }
+        helpers = []
+        if helper_provenance is not None:
+            helpers.append({
+                "id": "helper", "uid": "helper", "class_type": "MarkdownNote",
+                "provenance": helper_provenance,
+            })
+        return {"scopes": [{"scope_path": "", "nodes": [node], "helpers": helpers}]}
+
+    with pytest.raises(WorkflowBundleError, match="provenance"):
+        _validate_v2_custody(custody(metadata={"provenance": {"nodes": [], "links": []}}))
+    with pytest.raises(WorkflowBundleError, match="provenance"):
+        _validate_v2_custody(custody(helper_provenance={"workflow_shape": {"nodes": 1}, "payload": {}}))
+    valid = _validate_v2_custody(custody(helper_provenance={"workflow_shape": {"nodes": 1}}))
+    assert valid["scopes"][0]["helpers"][0]["provenance"]["workflow_shape"]["nodes"] == 1
+
+
+def test_v2_rebuild_refreshes_edited_model_requirement(tmp_path: Path) -> None:
+    workflow = _workflow("model-requirement-refresh")
+    workflow.nodes["1"] = VibeNode(
+        "1",
+        "CheckpointLoaderSimple",
+        inputs={"ckpt_name": "old.safetensors"},
+        uid="loader",
+    )
+    workflow.requirements.models = ["old.safetensors"]
+    path = tmp_path / "model-requirement-refresh.py"
+    emit_bundle(workflow, path, {"operation": "authored"})
+
+    source = path.read_text(encoding="utf-8")
+    source = source.replace(
+        "CKPT_NAME = 'old.safetensors'",
+        "CKPT_NAME = 'new.safetensors'",
+        1,
+    )
+    path.write_text(source, encoding="utf-8")
+
+    rebuilt = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
+    assert rebuilt.nodes["1"].inputs["ckpt_name"] == "new.safetensors"
+    assert rebuilt.requirements.models == ["new.safetensors"]
+
+
+def test_v2_annotations_bind_scope_and_owner_and_materialize_content(tmp_path: Path) -> None:
+    workflow = _nonempty_workflow("annotation-binding")
+    companion = emit_bundle(
+        workflow, tmp_path / "annotation-binding.py", {"operation": "authored"}
+    ).ui_sidecar
+    assert companion is not None
+    presentation = companion["presentation"]
+    presentation["nodes"] = {"note": {"class_type": "MarkdownNote", "id": 7}}
+    presentation["annotations"] = [{
+        "annotation_id": "note", "scope_path": "",
+        "owner": {"kind": "node", "uid": "note"},
+        "class_type": "MarkdownNote", "title": "Note", "content": "preserve me",
+    }]
+    normalized = validate_sidecar(companion, workflow)
+    materialized = materialize_ui_json(workflow, normalized)
+    note = next(node for node in materialized["nodes"] if node.get("type") == "MarkdownNote")
+    assert note["widgets_values"] == ["preserve me"]
+
+    bad_scope = copy.deepcopy(companion)
+    bad_scope["presentation"]["annotations"][0]["scope_path"] = "definition:missing"
+    with pytest.raises(WorkflowBundleError, match="structural workflow scope"):
+        validate_sidecar(bad_scope, workflow)
+    bad_owner = copy.deepcopy(companion)
+    bad_owner["presentation"]["annotations"][0]["owner"]["uid"] = "ghost"
+    with pytest.raises(WorkflowBundleError, match="does not identify a node"):
+        validate_sidecar(bad_owner, workflow)
+
+    bad_annotation_id = copy.deepcopy(companion)
+    bad_annotation_id["presentation"]["annotations"][0]["annotation_id"] = "other"
+    with pytest.raises(WorkflowBundleError, match="self-owned"):
+        validate_sidecar(bad_annotation_id, workflow)
+
+    missing_presentation_node = copy.deepcopy(companion)
+    missing_presentation_node["presentation"]["annotations"][0]["owner"]["uid"] = "missing"
+    missing_presentation_node["presentation"]["annotations"][0]["annotation_id"] = "missing"
+    with pytest.raises(WorkflowBundleError, match="presentation node"):
+        validate_sidecar(missing_presentation_node, workflow)
+
+
+def test_presentation_collision_remint_keeps_semantic_link_endpoints() -> None:
+    workflow = _connected_workflow()
+    from vibecomfy.porting.emit.ui import _overlay_validated_presentation
+
+    envelope = {
+        "nodes": [
+            {"id": 159, "type": "Source", "properties": {"vibecomfy_uid": "source"}, "outputs": [{"links": [9]}]},
+            {"id": 168, "type": "Target", "properties": {"vibecomfy_uid": "target"}, "inputs": [{"link": 9}]},
+        ],
+        "links": [[9, 159, 0, 168, 0, "A"]],
+    }
+    presentation = {
+        "nodes": {"note": {"id": 159, "class_type": "MarkdownNote"}},
+        "links": [], "groups": [], "canvas": {}, "annotations": [],
+    }
+    _overlay_validated_presentation(envelope, presentation, workflow)
+    materialized = envelope
+    nodes = {node["id"]: node for node in materialized["nodes"]}
+    assert len(nodes) == 3
+    assert any(node.get("type") == "MarkdownNote" for node in nodes.values())
+    link = materialized["links"][0]
+    assert link[1] != 159
+    assert link[3] == 168
+    assert link[1] in nodes and link[3] in nodes
+
+
+def test_v2_companion_is_required_and_swapping_it_is_refused(tmp_path: Path) -> None:
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    emit_bundle(_nonempty_workflow("first"), first, {"operation": "authored"})
+    emit_bundle(_nonempty_workflow("second"), second, {"operation": "authored"})
+
+    companion = first.with_suffix(".vibe.json")
+    original = companion.read_bytes()
+    companion.unlink()
+    with pytest.raises(WorkflowBundleError, match="companion is missing"):
+        load_bundle(first, trust=Provenance.USER_CONFIRMED)
+
+    companion.write_bytes(second.with_suffix(".vibe.json").read_bytes())
+    with pytest.raises(WorkflowBundleError, match="identity"):
+        load_bundle(first, trust=Provenance.USER_CONFIRMED)
+    companion.write_bytes(original)
+
+
+def test_v2_companion_rejects_duplicate_json_keys_before_loading_python(tmp_path: Path) -> None:
+    path = tmp_path / "duplicate.py"
+    emit_bundle(_nonempty_workflow("duplicate"), path, {"operation": "authored"})
+    path.with_suffix(".vibe.json").write_text(
+        '{"format_version": 2, "format_version": 2}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(WorkflowBundleError, match="duplicate JSON key"):
+        load_bundle(path, trust=Provenance.USER_CONFIRMED)
+
+
+def test_v2_companion_regeneration_is_deterministic(tmp_path: Path) -> None:
+    first = emit_bundle(
+        _nonempty_workflow("deterministic"),
+        tmp_path / "one.py",
+        {"operation": "authored"},
+    )
+    second = emit_bundle(
+        _nonempty_workflow("deterministic"),
+        tmp_path / "two.py",
+        {"operation": "authored"},
+    )
+
+    assert (tmp_path / "one.py").read_bytes() == (tmp_path / "two.py").read_bytes()
+    assert (tmp_path / "one.vibe.json").read_bytes() == (tmp_path / "two.vibe.json").read_bytes()
+    assert first.revision_id == second.revision_id
 
 
 def test_real_converter_backed_public_capture_roundtrips_pair(tmp_path: Path) -> None:
@@ -1183,7 +1818,7 @@ def test_canonical_roundtrip_preserves_explicit_none_input_default(tmp_path: Pat
     assert reloaded.revision_id == bundle.revision_id
 
 
-def test_native_port_rosters_are_semantic_not_execution_data() -> None:
+def test_native_port_rosters_are_semantic_not_execution_data(tmp_path: Path) -> None:
     from vibecomfy.porting.emit.entrypoints import emit_scratchpad_python
 
     workflow = _connected_workflow()
@@ -1194,12 +1829,14 @@ def test_native_port_rosters_are_semantic_not_execution_data() -> None:
     assert workflow.compile("api") == api_before
 
     source = emit_scratchpad_python(workflow)
-    assert "native_input_names =" in source
-    assert "native_output_names =" in source
+    assert "'native_input_names':" not in source
+    assert "'native_output_names':" not in source
+    path = tmp_path / "generated.py"
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    assert "_native_ports=" not in source
     assert "_ui=" not in source
-    namespace: dict[str, object] = {"__file__": "generated.py"}
-    exec(source, namespace)
-    loaded = namespace["build"]()
+    loaded = load_bundle(path, trust=Provenance.USER_CONFIRMED).workflow
     assert loaded.nodes["a"].native_output_names == ["changed"]
     assert loaded.nodes["b"].native_input_names == ["in"]
     restored = VibeWorkflow.from_envelope(workflow.to_envelope())
@@ -1222,6 +1859,49 @@ def test_native_port_rosters_validate_holes_duplicates_and_missing_sidecar_evide
     sidecar = _strict_sidecar(workflow)
     with pytest.raises(WorkflowBundleError, match="native output roster"):
         validate_sidecar(sidecar, workflow)
+
+
+@pytest.mark.parametrize("bad_name", [{}, False, 7, ""])
+def test_v2_native_port_roster_names_reject_nonblank_nonnull_values(bad_name) -> None:
+    from vibecomfy.workflow_bundle import _validate_native_ports
+
+    with pytest.raises(WorkflowBundleError, match="nonblank strings or null"):
+        _validate_native_ports(
+            {"native_input_names": ["head", bad_name, "tail"]},
+            "custody node native ports",
+        )
+    accepted = _validate_native_ports(
+        {"native_output_names": ["head", None, "tail"]},
+        "custody node native ports",
+    )
+    assert accepted["native_output_names"] == ["head", None, "tail"]
+
+
+def test_v2_canonical_pair_preserves_sparse_native_port_rosters(tmp_path: Path) -> None:
+    workflow = _workflow("sparse-native-rosters")
+    workflow.nodes["source"] = VibeNode(
+        "source", "Source", uid="source",
+        native_output_names=["out", None, "tail"],
+        native_output_types=["A", None, "B"],
+    )
+    workflow.nodes["target"] = VibeNode(
+        "target", "Target", uid="target", inputs={"in": None},
+        native_input_names=["in", None, "tail"],
+        native_input_types=["A", None, "B"],
+        native_input_optional=[False, True, False],
+    )
+    workflow.edges.append(VibeEdge("source", "0", "target", "0"))
+
+    path = tmp_path / "sparse-native-rosters.py"
+    bundle = emit_bundle(workflow, path, {"operation": "authored"})
+    assert bundle.ui_sidecar is not None
+    validate_sidecar(bundle.ui_sidecar, workflow)
+    loaded = load_bundle(path, trust=Provenance.USER_CONFIRMED)
+    assert loaded.workflow.nodes["source"].native_output_names == ["out", None, "tail"]
+    assert loaded.workflow.nodes["source"].native_output_types == ["A", None, "B"]
+    assert loaded.workflow.nodes["target"].native_input_names == ["in", None, "tail"]
+    assert loaded.workflow.nodes["target"].native_input_types == ["A", None, "B"]
+    assert loaded.workflow.nodes["target"].native_input_optional == [False, True, False]
 
 
 def test_recursive_edges_and_virtual_wires_use_structural_scope_and_local_uids() -> None:

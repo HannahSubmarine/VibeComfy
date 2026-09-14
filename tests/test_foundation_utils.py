@@ -73,6 +73,10 @@ def test_is_api_link_can_allow_compound_numeric_node_ids() -> None:
     assert not is_api_link(["76:abc", 0], allow_compound_node_id=True)
 
 
+def test_canonical_api_link_accepts_native_scoped_numeric_node_ids() -> None:
+    assert is_canonical_api_link(["76::67", 0])
+
+
 def test_is_api_link_tool_mode_is_string_source_strict_with_compound_ids() -> None:
     tool_mode = {
         "allow_tuple": False,

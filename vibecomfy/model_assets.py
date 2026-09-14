@@ -43,6 +43,7 @@ _MODEL_INPUT_SUBDIRS = {
     "unet_name": "diffusion_models",
     "upscale_model": "upscale_models",
     "vae_name": "vae",
+    "control_net_name": "controlnet",
 }
 
 _CLASS_FIELD_SUBDIRS = {
@@ -186,26 +187,72 @@ def _referenced_model_values(workflow: VibeWorkflow) -> list[dict[str, str]]:
     references: list[dict[str, str]] = []
     seen: set[tuple[str, str, str, str]] = set()
     for node in workflow.runtime_nodes().values():
-        for field, value in node.inputs.items():
-            subdir = _subdir_for_model_reference(node.class_type, field)
-            if subdir is None or not isinstance(value, str) or not value:
-                continue
-            if _is_none_model_value(value):
-                continue
-            key = (node.id, node.class_type, field, value)
-            if key in seen:
-                continue
-            seen.add(key)
-            references.append(
-                {
-                    "node_id": node.id,
-                    "class_type": node.class_type,
-                    "field": field,
-                    "value": value,
-                    "subdir": subdir,
-                }
-            )
+        # Most generated nodes retain model pickers in execution inputs, but
+        # patch-owned nodes may intentionally keep a named widget value until
+        # their custom-node schema is available. Both stores are canonical;
+        # inspect only recognized model fields so ordinary presentation
+        # widgets never become model references.
+        for store in (node.inputs, node.widgets):
+            for field, value in store.items():
+                subdir = _subdir_for_model_reference(node.class_type, field)
+                if subdir is None or not isinstance(value, str) or not value:
+                    continue
+                if _is_none_model_value(value):
+                    continue
+                key = (node.id, node.class_type, field, value)
+                if key in seen:
+                    continue
+                seen.add(key)
+                references.append(
+                    {
+                        "node_id": node.id,
+                        "class_type": node.class_type,
+                        "field": field,
+                        "value": value,
+                        "subdir": subdir,
+                    }
+                )
     return references
+
+
+def reconcile_model_requirements(
+    authored: Sequence[Any] | None,
+    inferred: Sequence[Any],
+) -> list[Any]:
+    """Refresh inferred requirements without erasing authored multiplicity.
+
+    Entries whose names are no longer referenced are stale and are removed;
+    matching authored entries keep their original order and multiplicity,
+    while each newly referenced name is appended once with its rich metadata.
+    """
+    authored_entries = list(authored or [])
+    if authored_entries == []:
+        return []
+
+    inferred_names: list[str] = []
+    inferred_by_name: dict[str, Any] = {}
+    for item in inferred:
+        name = (
+            str(item.get("name", item.get("filename", "")))
+            if isinstance(item, Mapping)
+            else str(item)
+        )
+        if name and name not in inferred_by_name:
+            inferred_names.append(name)
+            inferred_by_name[name] = item
+
+    def entry_name(item: Any) -> str:
+        if isinstance(item, Mapping):
+            return str(item.get("name", item.get("filename", "")))
+        return str(item)
+
+    result = [item for item in authored_entries if entry_name(item) in inferred_names]
+    retained_names = {entry_name(item) for item in result}
+    for name in inferred_names:
+        if name not in retained_names:
+            result.append(inferred_by_name[name])
+            retained_names.add(name)
+    return result
 
 
 def _subdir_for_model_reference(class_type: str, field: str) -> str | None:

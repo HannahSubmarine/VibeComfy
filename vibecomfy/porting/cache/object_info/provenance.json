@@ -1,5 +1,5 @@
 {
-  "class_count": 2100,
+  "class_count": 2101,
   "packs": {
     "AILab_AudioDuration@runpod-snapshot.json": {
       "classes": 1,
@@ -236,6 +236,14 @@
       "pack": "comfy_extras",
       "repo": null,
       "schema_sha256": null
+    },
+    "comfy_extras@zz-official-6338e4bd.json": {
+      "classes": 1,
+      "locked_commit": "6338e4bd428247a4a8843496aa98fb7f2a9d3632",
+      "pack": "comfy_extras",
+      "repo": "https://github.com/Comfy-Org/ComfyUI.git",
+      "schema_sha256": "62ec72d4f3b879640dbd41b959a6c1112a82b77478509323094f49dae17fffdb",
+      "source_kind": "official_pinned_source"
     },
     "comfyui-advanced-controlnet@on_demand_static-27a67fe.json": {
       "captured_at": "2026-08-26T17:00:12.266+00:00",

@@ -8,11 +8,11 @@ The user wants a model-optimization node (a torch-compile / model-modifier) spli
 onto the BASE model, BEFORE the LoRA loader, so the optimization wraps the full
 model+lora stack rather than sitting between the loras and the sampler.
 
-The canonical correct edit inserts ``WanVideoTorchCompileSettings`` between the base
-``WanVideoModelLoader`` and ``WanVideoSetLoRAs``: the new node consumes node 22's
-model output, and the LoRA loader is rewired to consume the new node's output. The
-downstream block-swap + sampler chain is left intact, so the sampler still receives
-the post-lora model.
+The canonical correct edit attaches ``WanVideoTorchCompileSettings`` to the base
+model loader's ``compile_args`` input. This is the node's current schema: it emits
+compile settings, and the model loader applies them before emitting the model
+consumed by the LoRA loader. The downstream block-swap + sampler chain is left
+intact, so the sampler still receives the post-lora model.
 """
 
 from __future__ import annotations
@@ -33,14 +33,10 @@ def build_m4_wan_t2v_splice_modelpatch_before_loras_evidence(
 
     workflow = load_workflow_any("video/wanvideo_wrapper_21_14b_t2v")
 
-    # Insert the model-optimization node and rewire it onto the BASE model,
-    # UPSTREAM of the LoRA loader (node 58).
-    optimization = workflow.add_node("WanVideoTorchCompileSettings")
-    # LoRA loader's model input used to reference the base loader (node 22);
-    # rewire it to the optimization node instead.
-    workflow.replace_edge("58.model", f"{optimization.id}.0")
-    # The optimization node consumes the base WanVideoModelLoader output (node 22).
-    workflow.connect("22.0", f"{optimization.id}.model")
+    # Attach compile settings to the base model loader. The loader applies them
+    # before its output enters the LoRA chain (node 58).
+    optimization = workflow.node("WanVideoTorchCompileSettings")
+    workflow.connect(f"{optimization.id}.0", "22.compile_args")
     workflow.finalize_metadata()
 
     output_path = root / "outputs" / "video.mp4"
@@ -69,7 +65,7 @@ def build_m4_wan_t2v_splice_modelpatch_before_loras_evidence(
             },
             {
                 "op": "splice",
-                "position": "upstream_of_loras",
+                "position": "model_loader_compile_args_before_loras",
                 "base_model_node": "22",
                 "lora_loader_node": "58",
                 "optimization_node": optimization.id,

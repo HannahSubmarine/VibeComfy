@@ -110,6 +110,289 @@ def capture_presentation_graph_records(candidate: Mapping[str, Any]) -> Presenta
         groups_present="groups" in candidate,
     )
 
+
+def is_litegraph_candidate(candidate: Mapping[str, Any]) -> bool:
+    """Return whether *candidate* has a LiteGraph node-list boundary shape."""
+    return isinstance(capture_presentation_graph_records(candidate).nodes, list)
+
+
+def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str, Any]) -> dict[str, Any]:
+    """Convert one LiteGraph capture into presentation-only sidecar data.
+
+    This is the only raw canvas-to-presentation adapter.  The bundle module
+    owns custody and pair publication, while this door owns all inspection of
+    LiteGraph node, link, widget, and group records.
+    """
+    from vibecomfy.workflow_bundle import (
+        WorkflowBundleError,
+        _SIDECAR_KEYS,
+    )
+
+    if set(candidate) >= _SIDECAR_KEYS:
+        return dict(candidate)
+
+    presentation = capture_presentation_graph_records(candidate)
+    raw_nodes = presentation.nodes
+    if not isinstance(raw_nodes, list):
+        raise WorkflowBundleError("captured candidate is not a strict sidecar or LiteGraph UI envelope")
+    ids: dict[str, str] = {}
+    nodes: dict[str, Any] = {}
+    workflow_by_id = {str(key): node for key, node in workflow.nodes.items()}
+    workflow_by_uid = {str(node.uid): node for node in workflow.nodes.values() if node.uid}
+    from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
+    from vibecomfy._compile._helpers import RESOLVABLE_HELPER_CLASS_TYPES
+    annotations: list[dict[str, Any]] = []
+    expanded_native_containers = {
+        str(node_id).split("::", 1)[0]
+        for node_id in workflow.nodes
+        if "::" in str(node_id)
+    }
+    ignored_captured_nodes = set(expanded_native_containers)
+
+    raw_groups = presentation.groups if presentation.groups_present else []
+    if not isinstance(raw_groups, list):
+        raise WorkflowBundleError("captured groups must be a list")
+    group_for_node: dict[str, str] = {}
+    for group in raw_groups:
+        if not isinstance(group, Mapping):
+            raise WorkflowBundleError("captured group is malformed")
+        group_id = group.get("vibecomfy_group_id", group.get("id"))
+        if group_id is None:
+            raise WorkflowBundleError("captured group has no stable presentation id")
+        members = group.get("nodes", [])
+        if not isinstance(members, list):
+            raise WorkflowBundleError("captured group nodes must be a list")
+        for member in members:
+            member_key = str(member)
+            prior = group_for_node.get(member_key)
+            if prior is not None and prior != str(group_id):
+                raise WorkflowBundleError(f"captured node {member_key!r} has ambiguous group membership")
+            group_for_node[member_key] = str(group_id)
+    for node in raw_nodes:
+        if not isinstance(node, Mapping) or type(node.get("id")) is not int:
+            raise WorkflowBundleError("captured node must contain an integer native id")
+        properties = node.get("properties")
+        if "properties" in node and not isinstance(properties, Mapping):
+            raise WorkflowBundleError("captured node properties must be a mapping")
+        native_id = str(node["id"])
+        if native_id in ids:
+            raise WorkflowBundleError(f"duplicate captured native node id {native_id}")
+        explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
+        owner = workflow_by_uid.get(explicit_uid) if isinstance(explicit_uid, str) else None
+        if explicit_uid is None:
+            owner = workflow_by_id.get(native_id)
+        raw_class_type = node.get("type", node.get("class_type"))
+        if owner is None or not owner.uid:
+            if native_id in expanded_native_containers or raw_class_type in RESOLVABLE_HELPER_CLASS_TYPES:
+                ignored_captured_nodes.add(native_id)
+                continue
+            if raw_class_type not in UI_ONLY_CLASS_TYPES:
+                raise WorkflowBundleError(f"captured node {native_id!r} cannot be mapped to one Python node")
+            explicit_uid = properties.get("vibecomfy_uid") if isinstance(properties, Mapping) else None
+            uid = str(explicit_uid) if isinstance(explicit_uid, str) and explicit_uid else f"ui_only_{native_id}"
+        else:
+            uid = str(owner.uid)
+        if uid in nodes:
+            raise WorkflowBundleError(f"duplicate captured node UID {uid!r}")
+        ids[native_id] = uid
+        if isinstance(properties, Mapping) and properties.get("rejected"):
+            raise WorkflowBundleError(f"known node {uid!r} contains rejected metadata; reconcile the node metadata")
+        entry: dict[str, Any] = {}
+        for key in ("id", "pos", "size", "color", "bgcolor", "title"):
+            if key not in node:
+                continue
+            value = node[key]
+            if key in {"color", "bgcolor", "title"} and not isinstance(value, str):
+                continue
+            entry[key] = deepcopy(value)
+        if "order" in node:
+            entry["z_order"] = deepcopy(node["order"])
+        elif "z_order" in node:
+            entry["z_order"] = deepcopy(node["z_order"])
+        flags = node.get("flags")
+        if isinstance(flags, Mapping) and "collapsed" in flags:
+            entry["collapsed"] = flags["collapsed"]
+        elif "collapsed" in node:
+            entry["collapsed"] = node["collapsed"]
+        group = group_for_node.get(native_id)
+        if group is not None:
+            entry["group"] = str(group)
+        if owner is None or not owner.uid or raw_class_type in UI_ONLY_CLASS_TYPES:
+            entry["class_type"] = str(raw_class_type)
+        nodes[uid] = entry
+        if raw_class_type in UI_ONLY_CLASS_TYPES:
+            raw_widgets = node.get("widgets_values")
+            if raw_widgets is None:
+                content = ""
+            elif isinstance(raw_widgets, list) and (not raw_widgets or isinstance(raw_widgets[0], str)):
+                content = raw_widgets[0] if raw_widgets else ""
+            else:
+                raise WorkflowBundleError(f"captured presentation note {uid!r} has unsupported content")
+            annotations.append({
+                "annotation_id": uid,
+                "scope_path": "",
+                "owner": {"kind": "node", "uid": uid},
+                "class_type": str(raw_class_type),
+                "title": entry.get("title", "") if isinstance(entry.get("title", ""), str) else "",
+                "content": content,
+            })
+    links: list[dict[str, Any]] = []
+    for link in presentation.links if isinstance(presentation.links, list) else ():
+        if isinstance(link, Mapping):
+            allowed_link = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type", "reroute"}
+            unknown_link = set(link) - allowed_link
+            if unknown_link:
+                raise WorkflowBundleError(f"captured link contains unsupported field(s): {', '.join(sorted(str(key) for key in unknown_link))}")
+            if type(link.get("id")) is not int:
+                raise WorkflowBundleError("captured link must contain an integer native id")
+            if "reroute" in link:
+                raise WorkflowBundleError("captured link reroute geometry is unsupported; use a Reroute node")
+            link = [link["id"], link.get("origin_id"), link.get("origin_slot"), link.get("target_id"), link.get("target_slot"), link.get("type", "")]
+        if not isinstance(link, (list, tuple)) or len(link) not in (5, 6):
+            raise WorkflowBundleError("captured link is malformed")
+        if type(link[0]) is not int:
+            raise WorkflowBundleError("captured link must contain an integer native id")
+        if len(link) > 5 and not isinstance(link[5], str):
+            raise WorkflowBundleError("captured link sixth member is not a supported presentation field")
+        source, target = ids.get(str(link[1])), ids.get(str(link[3]))
+        if source is None or target is None:
+            if str(link[1]) in ignored_captured_nodes or str(link[3]) in ignored_captured_nodes:
+                continue
+            raise WorkflowBundleError("captured link endpoint does not match a captured node")
+        source_entry = nodes.get(source, {})
+        target_entry = nodes.get(target, {})
+        if source_entry.get("class_type") in UI_ONLY_CLASS_TYPES or target_entry.get("class_type") in UI_ONLY_CLASS_TYPES:
+            continue
+        ref = {"scope_path": "", "from_uid": source, "from_port": link[2], "to_uid": target, "to_port": link[4]}
+        item: dict[str, Any] = {
+            "edge_ref": ref,
+            "occurrence_index": sum(1 for prior in links if prior["edge_ref"] == ref),
+            "id": link[0],
+        }
+        links.append(item)
+    groups: list[dict[str, Any]] = []
+    for group_index, group in enumerate(raw_groups):
+        if not isinstance(group, Mapping):
+            raise WorkflowBundleError("captured group is malformed")
+        presentation_id = group.get("presentation_id", group.get("vibecomfy_group_id", group.get("id")))
+        if presentation_id is None:
+            raise WorkflowBundleError("captured group has no stable presentation id")
+        item = {"scope_path": str(group.get("scope_path", "")), "presentation_id": str(presentation_id)}
+        bounds = group.get("bounds", group.get("bounding"))
+        if bounds is not None:
+            item["bounds"] = deepcopy(bounds)
+        for key in ("title", "color"):
+            if key not in group:
+                continue
+            value = group[key]
+            if isinstance(value, str):
+                item[key] = deepcopy(value)
+        item["z_order"] = deepcopy(group.get("order", group.get("z_order", group_index)))
+        groups.append(item)
+    canvas: dict[str, Any] = {}
+    raw_canvas = candidate.get("canvas")
+    if isinstance(raw_canvas, Mapping):
+        for key in ("zoom", "pan"):
+            if key in raw_canvas:
+                canvas[key] = deepcopy(raw_canvas[key])
+    extra = candidate.get("extra")
+    ds = extra.get("ds") if isinstance(extra, Mapping) else None
+    if isinstance(ds, Mapping):
+        canvas.setdefault("zoom", ds.get("scale"))
+        canvas.setdefault("pan", ds.get("offset"))
+    return {
+        "format_version": 1,
+        "bind": {"workflow_identity": workflow.id, "semantic_digest": workflow.semantic_digest()},
+        "nodes": nodes,
+        "links": links,
+        "groups": groups,
+        "canvas": canvas,
+        "annotations": annotations,
+    }
+
+
+def canonical_presentation_to_layout_store(
+    presentation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Adapt validated v2 presentation records to the legacy UI preserve seam.
+
+    The canonical companion remains the source of truth.  This adapter exists
+    only because the established UI emitter consumes the older furniture-store
+    shape; custody and semantic graph records never cross this boundary.
+    """
+    entries: dict[str, dict[str, Any]] = {}
+    raw_nodes = presentation.get("nodes", {})
+    if isinstance(raw_nodes, Mapping):
+        for uid, raw_entry in raw_nodes.items():
+            if not isinstance(raw_entry, Mapping):
+                continue
+            entries[str(uid)] = {
+                key: deepcopy(raw_entry[key])
+                for key in (
+                    "pos",
+                    "size",
+                    "flags",
+                    "color",
+                    "bgcolor",
+                    "mode",
+                    "properties",
+                )
+                if key in raw_entry
+            }
+
+    extra: dict[str, Any] = {}
+    canvas = presentation.get("canvas")
+    if isinstance(canvas, Mapping):
+        ds: dict[str, Any] = {}
+        if "zoom" in canvas:
+            ds["scale"] = deepcopy(canvas["zoom"])
+        if "pan" in canvas:
+            ds["offset"] = deepcopy(canvas["pan"])
+        if ds:
+            extra["ds"] = ds
+
+    return {
+        "store_version": 2,
+        "entries": entries,
+        "groups": deepcopy(presentation.get("groups", [])),
+        "extra": extra,
+        "lastRerouteId": None,
+        "definitions": {},
+        "virtual_wires": {},
+    }
+
+
+def _overlay_from_store_on_canonical_presentation(
+    presentation: Mapping[str, Any],
+    from_store: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Apply explicit ``--from`` furniture edits without dropping annotations.
+
+    A v2 companion is the authoritative presentation record.  The established
+    layout store is useful for reading a user's explicit ``--from`` canvas, but
+    its projection intentionally omits annotation content.  Merge only
+    presentation fields for UIDs already owned by the canonical pair; semantic
+    and annotation records remain sourced from the companion.
+    """
+    merged = deepcopy(presentation)
+    canonical_nodes = merged.get("nodes")
+    source_entries = from_store.get("entries") if isinstance(from_store, Mapping) else None
+    if not isinstance(canonical_nodes, dict) or not isinstance(source_entries, Mapping):
+        return merged
+
+    furniture_fields = (
+        "pos", "size", "collapsed", "color", "bgcolor", "title", "group", "z_order",
+    )
+    for uid, source_entry in source_entries.items():
+        canonical_entry = canonical_nodes.get(str(uid))
+        if not isinstance(canonical_entry, dict) or not isinstance(source_entry, Mapping):
+            continue
+        for field in furniture_fields:
+            if field in source_entry:
+                canonical_entry[field] = deepcopy(source_entry[field])
+    return merged
+
+
 # Documented default control_after_generate mode when none is retained in metadata.
 _CONTROL_AFTER_GENERATE_DEFAULT = "fixed"
 
@@ -1823,6 +2106,33 @@ def _widget_names_for_emission(
     return list(widget_names_from_schema(class_type, schema))
 
 
+def _primitive_union_dynamic_input_names(
+    node: Any,
+    incoming_names: set[str],
+) -> tuple[list[str], list[str]]:
+    """Return present primitive-union dynamic inputs and unlinked literals."""
+    names: list[str] = []
+    unlinked: list[str] = []
+    native_names = getattr(node, "native_input_names", None)
+    native_types = getattr(node, "native_input_types", None)
+    inputs = getattr(node, "inputs", {})
+    if not isinstance(native_names, list) or not isinstance(native_types, list):
+        return names, unlinked
+    primitive_union = {"FLOAT", "INT", "BOOLEAN"}
+    for index, name in enumerate(native_names):
+        if not isinstance(name, str) or not name.startswith("values.") or index >= len(native_types):
+            continue
+        type_spec = native_types[index]
+        if not isinstance(type_spec, str) or {part.strip().upper() for part in type_spec.split(",")} != primitive_union:
+            continue
+        if name not in inputs and name not in incoming_names:
+            continue
+        names.append(name)
+        if name not in incoming_names and inputs.get(name) is not None:
+            unlinked.append(name)
+    return names, unlinked
+
+
 def _widget_value_domain_for_emission(
     node: Any | None,
     committed: list[str | None] | None,
@@ -1879,6 +2189,33 @@ def _widget_key_count(values: Any) -> int:
         return 0
     expected = list(range(max(indices) + 1))
     return max(indices) + 1 if sorted(indices) == expected else 0
+
+
+def _authored_widget_count(node: Any) -> int:
+    """Return the highest explicitly retained widget slot, if any.
+
+    Canonical generated templates retain ``keep_defaults`` as custody for
+    widget-only fields that are not present in the compact schema roster. A
+    generated workflow therefore has valid widget evidence even after its
+    captured raw UI payload has been discarded.
+    """
+    metadata = getattr(node, "metadata", None)
+    keep_defaults = (
+        metadata.get("keep_defaults")
+        if isinstance(metadata, Mapping)
+        else None
+    )
+    if not isinstance(keep_defaults, (list, tuple)):
+        return 0
+    indices: list[int] = []
+    for field in keep_defaults:
+        text = str(field)
+        if not text.startswith("widget_"):
+            continue
+        suffix = text.split("_", 1)[1]
+        if suffix.isdigit():
+            indices.append(int(suffix))
+    return max(indices) + 1 if indices else 0
 
 
 _UI_ONLY_OBJECT_INFO_NAMES = frozenset({"control_after_generate"})
@@ -2063,7 +2400,7 @@ def _build_widget_values(
     *,
     default_values: Mapping[str, Any] | None = None,
     value_domain: str = "compact",
-) -> list[Any]:
+) -> Any:
     """Reverse the normalizer's positional widget read-back.
 
     The value pool is the node's widget-sourced data: ``node.widgets`` (``widget_<N>``
@@ -2092,6 +2429,19 @@ def _build_widget_values(
 
     raw_ui = getattr(node, "metadata", {}).get("_ui", {})
     raw_widgets = raw_ui.get("widgets_values") if isinstance(raw_ui, dict) else None
+    if isinstance(raw_widgets, Mapping):
+        # Comfy/LiteGraph uses a mapping for dynamic ``values`` inputs.  Keep
+        # that canonical editor representation and overlay the effective IR
+        # values onto its leaves; flattening it into positional widget_N rows
+        # loses edits such as ComfyMathExpression.values.a = 6.
+        result = deepcopy(dict(raw_widgets))
+        for key, value in pool.items():
+            if key.startswith("widget_"):
+                continue
+            dynamic_key = key.rsplit(".", 1)[-1]
+            if dynamic_key in result or key in result:
+                result[dynamic_key if dynamic_key in result else key] = deepcopy(value)
+        return result
     if not isinstance(raw_widgets, list):
         raw_widget_payload = getattr(node, "raw_widgets", None)
         raw_widget_values = getattr(raw_widget_payload, "values", None)
@@ -2321,6 +2671,30 @@ def _emit_litegraph_node_dict(
         schema_provider=schema_provider,
         name_authority=name_authority,
     )
+    incoming_names = {
+        str(item["name"])
+        for item in inputs
+        if isinstance(item, Mapping) and item.get("link") is not None
+    }
+    _dynamic_names, unlinked_dynamic_names = _primitive_union_dynamic_input_names(
+        node, incoming_names
+    )
+    if unlinked_dynamic_names:
+        expanded_widget_names: list[str | None] = []
+        for name in widget_names:
+            if name == "values":
+                expanded_widget_names.extend(
+                    item for item in unlinked_dynamic_names
+                    if item not in expanded_widget_names
+                )
+            else:
+                expanded_widget_names.append(name)
+        if "values" not in widget_names:
+            expanded_widget_names.extend(
+                item for item in unlinked_dynamic_names
+                if item not in expanded_widget_names
+            )
+        widget_names = expanded_widget_names
 
     # Step 6 (T8): re-stamp the verbatim captured properties blob as the base,
     # then overlay the IR identity keys.  When no captured blob exists (e.g.
@@ -3094,6 +3468,9 @@ def derive_widget_shape_evidence(
         schema,
         schema_provider=schema_provider,
     )
+    authored_widget_count = _authored_widget_count(node)
+    if authored_widget_count:
+        schema_widget_count = max(schema_widget_count or 0, authored_widget_count)
     raw_widget_count, raw_widget_shape, has_dict_rows = _raw_widget_shape_from_node(node)
     if node.class_type == "vibecomfy.exec" and _exec_io_for_node(node) is not None:
         # The exec node's `io` mapping is its validated socket declaration,
@@ -3988,7 +4365,32 @@ def emit_ui_json(
             schema_provider=schema_provider,
             name_authority=name_authority,
         )
-        widget_name_set = {name for name in widget_names if name is not None}
+        incoming_dynamic_names = {
+            str(edge.to_input) for edge in edges_to[node_id]
+        }
+        dynamic_names, unlinked_dynamic_names = _primitive_union_dynamic_input_names(
+            node, incoming_dynamic_names
+        )
+        if unlinked_dynamic_names:
+            expanded_widget_names: list[str | None] = []
+            for name in widget_names:
+                if name == "values":
+                    expanded_widget_names.extend(
+                        item for item in unlinked_dynamic_names
+                        if item not in expanded_widget_names
+                    )
+                else:
+                    expanded_widget_names.append(name)
+            if "values" not in widget_names:
+                expanded_widget_names.extend(
+                    item for item in unlinked_dynamic_names
+                    if item not in expanded_widget_names
+                )
+            widget_names = expanded_widget_names
+        widget_name_set = {
+            name for name in widget_names if name is not None
+        } | set(dynamic_names)
+        preserve_widget_roster = bool(dynamic_names)
         full_committed = widget_names_for_class(node.class_type)
         if full_committed is not None:
             widget_name_set.update(n for n in full_committed if n is not None)
@@ -4004,7 +4406,7 @@ def emit_ui_json(
         inputs: list[dict[str, Any]] = []
         if exec_io is not None:
             inputs = _exec_dynamic_inputs(exec_io, incoming_link_ids_by_input)
-        elif isinstance(node.native_input_names, list):
+        elif isinstance(node.native_input_names, list) and node.native_input_names:
             incoming_by_name = {edge.to_input: edge for edge in incoming_sorted}
             for slot_idx, name in enumerate(node.native_input_names):
                 edge = incoming_by_name.get(name) if isinstance(name, str) else None
@@ -4012,6 +4414,7 @@ def emit_ui_json(
                     edge is None
                     and isinstance(name, str)
                     and name in widget_name_set
+                    and not preserve_widget_roster
                 ):
                     # Unlinked widgets live in widgets_values, not the physical
                     # input array.  A prior widget→link conversion that was
@@ -4585,10 +4988,59 @@ def _overlay_validated_presentation(
             by_uid[uid] = node
             if type(node.get("id")) is int:
                 old_id_by_uid[uid] = int(node["id"])
+    uid_by_old_id = {native_id: uid for uid, native_id in old_id_by_uid.items()}
     native_ids: set[int] = {
         int(node["id"]) for node in emitted_nodes
         if isinstance(node, Mapping) and type(node.get("id")) is int
     }
+
+    def _remint_conflicting_emitted_node(native_id: int) -> None:
+        """Move an auto-assigned semantic node out of a retained canvas ID.
+
+        Nested native expansion can allocate an executable node ID that was
+        used by an authored UI-only note in the source canvas.  The note's
+        captured ID is part of presentation custody, so preserve it and
+        remint only the generated semantic node.  Top-level links are the
+        only graph records that carry node IDs in this envelope.
+        """
+        replacement = max(native_ids, default=0) + 1
+        while replacement in native_ids:
+            replacement += 1
+        conflict = next(
+            (
+                node
+                for node in emitted_nodes
+                if isinstance(node, Mapping) and node.get("id") == native_id
+            ),
+            None,
+        )
+        if conflict is None:
+            raise ValueError(f"sidecar native node id collision for {native_id}")
+        conflict_uid = (
+            conflict.get("properties", {}).get("vibecomfy_uid")
+            if isinstance(conflict.get("properties"), Mapping)
+            else None
+        )
+        conflict["id"] = replacement
+        if isinstance(conflict_uid, str):
+            old_id_by_uid[conflict_uid] = replacement
+            uid_by_old_id.pop(native_id, None)
+            uid_by_old_id[replacement] = conflict_uid
+        links = envelope.get("links", [])
+        if isinstance(links, list):
+            for link in links:
+                if isinstance(link, list) and len(link) >= 4:
+                    if link[1] == native_id:
+                        link[1] = replacement
+                    if link[3] == native_id:
+                        link[3] = replacement
+                elif isinstance(link, Mapping):
+                    if link.get("origin_id") == native_id:
+                        link["origin_id"] = replacement
+                    if link.get("target_id") == native_id:
+                        link["target_id"] = replacement
+        native_ids.discard(native_id)
+        native_ids.add(replacement)
 
     # UI-only furniture has no executable VibeNode, but it is still part of
     # the captured presentation custody.  Recreate the allowlisted note
@@ -4609,7 +5061,7 @@ def _overlay_validated_presentation(
             native_id = next_ui_only_id
             next_ui_only_id += 1
         if native_id in native_ids:
-            raise ValueError(f"sidecar native node id collision for {native_id}")
+            _remint_conflicting_emitted_node(native_id)
         node: dict[str, Any] = {
             "id": native_id,
             "type": class_type,
@@ -4630,6 +5082,23 @@ def _overlay_validated_presentation(
         emitted_nodes.append(node)
         by_uid[str(uid)] = node
         native_ids.add(native_id)
+
+    # Annotation content is carried in the v2 presentation section rather
+    # than in the semantic Python graph. Reattach it only to the matching
+    # allowlisted canvas node, preserving Markdown/Unicode/empty content
+    # exactly once for the editor projection.
+    raw_annotations = sidecar.get("annotations", [])
+    if isinstance(raw_annotations, list):
+        for annotation in raw_annotations:
+            if not isinstance(annotation, Mapping):
+                continue
+            owner = annotation.get("owner")
+            if not isinstance(owner, Mapping) or owner.get("kind") != "node":
+                continue
+            target = by_uid.get(str(owner.get("uid")))
+            if target is None or annotation.get("class_type") not in UI_ONLY_CLASS_TYPES:
+                continue
+            target["widgets_values"] = [deepcopy(annotation.get("content", ""))]
 
     # Preserve the emitted ids for link remapping, then apply native sidecar ids.
     old_to_new: dict[int, int] = {}
@@ -4672,7 +5141,6 @@ def _overlay_validated_presentation(
     side_links = sidecar.get("links", [])
     if not isinstance(side_links, list):
         raise ValueError("validated sidecar links must be a list")
-    uid_by_old_id = {native_id: uid for uid, native_id in old_id_by_uid.items()}
     wf_by_uid = {
         str(node.uid): node
         for node in getattr(wf, "nodes", {}).values()
@@ -4975,6 +5443,47 @@ def _overlay_nested_presentation(
                     if field in entry: node[field] = deepcopy(entry[field])
                 if "z_order" in entry: node["order"] = deepcopy(entry["z_order"])
                 if "group" in entry: node["group"] = deepcopy(entry["group"])
+
+            # Scoped annotation notes are presentation custody, not semantic
+            # definition nodes.  Materialize them in the same definition when
+            # their validated scoped sidecar entry is present.
+            next_ui_id = max(occupied_node_ids, default=0) + 1
+            for uid, entry in side_nodes.items():
+                if not isinstance(entry, Mapping) or not str(uid).startswith(f"{scope}#"):
+                    continue
+                local = str(uid).split("#", 1)[1]
+                if local in by_local or entry.get("class_type") not in UI_ONLY_CLASS_TYPES:
+                    continue
+                while next_ui_id in occupied_node_ids:
+                    next_ui_id += 1
+                note = {
+                    "id": next_ui_id,
+                    "type": entry["class_type"],
+                    "properties": {
+                        "Node name for S&R": entry["class_type"],
+                        "vibecomfy_uid": str(uid),
+                    },
+                    "widgets_values": [""],
+                }
+                for field in ("pos", "size", "color", "bgcolor", "title"):
+                    if field in entry:
+                        note[field] = deepcopy(entry[field])
+                out_nodes.append(note)
+                by_local[local] = note
+                occupied_node_ids.add(next_ui_id)
+                next_ui_id += 1
+
+            for annotation in sidecar.get("annotations", []) if isinstance(sidecar.get("annotations"), list) else []:
+                if not isinstance(annotation, Mapping) or str(annotation.get("scope_path")) != scope:
+                    continue
+                owner = annotation.get("owner")
+                if not isinstance(owner, Mapping) or owner.get("kind") != "node":
+                    continue
+                owner_uid = str(owner.get("uid"))
+                local = owner_uid.split("#", 1)[1] if "#" in owner_uid else owner_uid
+                target = by_local.get(local)
+                if isinstance(target, dict) and annotation.get("class_type") in UI_ONLY_CLASS_TYPES:
+                    target["widgets_values"] = [deepcopy(annotation.get("content", ""))]
 
             # Groups inside definitions are presentation records too.  Rebuild
             # them by structural scope and sidecar presentation id, retaining
@@ -6135,6 +6644,67 @@ def _attribution(ops: Iterable[EditOp]) -> dict[str, Any]:
         "topology_input_fields": topology_input_fields,
         "topology_output_refs": topology_output_refs,
     }
+
+
+def _unattributed_node_order_change(
+    original_ui: Mapping[str, Any],
+    candidate_ui: Mapping[str, Any],
+    ops: Sequence[EditOp] = (),
+) -> bool:
+    """Detect node-order drift before furniture pinning can hide it.
+
+    ``pin_untouched_ui`` restores the retained order so ordinary
+    reconstructive emission is stable.  The evaluator must nevertheless
+    inspect the raw candidate first; otherwise a forged projection that only
+    reverses the node list becomes indistinguishable from a valid candidate.
+    New and removed nodes are excluded because their relative placement is
+    already attributed by the accepted edit.
+    """
+    attribution = _attribution(ops)
+    original_scopes = dict(_iter_scopes(_thaw_json_view(original_ui)))
+    candidate_scopes = dict(_iter_scopes(_thaw_json_view(candidate_ui)))
+
+    def _is_deterministic_emitter_order(scope: Mapping[str, Any]) -> bool:
+        """Return whether a candidate scope has the emitter's native order.
+
+        The Python surface is dependency ordered, while the UI emitter's
+        stable tie-breaker is the canonical native node id.  During
+        ``interpret(∅, emit(wf))`` those orders can legitimately differ from
+        the retained canvas order as nodes are added one statement at a time.
+        This narrow allowance does not make arbitrary projection furniture
+        authoritative: a forged permutation still fails unless it is exactly
+        the deterministic native-id order produced by this emitter.
+        """
+        nodes = scope.get("nodes")
+        if not isinstance(nodes, list):
+            return False
+        native_ids: list[int] = []
+        for node in nodes:
+            if not isinstance(node, Mapping) or type(node.get("id")) is not int:
+                return False
+            native_ids.append(int(node["id"]))
+        return len(native_ids) == len(set(native_ids)) and native_ids == sorted(native_ids)
+
+    for scope_path in set(original_scopes) | set(candidate_scopes):
+        original_scope = original_scopes.get(scope_path)
+        candidate_scope = candidate_scopes.get(scope_path)
+        if not isinstance(original_scope, Mapping) or not isinstance(candidate_scope, Mapping):
+            continue
+        original_order = [
+            uid
+            for uid in _scope_node_uids(original_scope)
+            if (scope_path, uid) not in attribution["removed_nodes"]
+        ]
+        candidate_order = [
+            uid
+            for uid in _scope_node_uids(candidate_scope)
+            if uid in set(original_order)
+        ]
+        if original_order != candidate_order:
+            if _is_deterministic_emitter_order(candidate_scope):
+                continue
+            return True
+    return False
 
 
 def _link_attributed_to_add(
@@ -7436,6 +8006,33 @@ def pin_untouched_ui(
                     nodes[index] = merged
                     continue
                 nodes[index] = deepcopy(dict(original_node))
+            # Reconstructive emission walks the IR in dependency order, while
+            # LiteGraph treats the serialized node list order as presentation
+            # state.  Keep the relative order of every retained node exactly
+            # as authored; newly added nodes may follow the retained list and
+            # are still attributed by ``new_nodes`` in the exit guard.
+            candidate_by_uid = {
+                _node_uid(node): node
+                for node in nodes
+                if isinstance(node, Mapping) and _node_uid(node) is not None
+            }
+            retained_order: list[dict[str, Any]] = []
+            used_uids: set[str] = set()
+            for original_node in original_scope_for_topology.get("nodes", ()) if isinstance(original_scope_for_topology, Mapping) else ():
+                if not isinstance(original_node, Mapping):
+                    continue
+                uid = _node_uid(original_node)
+                if uid is None or uid not in candidate_by_uid:
+                    continue
+                retained_order.append(candidate_by_uid[uid])
+                used_uids.add(uid)
+            retained_order.extend(
+                node
+                for node in nodes
+                if isinstance(node, dict) and (_node_uid(node) not in used_uids)
+            )
+            if retained_order:
+                scope["nodes"] = retained_order
         original_scope = original_scopes.get(scope_path)
         if original_scope is None:
             continue
@@ -7516,6 +8113,16 @@ def pin_untouched_ui(
                 scope[key] = deepcopy(original_scope[key])
             elif key in _EMIT_SCOPE_FURNITURE or key in {"extra", "config", "groups"}:
                 del scope[key]
+        # An emitter is allowed to omit untouched optional canvas furniture,
+        # but omission is not an edit. Restore missing fields from the
+        # retained ingest projection so the strict guard compares only the
+        # accepted semantic delta (for example, ``revision`` on an add-node
+        # operation).
+        for key, value in original_scope.items():
+            if key in {"nodes", "links", "definitions", "last_node_id", "last_link_id"}:
+                continue
+            if key not in scope:
+                scope[key] = deepcopy(value)
     if candidate_definitions is not None:
         pinned["definitions"] = candidate_definitions
     return pinned

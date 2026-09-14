@@ -1,0 +1,1255 @@
+/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/vibecomfy/templates.py:990: UserWarning: ReadyMetadata.build requirements['models'] differs from MODELS-derived model assets
+  derived_requirements = _requirements_with_models(requirements, model_assets)
+port convert failed: Parity check failed for docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/12_qwen_image_2512.py. Diffs: ['canonical_form mismatch', "widget_value only in B x1: ('ComfySwitchNode', 'on_false', '50')", "widget_value only in B x1: ('ComfySwitchNode', 'on_true', '4')", "widget_value only in B x3: ('ComfySwitchNode', 'switch', 'False')", "widget_value only in B x1: ('ComfySwitchNode', 'on_true', '1')"]
+{
+  "conversion": {
+    "mode": "scratchpad",
+    "ready_id": null,
+    "validation": {
+      "api_node_count": 14,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "LoraLoaderModelOnly",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "lora_name",
+              "strength_model"
+            ]
+          },
+          "message": "Node 238:221 (LoraLoaderModelOnly) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:221",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 238:227 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:227",
+          "severity": "warning"
+        },
+        {
+          "class_type": "CLIPTextEncode",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "text"
+            ]
+          },
+          "message": "Node 238:228 (CLIPTextEncode) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:228",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ComfySwitchNode",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 148
+          },
+          "message": "node call for 'ComfySwitchNode' (node 238:240) would be a single line of 148 chars (>120); multi-line formatting preferred.",
+          "node_id": "238:240",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ComfySwitchNode",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 156
+          },
+          "message": "node call for 'ComfySwitchNode' (node 238:243) would be a single line of 156 chars (>120); multi-line formatting preferred.",
+          "node_id": "238:243",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ComfySwitchNode",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 153
+          },
+          "message": "node call for 'ComfySwitchNode' (node 238:233) would be a single line of 153 chars (>120); multi-line formatting preferred.",
+          "node_id": "238:233",
+          "severity": "warning"
+        },
+        {
+          "class_type": "ModelSamplingAuraFlow",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "shift"
+            ]
+          },
+          "message": "Node 238:222 (ModelSamplingAuraFlow) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:222",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_image",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 238:230 (KSampler) emits schema-unknown linked kwarg 'latent_image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:230",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 238:230 (KSampler) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:230",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 238:230 (KSampler) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:230",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 238:230 (KSampler) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "238:230",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 353
+          },
+          "message": "node call for 'KSampler' (node 238:230) would be a single line of 353 chars (>120); multi-line formatting preferred.",
+          "node_id": "238:230",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveImage",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "images",
+            "linked": true,
+            "schema_inputs": [
+              "filename_prefix"
+            ]
+          },
+          "message": "Node 60 (SaveImage) emits schema-unknown linked kwarg 'images'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "60",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "CLIPLoader": 1,
+        "CLIPTextEncode": 2,
+        "ComfySwitchNode": 3,
+        "EmptySD3LatentImage": 1,
+        "KSampler": 1,
+        "LoraLoaderModelOnly": 1,
+        "ModelSamplingAuraFlow": 1,
+        "SaveImage": 1,
+        "UNETLoader": 1,
+        "VAEDecode": 1,
+        "VAELoader": 1
+      },
+      "emitted_model_snapshot": {
+        "238:219:clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "238:220:vae_name": "qwen_image_vae.safetensors",
+        "238:221:lora_name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+        "238:226:unet_name": "qwen_image_2512_fp8_e4m3fn.safetensors"
+      },
+      "emitted_output_count": 14,
+      "emitted_topology_snapshot": 14,
+      "emitted_widget_value_snapshot": 18,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [
+        "canonical_form mismatch",
+        "widget_value only in B x1: ('ComfySwitchNode', 'on_false', '50')",
+        "widget_value only in B x1: ('ComfySwitchNode', 'on_true', '4')",
+        "widget_value only in B x3: ('ComfySwitchNode', 'switch', 'False')",
+        "widget_value only in B x1: ('ComfySwitchNode', 'on_true', '1')",
+        "widget_value only in B x1: ('ComfySwitchNode', 'on_false', '4')",
+        "topology only in A x3: ('ComfySwitchNode', 'switch', None, 0)",
+        "topology only in A x2: ('ComfySwitchNode', 'on_false', None, 0)",
+        "topology only in A x2: ('ComfySwitchNode', 'on_true', None, 0)"
+      ],
+      "parity_error": null,
+      "parity_ok": false,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "CLIPLoader": 1,
+        "CLIPTextEncode": 2,
+        "ComfySwitchNode": 3,
+        "EmptySD3LatentImage": 1,
+        "KSampler": 1,
+        "LoraLoaderModelOnly": 1,
+        "ModelSamplingAuraFlow": 1,
+        "SaveImage": 1,
+        "UNETLoader": 1,
+        "VAEDecode": 1,
+        "VAELoader": 1
+      },
+      "source_model_snapshot": {
+        "238:219:clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "238:220:vae_name": "qwen_image_vae.safetensors",
+        "238:221:lora_name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+        "238:226:unet_name": "qwen_image_2512_fp8_e4m3fn.safetensors"
+      },
+      "source_output_count": 14,
+      "source_topology_snapshot": 17,
+      "source_widget_value_snapshot": 13,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+        "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "qwen_image_2512_fp8_e4m3fn.safetensors",
+        "qwen_image_vae.safetensors"
+      ]
+    }
+  },
+  "message": "Parity check failed for docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/12_qwen_image_2512.py. Diffs: ['canonical_form mismatch', \"widget_value only in B x1: ('ComfySwitchNode', 'on_false', '50')\", \"widget_value only in B x1: ('ComfySwitchNode', 'on_true', '4')\", \"widget_value only in B x3: ('ComfySwitchNode', 'switch', 'False')\", \"widget_value only in B x1: ('ComfySwitchNode', 'on_true', '1')\"]",
+  "out": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/12_qwen_image_2512.py",
+  "report": {
+    "artifacts": [],
+    "asset_candidates": [
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "LoraLoaderModelOnly",
+        "metadata": {
+          "input": "lora_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+        "node_id": "238:221",
+        "source": "api_prompt",
+        "subdir": "loras",
+        "url": null
+      },
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "CLIPLoader",
+        "metadata": {
+          "input": "clip_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        "node_id": "238:219",
+        "source": "api_prompt",
+        "subdir": "text_encoders",
+        "url": null
+      },
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "qwen_image_2512_fp8_e4m3fn.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "UNETLoader",
+        "metadata": {
+          "input": "unet_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "qwen_image_2512_fp8_e4m3fn.safetensors",
+        "node_id": "238:226",
+        "source": "api_prompt",
+        "subdir": "diffusion_models",
+        "url": null
+      },
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "qwen_image_vae.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "VAELoader",
+        "metadata": {
+          "input": "vae_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "qwen_image_vae.safetensors",
+        "node_id": "238:220",
+        "source": "api_prompt",
+        "subdir": "vae",
+        "url": null
+      }
+    ],
+    "asset_checks": [],
+    "contract": {
+      "comfy_configuration": {},
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "custom_nodes": [],
+      "graph_contract": {
+        "edge_count": 0,
+        "named_output_count": 0,
+        "output_count": 1,
+        "runtime_class_types": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "ComfySwitchNode",
+          "EmptySD3LatentImage",
+          "KSampler",
+          "LoraLoaderModelOnly",
+          "ModelSamplingAuraFlow",
+          "PrimitiveBoolean",
+          "PrimitiveFloat",
+          "PrimitiveInt",
+          "SaveImage",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "runtime_node_count": 19,
+        "schema_sources": [],
+        "unresolved_positional_outputs": [],
+        "unresolved_widgets": []
+      },
+      "inputs": [
+        "model",
+        "prompt",
+        "seed"
+      ],
+      "metadata": {
+        "capability": null,
+        "coverage_tier": null,
+        "ready_template": null
+      },
+      "model_assets": [
+        {
+          "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors"
+        },
+        {
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors"
+        },
+        {
+          "name": "qwen_image_2512_fp8_e4m3fn.safetensors"
+        },
+        {
+          "name": "qwen_image_vae.safetensors"
+        }
+      ],
+      "outputs": [
+        {
+          "node_id": "60",
+          "output_type": "SaveImage"
+        }
+      ],
+      "public_inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "unet_name",
+          "media_semantics": null,
+          "name": "model",
+          "node_id": "238:226",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "unet_name",
+            "node_id": "238:226"
+          },
+          "type": null,
+          "value": "qwen_image_2512_fp8_e4m3fn.safetensors"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "text",
+          "media_semantics": null,
+          "name": "prompt",
+          "node_id": "238:227",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "text",
+            "node_id": "238:227"
+          },
+          "type": null,
+          "value": "Urban alleyway at dusk. Tall, statuesque high-fashion model striding elegantly, mid distant full body shot from an angular perspective, cinematic/editorial with bold contrasts and tactile materials. They wear a rose-gold metallic trench coat with deconstructed elements over a black long-sleeved turtleneck with subtle texture; paired with forest-green pleated pants with raw hems and a soft texture. Long braided dark hair, medium complexion. They carry a vibrant yellow designer handbag with geometric details and a structured silhouette. White architectural sneakers with bold geometric cutouts. Bold, high-contrast, tactile, urban-grit meets high-fashion impact, extreme clarity, extreme layering, post-processing with transparent light-transmitting ultra-smooth high-definition film effect, removing all noise and grain, removing all blur, removing all vintage feel, removing all roughness, drawn with 32K pixel precision, unparalleled fine line drawing of every single detail, the entire image like a brand new photograph, photorealistic\n"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "seed",
+          "media_semantics": null,
+          "name": "seed",
+          "node_id": "238:230",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "seed",
+            "node_id": "238:230"
+          },
+          "type": null,
+          "value": 464857551335368
+        }
+      ],
+      "public_outputs": [
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "60",
+          "output_type": "SaveImage"
+        }
+      ],
+      "readiness_level": "unknown",
+      "runtime_class_types": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "ComfySwitchNode",
+        "EmptySD3LatentImage",
+        "KSampler",
+        "LoraLoaderModelOnly",
+        "ModelSamplingAuraFlow",
+        "PrimitiveBoolean",
+        "PrimitiveFloat",
+        "PrimitiveInt",
+        "SaveImage",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "runtime_nodes": [
+        "238:218",
+        "238:219",
+        "238:220",
+        "238:221",
+        "238:222",
+        "238:223",
+        "238:224",
+        "238:225",
+        "238:226",
+        "238:227",
+        "238:228",
+        "238:229",
+        "238:230",
+        "238:231",
+        "238:232",
+        "238:233",
+        "238:240",
+        "238:243",
+        "60"
+      ],
+      "runtime_packages": [],
+      "source": {
+        "id": "qwen_image_2512",
+        "path": "ready_templates/sources/official/image/qwen_image_2512.json",
+        "provenance": {},
+        "source_type": "api"
+      },
+      "version": 1,
+      "workflow_id": "qwen_image_2512"
+    },
+    "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+    "diagnostics": [
+      {
+        "class_type": "PrimitiveFloat",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveFloat node 238:218 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "238:218",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "PrimitiveFloat",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveFloat node 238:223 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "238:223",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "PrimitiveInt",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveInt node 238:224 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "238:224",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "PrimitiveInt",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveInt node 238:225 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "238:225",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "PrimitiveBoolean",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveBoolean node 238:229 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "238:229",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "LoraLoaderModelOnly",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "lora_name",
+          "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "loras"
+        },
+        "message": "Model asset candidate 'Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors' has no source URL.",
+        "node_id": "238:221",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'qwen_2.5_vl_7b_fp8_scaled.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "CLIPLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "clip_name",
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "text_encoders"
+        },
+        "message": "Model asset candidate 'qwen_2.5_vl_7b_fp8_scaled.safetensors' has no source URL.",
+        "node_id": "238:219",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "qwen_image_2512_fp8_e4m3fn.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'qwen_image_2512_fp8_e4m3fn.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "UNETLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "unet_name",
+          "name": "qwen_image_2512_fp8_e4m3fn.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "diffusion_models"
+        },
+        "message": "Model asset candidate 'qwen_image_2512_fp8_e4m3fn.safetensors' has no source URL.",
+        "node_id": "238:226",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "qwen_image_vae.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'qwen_image_vae.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "VAELoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "vae_name",
+          "name": "qwen_image_vae.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "vae"
+        },
+        "message": "Model asset candidate 'qwen_image_vae.safetensors' has no source URL.",
+        "node_id": "238:220",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "ComfySwitchNode",
+        "code": "value_type_mismatch",
+        "detail": {
+          "actual_type": "list",
+          "category": "schema",
+          "expected_type": "BOOLEAN",
+          "input": "switch",
+          "value": "['238:229', 0]"
+        },
+        "message": "Node 238:233 (ComfySwitchNode) input switch value ['238:229', 0] does not match declared type BOOLEAN.",
+        "node_id": "238:233",
+        "recommendation": null,
+        "severity": "error"
+      },
+      {
+        "class_type": "ComfySwitchNode",
+        "code": "value_type_mismatch",
+        "detail": {
+          "actual_type": "list",
+          "category": "schema",
+          "expected_type": "BOOLEAN",
+          "input": "switch",
+          "value": "['238:229', 0]"
+        },
+        "message": "Node 238:240 (ComfySwitchNode) input switch value ['238:229', 0] does not match declared type BOOLEAN.",
+        "node_id": "238:240",
+        "recommendation": null,
+        "severity": "error"
+      },
+      {
+        "class_type": "ComfySwitchNode",
+        "code": "value_type_mismatch",
+        "detail": {
+          "actual_type": "list",
+          "category": "schema",
+          "expected_type": "BOOLEAN",
+          "input": "switch",
+          "value": "['238:229', 0]"
+        },
+        "message": "Node 238:243 (ComfySwitchNode) input switch value ['238:229', 0] does not match declared type BOOLEAN.",
+        "node_id": "238:243",
+        "recommendation": null,
+        "severity": "error"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "238:233",
+          "from_output": "0",
+          "input_type": "MODEL",
+          "output_type": "COMFY_MATCHTYPE_V3",
+          "to_input": "model",
+          "to_node": "238:222"
+        },
+        "message": "Edge 238:233.0 -> 238:222.model connects COMFY_MATCHTYPE_V3 to MODEL.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "238:243",
+          "from_output": "0",
+          "input_type": "FLOAT",
+          "output_type": "COMFY_MATCHTYPE_V3",
+          "to_input": "cfg",
+          "to_node": "238:230"
+        },
+        "message": "Edge 238:243.0 -> 238:230.cfg connects COMFY_MATCHTYPE_V3 to FLOAT.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "238:240",
+          "from_output": "0",
+          "input_type": "INT",
+          "output_type": "COMFY_MATCHTYPE_V3",
+          "to_input": "steps",
+          "to_node": "238:230"
+        },
+        "message": "Edge 238:240.0 -> 238:230.steps connects COMFY_MATCHTYPE_V3 to INT.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "238:226",
+          "from_output": "0",
+          "input_type": "COMFY_MATCHTYPE_V3",
+          "output_type": "MODEL",
+          "to_input": "on_false",
+          "to_node": "238:233"
+        },
+        "message": "Edge 238:226.0 -> 238:233.on_false connects MODEL to COMFY_MATCHTYPE_V3.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "type_mismatch",
+        "detail": {
+          "category": "schema",
+          "from_node": "238:221",
+          "from_output": "0",
+          "input_type": "COMFY_MATCHTYPE_V3",
+          "output_type": "MODEL",
+          "to_input": "on_true",
+          "to_node": "238:233"
+        },
+        "message": "Edge 238:221.0 -> 238:233.on_true connects MODEL to COMFY_MATCHTYPE_V3.",
+        "node_id": null,
+        "recommendation": null,
+        "severity": "warning"
+      }
+    ],
+    "graph_contract": {
+      "edge_count": 0,
+      "named_output_count": 0,
+      "output_count": 1,
+      "runtime_class_types": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "ComfySwitchNode",
+        "EmptySD3LatentImage",
+        "KSampler",
+        "LoraLoaderModelOnly",
+        "ModelSamplingAuraFlow",
+        "PrimitiveBoolean",
+        "PrimitiveFloat",
+        "PrimitiveInt",
+        "SaveImage",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "runtime_node_count": 19,
+      "schema_sources": [],
+      "unresolved_positional_outputs": [],
+      "unresolved_widgets": []
+    },
+    "metadata": {
+      "contract": {
+        "comfy_configuration": {},
+        "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+        "custom_nodes": [],
+        "graph_contract": {
+          "edge_count": 0,
+          "named_output_count": 0,
+          "output_count": 1,
+          "runtime_class_types": [
+            "CLIPLoader",
+            "CLIPTextEncode",
+            "ComfySwitchNode",
+            "EmptySD3LatentImage",
+            "KSampler",
+            "LoraLoaderModelOnly",
+            "ModelSamplingAuraFlow",
+            "PrimitiveBoolean",
+            "PrimitiveFloat",
+            "PrimitiveInt",
+            "SaveImage",
+            "UNETLoader",
+            "VAEDecode",
+            "VAELoader"
+          ],
+          "runtime_node_count": 19,
+          "schema_sources": [],
+          "unresolved_positional_outputs": [],
+          "unresolved_widgets": []
+        },
+        "inputs": [
+          "model",
+          "prompt",
+          "seed"
+        ],
+        "metadata": {
+          "capability": null,
+          "coverage_tier": null,
+          "ready_template": null
+        },
+        "model_assets": [
+          {
+            "name": "Qwen-Image-2512-Lightning-4steps-V1.0-fp32.safetensors"
+          },
+          {
+            "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors"
+          },
+          {
+            "name": "qwen_image_2512_fp8_e4m3fn.safetensors"
+          },
+          {
+            "name": "qwen_image_vae.safetensors"
+          }
+        ],
+        "outputs": [
+          {
+            "node_id": "60",
+            "output_type": "SaveImage"
+          }
+        ],
+        "public_inputs": [
+          {
+            "aliases": [],
+            "default": null,
+            "field": "unet_name",
+            "media_semantics": null,
+            "name": "model",
+            "node_id": "238:226",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "unet_name",
+              "node_id": "238:226"
+            },
+            "type": null,
+            "value": "qwen_image_2512_fp8_e4m3fn.safetensors"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "text",
+            "media_semantics": null,
+            "name": "prompt",
+            "node_id": "238:227",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "text",
+              "node_id": "238:227"
+            },
+            "type": null,
+            "value": "Urban alleyway at dusk. Tall, statuesque high-fashion model striding elegantly, mid distant full body shot from an angular perspective, cinematic/editorial with bold contrasts and tactile materials. They wear a rose-gold metallic trench coat with deconstructed elements over a black long-sleeved turtleneck with subtle texture; paired with forest-green pleated pants with raw hems and a soft texture. Long braided dark hair, medium complexion. They carry a vibrant yellow designer handbag with geometric details and a structured silhouette. White architectural sneakers with bold geometric cutouts. Bold, high-contrast, tactile, urban-grit meets high-fashion impact, extreme clarity, extreme layering, post-processing with transparent light-transmitting ultra-smooth high-definition film effect, removing all noise and grain, removing all blur, removing all vintage feel, removing all roughness, drawn with 32K pixel precision, unparalleled fine line drawing of every single detail, the entire image like a brand new photograph, photorealistic\n"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "seed",
+            "media_semantics": null,
+            "name": "seed",
+            "node_id": "238:230",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "seed",
+              "node_id": "238:230"
+            },
+            "type": null,
+            "value": 464857551335368
+          }
+        ],
+        "public_outputs": [
+          {
+            "artifact_kind": null,
+            "expected_cardinality": null,
+            "filename_prefix": null,
+            "mime_type": null,
+            "name": null,
+            "node_id": "60",
+            "output_type": "SaveImage"
+          }
+        ],
+        "readiness_level": "unknown",
+        "runtime_class_types": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "ComfySwitchNode",
+          "EmptySD3LatentImage",
+          "KSampler",
+          "LoraLoaderModelOnly",
+          "ModelSamplingAuraFlow",
+          "PrimitiveBoolean",
+          "PrimitiveFloat",
+          "PrimitiveInt",
+          "SaveImage",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "runtime_nodes": [
+          "238:218",
+          "238:219",
+          "238:220",
+          "238:221",
+          "238:222",
+          "238:223",
+          "238:224",
+          "238:225",
+          "238:226",
+          "238:227",
+          "238:228",
+          "238:229",
+          "238:230",
+          "238:231",
+          "238:232",
+          "238:233",
+          "238:240",
+          "238:243",
+          "60"
+        ],
+        "runtime_packages": [],
+        "source": {
+          "id": "qwen_image_2512",
+          "path": "ready_templates/sources/official/image/qwen_image_2512.json",
+          "provenance": {},
+          "source_type": "api"
+        },
+        "version": 1,
+        "workflow_id": "qwen_image_2512"
+      },
+      "custom_node_analysis": {
+        "diagnostics": [],
+        "helper_class_types_excluded": [],
+        "missing_runtime_class_types": [],
+        "runtime_class_types": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "ComfySwitchNode",
+          "EmptySD3LatentImage",
+          "KSampler",
+          "LoraLoaderModelOnly",
+          "ModelSamplingAuraFlow",
+          "PrimitiveBoolean",
+          "PrimitiveFloat",
+          "PrimitiveInt",
+          "SaveImage",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "status": "analyzed",
+        "suggestions": [],
+        "unresolved_runtime_class_types": []
+      },
+      "runtime_class_types": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "ComfySwitchNode",
+        "EmptySD3LatentImage",
+        "KSampler",
+        "LoraLoaderModelOnly",
+        "ModelSamplingAuraFlow",
+        "PrimitiveBoolean",
+        "PrimitiveFloat",
+        "PrimitiveInt",
+        "SaveImage",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "schema_source": {
+        "object_info_cache": "out/cache/object_info.comfy-core.0.25.0.json",
+        "provider": "ConversionSchemaProvider",
+        "runtime_enabled": false,
+        "server_url": null
+      },
+      "schema_validation": {
+        "issue_count": 8,
+        "ok": false,
+        "schema_provider": true
+      },
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/official/image/qwen_image_2512.json",
+      "widget_analysis": {
+        "missing_compiled_widget_inputs": [],
+        "suggestions": [],
+        "unresolved_widget_aliases": []
+      }
+    },
+    "node_counts": {
+      "CLIPLoader": 1,
+      "CLIPTextEncode": 2,
+      "ComfySwitchNode": 3,
+      "EmptySD3LatentImage": 1,
+      "KSampler": 1,
+      "LoraLoaderModelOnly": 1,
+      "ModelSamplingAuraFlow": 1,
+      "PrimitiveBoolean": 1,
+      "PrimitiveFloat": 2,
+      "PrimitiveInt": 2,
+      "SaveImage": 1,
+      "UNETLoader": 1,
+      "VAEDecode": 1,
+      "VAELoader": 1
+    },
+    "node_pack_suggestions": [],
+    "ok": false,
+    "output_mode": "analysis",
+    "provenance": {
+      "indexed_id": null,
+      "raw_workflow_shape": "api",
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/official/image/qwen_image_2512.json",
+      "source_ref": "ready_templates/sources/official/image/qwen_image_2512.json",
+      "workflow_source_id": "qwen_image_2512",
+      "workflow_source_type": "api"
+    },
+    "public_inputs": [
+      {
+        "aliases": [],
+        "default": null,
+        "field": "unet_name",
+        "media_semantics": null,
+        "name": "model",
+        "node_id": "238:226",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "unet_name",
+          "node_id": "238:226"
+        },
+        "type": null,
+        "value": "qwen_image_2512_fp8_e4m3fn.safetensors"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "text",
+        "media_semantics": null,
+        "name": "prompt",
+        "node_id": "238:227",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "text",
+          "node_id": "238:227"
+        },
+        "type": null,
+        "value": "Urban alleyway at dusk. Tall, statuesque high-fashion model striding elegantly, mid distant full body shot from an angular perspective, cinematic/editorial with bold contrasts and tactile materials. They wear a rose-gold metallic trench coat with deconstructed elements over a black long-sleeved turtleneck with subtle texture; paired with forest-green pleated pants with raw hems and a soft texture. Long braided dark hair, medium complexion. They carry a vibrant yellow designer handbag with geometric details and a structured silhouette. White architectural sneakers with bold geometric cutouts. Bold, high-contrast, tactile, urban-grit meets high-fashion impact, extreme clarity, extreme layering, post-processing with transparent light-transmitting ultra-smooth high-definition film effect, removing all noise and grain, removing all blur, removing all vintage feel, removing all roughness, drawn with 32K pixel precision, unparalleled fine line drawing of every single detail, the entire image like a brand new photograph, photorealistic\n"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "seed",
+        "media_semantics": null,
+        "name": "seed",
+        "node_id": "238:230",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "seed",
+          "node_id": "238:230"
+        },
+        "type": null,
+        "value": 464857551335368
+      }
+    ],
+    "public_outputs": [
+      {
+        "artifact_kind": null,
+        "expected_cardinality": null,
+        "filename_prefix": null,
+        "mime_type": null,
+        "name": null,
+        "node_id": "60",
+        "output_type": "SaveImage"
+      }
+    ],
+    "recommendations": [
+      "Run `vibecomfy validate ready_templates/sources/official/image/qwen_image_2512.json` after port fixes.",
+      "Run `vibecomfy nodes install-plan ready_templates/sources/official/image/qwen_image_2512.json` before installing custom nodes.",
+      "Use `vibecomfy port convert ready_templates/sources/official/image/qwen_image_2512.json --out out/scratchpads/<name>.py` for Python scratchpad materialization.",
+      "Review model assets before RunPod validation; use `vibecomfy fetch ready_templates/sources/official/image/qwen_image_2512.json --dry-run` for URL-backed assets.",
+      "Resolve error diagnostics before spending RunPod GPU time."
+    ],
+    "source": "ready_templates/sources/official/image/qwen_image_2512.json",
+    "source_hash": "sha256:1825da34e2124e9d6d54c8fbcf5b9f1ab901d2fe39be03b358130bb30f06fbdb",
+    "workflow_id": "qwen_image_2512",
+    "workflow_shape": {
+      "edges": 0,
+      "helper_nodes": 0,
+      "inputs": 3,
+      "nodes": 19,
+      "outputs": 1,
+      "runtime_nodes": 19
+    }
+  },
+  "status": "error",
+  "strict_ready_diagnostics": [],
+  "strict_ready_ok": null
+}

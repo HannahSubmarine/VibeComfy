@@ -14,6 +14,9 @@ import pytest
 
 from vibecomfy.ingest.normalize import from_ui
 from vibecomfy.ingest.native_subgraph import NativeSubgraphError, expand_native_subgraphs
+from vibecomfy.porting.emitter import emit_canonical_python
+from vibecomfy.porting.emit.ui import emit_ui_json
+from vibecomfy.security.agent_generated_loader import load_agent_generated_scratchpad
 
 
 SOURCE = (
@@ -166,4 +169,72 @@ def test_native_h3_expansion_is_accepted_by_canonical_ui_ingest() -> None:
     )
     assert "105" not in workflow.nodes
     assert "105::168" in workflow.nodes
-    assert workflow.nodes["92"].inputs["video"] == ["105::168", 0]
+    assert "video" not in workflow.nodes["92"].inputs
+    assert any(
+        edge.from_node == "105::168"
+        and edge.from_output == "0"
+        and edge.to_node == "92"
+        and edge.to_input == "video"
+        for edge in workflow.edges
+    )
+
+
+def _math_expression_ui(*, linked: bool) -> dict:
+    math_inputs = [
+        {"name": "expression", "type": "STRING", "link": None, "widget": {"name": "expression"}},
+        {
+            "name": "values.a",
+            "type": "FLOAT,INT,BOOLEAN",
+            "link": 1 if linked else None,
+            "widget": {"name": "values.a"},
+        },
+    ]
+    nodes = [{
+        "id": 1,
+        "type": "ComfyMathExpression",
+        "inputs": math_inputs,
+        "outputs": [],
+        "widgets_values": ["a + 1", 5] if not linked else ["a + 1"],
+    }]
+    links = []
+    if linked:
+        nodes.insert(0, {
+            "id": 2,
+            "type": "PrimitiveFloat",
+            "inputs": [],
+            "outputs": [{"name": "value", "type": "FLOAT", "links": [1]}],
+            "widgets_values": [3.0],
+        })
+        links.append([1, 2, 0, 1, 1, "FLOAT"])
+    return {"workflow_id": "math-expression", "nodes": nodes, "links": links, "groups": []}
+
+
+def test_math_expression_unlinked_dynamic_literal_survives_ui_export_and_reload() -> None:
+    workflow = from_ui(_math_expression_ui(linked=False), source_path="h3-edit.json", use_comfy_converter=False)
+    workflow.nodes["1"].inputs["values.a"] = 6
+
+    exported = emit_ui_json(workflow)
+    node = next(item for item in exported["nodes"] if item["id"] == 1)
+    assert node["widgets_values"] == ["a + 1", 6]
+    assert [item["name"] for item in node["inputs"]] == ["expression", "values.a"]
+    assert node["inputs"][1]["widget"] == {"name": "values.a"}
+
+    reloaded = from_ui(exported, source_path="h3-edit-reload.json", use_comfy_converter=False)
+    assert reloaded.nodes["1"].inputs["values.a"] == 6
+    assert reloaded.compile("api")["1"]["inputs"]["values.a"] == 6
+
+
+def test_math_expression_linked_dynamic_input_keeps_descriptor_and_no_literal_duplicate() -> None:
+    workflow = from_ui(_math_expression_ui(linked=True), source_path="h3-linked.json", use_comfy_converter=False)
+
+    exported = emit_ui_json(workflow)
+    node = next(item for item in exported["nodes"] if item["id"] == 1)
+    descriptor = next(item for item in node["inputs"] if item["name"] == "values.a")
+    assert descriptor["widget"] == {"name": "values.a"}
+    assert descriptor["link"] == 1
+    assert node["widgets_values"] == ["a + 1"]
+    assert len([item for item in exported["nodes"] if item["type"] == "PrimitiveFloat"]) == 1
+
+    reloaded = from_ui(exported, source_path="h3-linked-reload.json", use_comfy_converter=False)
+    assert reloaded.nodes["1"].inputs == {"expression": "a + 1"}
+    assert [(edge.from_node, edge.to_node, edge.to_input) for edge in reloaded.edges] == [("2", "1", "values.a")]

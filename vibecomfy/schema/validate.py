@@ -5,7 +5,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from vibecomfy._compile._graph import is_canonical_api_link
 
@@ -302,7 +302,7 @@ def validate_api_against_schema(api_dict: dict[str, Any], provider: SchemaProvid
             value = payload_inputs.get(name)
             if _preserve_linked_undeclared_input(name, value):
                 continue
-            if getattr(schema, "source_provider", None) == "widget_schema" and _is_api_link(value):
+            if getattr(schema, "source_provider", None) == "widget_schema" and _is_schema_api_link(value, api_dict):
                 continue
             if (
                 not _field_compatible(class_type, name, "unknown_input")
@@ -320,7 +320,7 @@ def validate_api_against_schema(api_dict: dict[str, Any], provider: SchemaProvid
 
         for name in sorted(provided_inputs & declared_inputs):
             value = payload_inputs[name]
-            if _is_api_link(value):
+            if _is_schema_api_link(value, api_dict):
                 continue
             spec = raw_schema_inputs[name]
             choices = getattr(spec, "choices", None) or []
@@ -425,7 +425,7 @@ def validate_api_against_schema(api_dict: dict[str, Any], provider: SchemaProvid
         if to_schema is None or not isinstance(inputs, dict):
             continue
         for input_name, value in inputs.items():
-            if not _is_api_link(value):
+            if not _is_schema_api_link(value, api_dict):
                 continue
             from_node, from_output = str(value[0]), str(value[1])
             from_schema = schema_by_node.get(from_node)
@@ -1255,6 +1255,29 @@ def _is_boolean_literal(value: Any) -> bool:
 
 def _is_api_link(value: Any) -> bool:
     return is_canonical_api_link(value)
+
+
+def _is_schema_api_link(value: Any, api_dict: Mapping[str, Any]) -> bool:
+    """Recognize a compiled API edge, including legacy string node IDs.
+
+    The canonical link predicate deliberately stays strict so ordinary
+    literals cannot be mistaken for connectivity.  A compiled workflow may
+    nevertheless retain a legacy native-subgraph node ID such as
+    ``"8fa4f93a:2002"``.  The source endpoint and integer output slot provide
+    the additional evidence needed at this schema-validation boundary; this
+    keeps those real edges out of primitive widget validation without
+    broadening the canonical IR classifier.
+    """
+    if _is_api_link(value):
+        return True
+    if not (isinstance(value, list) and len(value) == 2 and isinstance(value[0], str)):
+        return False
+    return (
+        value[0] in api_dict
+        and isinstance(value[1], int)
+        and not isinstance(value[1], bool)
+        and value[1] >= 0
+    )
 
 
 def _truncate(value: Any, n: int = 120) -> str:

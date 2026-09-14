@@ -201,10 +201,10 @@ class TestResolveHivemindSearch:
         detail = result.detail
         assert detail["tool_call"] == "hivemind_search"
         assert detail["tool_status"] == "ok"
-        assert detail["tool_evidence_ids"] == [
+        assert detail["tool_evidence_ids"] == (
             "hivemind:external_resources:1",
             "hivemind:external_resources:2",
-        ]
+        )
         # budget consumed: 3 -> 2
         assert detail["tool_budget"]["searches_remaining"] == TOOL_SEARCH_BUDGET - 1
         # digest shows hits + IDs, never the raw body
@@ -272,7 +272,7 @@ class TestResolveHivemindSearch:
         assert result.ok is True
         assert result.detail["tool_status"] == "no_results"
         assert result.detail["ledger_entry"]["conclusion"].startswith("no_results")
-        assert result.detail["tool_evidence_ids"] == []
+        assert result.detail["tool_evidence_ids"] == ()
 
 
 class TestResolveHivemindGet:
@@ -302,7 +302,7 @@ class TestResolveHivemindGet:
         assert result.ok is True
         assert result.detail["tool_status"] == "ok"
         assert result.detail["tool_budget"]["fetches_remaining"] == TOOL_FETCH_BUDGET - 1
-        assert result.detail["ledger_entry"]["evidence_ids"] == ["hivemind:external_resources:1"]
+        assert result.detail["ledger_entry"]["evidence_ids"] == ("hivemind:external_resources:1",)
         surface = resolver._agent_tool_surface()
         assert "hivemind:external_resources:1" in surface.artifacts
         assert surface.artifacts["hivemind:external_resources:1"].kind == "hivemind_record"

@@ -1,0 +1,1326 @@
+/Users/hannahomalley/Documents/Codex/2026-09-08/goal-continue-the-existing-megado-plan/VibeComfy-integrity/.otto/worktrees/unified-workflow-integrity-20260909/vibecomfy/templates.py:990: UserWarning: ReadyMetadata.build requirements['models'] differs from MODELS-derived model assets
+  derived_requirements = _requirements_with_models(requirements, model_assets)
+{
+  "conversion": {
+    "mode": "scratchpad",
+    "ready_id": null,
+    "validation": {
+      "api_node_count": 10,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "ModelSamplingAuraFlow",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "shift"
+            ]
+          },
+          "message": "Node 78 (ModelSamplingAuraFlow) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "78",
+          "severity": "warning"
+        },
+        {
+          "class_type": "TextEncodeAceStepAudio1.5",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "control_after_generate",
+            "schema_inputs": [
+              "bpm",
+              "cfg_scale",
+              "duration",
+              "generate_audio_codes",
+              "keyscale",
+              "language",
+              "lyrics",
+              "min_p",
+              "seed",
+              "tags",
+              "temperature",
+              "timesignature",
+              "top_k",
+              "top_p"
+            ]
+          },
+          "message": "Node 124 (TextEncodeAceStepAudio1.5) emits schema-unknown kwarg 'control_after_generate'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "124",
+          "severity": "warning"
+        },
+        {
+          "class_type": "TextEncodeAceStepAudio1.5",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "bpm",
+              "cfg_scale",
+              "duration",
+              "generate_audio_codes",
+              "keyscale",
+              "language",
+              "lyrics",
+              "min_p",
+              "seed",
+              "tags",
+              "temperature",
+              "timesignature",
+              "top_k",
+              "top_p"
+            ]
+          },
+          "message": "Node 124 (TextEncodeAceStepAudio1.5) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "124",
+          "severity": "warning"
+        },
+        {
+          "class_type": "TextEncodeAceStepAudio1.5",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 893
+          },
+          "message": "node call for 'TextEncodeAceStepAudio1.5' (node 124) would be a single line of 893 chars (>120); multi-line formatting preferred.",
+          "node_id": "124",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "control_after_generate",
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown kwarg 'control_after_generate'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_image",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'latent_image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 357
+          },
+          "message": "node call for 'KSampler' (node 3) would be a single line of 357 chars (>120); multi-line formatting preferred.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "audio",
+            "linked": true,
+            "schema_inputs": [
+              "filename_prefix",
+              "quality"
+            ]
+          },
+          "message": "Node 59 (SaveAudioMP3) emits schema-unknown linked kwarg 'audio'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "59",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 130
+          },
+          "message": "node call for 'SaveAudioMP3' (node 59) would be a single line of 130 chars (>120); multi-line formatting preferred.",
+          "node_id": "59",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "ConditioningZeroOut": 1,
+        "DualCLIPLoader": 1,
+        "EmptyAceStep1.5LatentAudio": 1,
+        "KSampler": 1,
+        "ModelSamplingAuraFlow": 1,
+        "SaveAudioMP3": 1,
+        "TextEncodeAceStepAudio1.5": 1,
+        "UNETLoader": 1,
+        "VAEDecodeAudio": 1,
+        "VAELoader": 1
+      },
+      "emitted_model_snapshot": {
+        "105:clip_name1": "qwen_0.6b_ace15.safetensors",
+        "105:clip_name2": "qwen_4b_ace15.safetensors",
+        "106:vae_name": "ace_1.5_vae.safetensors",
+        "125:unet_name": "acestep_v1.5_turbo.safetensors"
+      },
+      "emitted_output_count": 10,
+      "emitted_topology_snapshot": 10,
+      "emitted_widget_value_snapshot": 20,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "ConditioningZeroOut": 1,
+        "DualCLIPLoader": 1,
+        "EmptyAceStep1.5LatentAudio": 1,
+        "KSampler": 1,
+        "ModelSamplingAuraFlow": 1,
+        "SaveAudioMP3": 1,
+        "TextEncodeAceStepAudio1.5": 1,
+        "UNETLoader": 1,
+        "VAEDecodeAudio": 1,
+        "VAELoader": 1
+      },
+      "source_model_snapshot": {
+        "105:clip_name1": "qwen_0.6b_ace15.safetensors",
+        "105:clip_name2": "qwen_4b_ace15.safetensors",
+        "106:vae_name": "ace_1.5_vae.safetensors",
+        "125:unet_name": "acestep_v1.5_turbo.safetensors"
+      },
+      "source_output_count": 10,
+      "source_topology_snapshot": 10,
+      "source_widget_value_snapshot": 20,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "ace_1.5_vae.safetensors",
+        "acestep_v1.5_turbo.safetensors"
+      ]
+    }
+  },
+  "out": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/03_ace_step_1_5_t2a_song.py",
+  "report": {
+    "artifacts": [],
+    "asset_candidates": [
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "ace_1.5_vae.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "VAELoader",
+        "metadata": {
+          "input": "vae_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "ace_1.5_vae.safetensors",
+        "node_id": "106",
+        "source": "api_prompt",
+        "subdir": "vae",
+        "url": null
+      },
+      {
+        "class_type": "VAELoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "ace_1.5_vae.safetensors",
+        "node_id": "106",
+        "source": "ui_properties",
+        "subdir": "vae",
+        "url": "https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/vae/ace_1.5_vae.safetensors"
+      },
+      {
+        "class_type": null,
+        "metadata": {
+          "sources": [
+            "ready_requirements"
+          ]
+        },
+        "name": "acestep_v1.5_turbo.safetensors",
+        "node_id": null,
+        "source": "ready_requirements",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "UNETLoader",
+        "metadata": {
+          "input": "unet_name",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "acestep_v1.5_turbo.safetensors",
+        "node_id": "125",
+        "source": "api_prompt",
+        "subdir": "diffusion_models",
+        "url": null
+      },
+      {
+        "class_type": "UNETLoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "acestep_v1.5_turbo.safetensors",
+        "node_id": "125",
+        "source": "ui_properties",
+        "subdir": "diffusion_models",
+        "url": "https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/diffusion_models/acestep_v1.5_turbo.safetensors"
+      },
+      {
+        "class_type": "DualCLIPLoader",
+        "metadata": {
+          "input": "clip_name1",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "qwen_0.6b_ace15.safetensors",
+        "node_id": "105",
+        "source": "api_prompt",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "DualCLIPLoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "qwen_0.6b_ace15.safetensors",
+        "node_id": "105",
+        "source": "ui_properties",
+        "subdir": "text_encoders",
+        "url": "https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/text_encoders/qwen_0.6b_ace15.safetensors"
+      },
+      {
+        "class_type": "DualCLIPLoader",
+        "metadata": {
+          "input": "clip_name2",
+          "sources": [
+            "api_prompt"
+          ]
+        },
+        "name": "qwen_4b_ace15.safetensors",
+        "node_id": "105",
+        "source": "api_prompt",
+        "subdir": "checkpoints",
+        "url": null
+      },
+      {
+        "class_type": "DualCLIPLoader",
+        "metadata": {
+          "sources": [
+            "ui_properties"
+          ]
+        },
+        "name": "qwen_4b_ace15.safetensors",
+        "node_id": "105",
+        "source": "ui_properties",
+        "subdir": "text_encoders",
+        "url": "https://huggingface.co/Comfy-Org/ace_step_1.5_ComfyUI_files/resolve/main/split_files/text_encoders/qwen_4b_ace15.safetensors"
+      }
+    ],
+    "asset_checks": [],
+    "contract": {
+      "comfy_configuration": {},
+      "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+      "custom_nodes": [
+        "EmptyAceStep1",
+        "TextEncodeAceStepAudio1"
+      ],
+      "graph_contract": {
+        "edge_count": 14,
+        "named_output_count": 0,
+        "output_count": 1,
+        "runtime_class_types": [
+          "ConditioningZeroOut",
+          "DualCLIPLoader",
+          "EmptyAceStep1.5LatentAudio",
+          "KSampler",
+          "ModelSamplingAuraFlow",
+          "PrimitiveFloat",
+          "PrimitiveNode",
+          "SaveAudioMP3",
+          "TextEncodeAceStepAudio1.5",
+          "UNETLoader",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ],
+        "runtime_node_count": 12,
+        "schema_sources": [],
+        "unresolved_positional_outputs": [],
+        "unresolved_widgets": []
+      },
+      "inputs": [
+        "model",
+        "steps"
+      ],
+      "metadata": {
+        "capability": null,
+        "coverage_tier": null,
+        "ready_template": null
+      },
+      "model_assets": [
+        {
+          "name": "ace_1.5_vae.safetensors"
+        },
+        {
+          "name": "acestep_v1.5_turbo.safetensors"
+        }
+      ],
+      "outputs": [
+        {
+          "node_id": "59",
+          "output_type": "SaveAudioMP3"
+        }
+      ],
+      "public_inputs": [
+        {
+          "aliases": [],
+          "default": null,
+          "field": "unet_name",
+          "media_semantics": null,
+          "name": "model",
+          "node_id": "125",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "unet_name",
+            "node_id": "125"
+          },
+          "type": null,
+          "value": "acestep_v1.5_turbo.safetensors"
+        },
+        {
+          "aliases": [],
+          "default": null,
+          "field": "steps",
+          "media_semantics": null,
+          "name": "steps",
+          "node_id": "3",
+          "range": null,
+          "required": false,
+          "target": {
+            "field": "steps",
+            "node_id": "3"
+          },
+          "type": null,
+          "value": 1
+        }
+      ],
+      "public_outputs": [
+        {
+          "artifact_kind": null,
+          "expected_cardinality": null,
+          "filename_prefix": null,
+          "mime_type": null,
+          "name": null,
+          "node_id": "59",
+          "output_type": "SaveAudioMP3"
+        }
+      ],
+      "readiness_level": "unknown",
+      "runtime_class_types": [
+        "ConditioningZeroOut",
+        "DualCLIPLoader",
+        "EmptyAceStep1.5LatentAudio",
+        "KSampler",
+        "ModelSamplingAuraFlow",
+        "PrimitiveFloat",
+        "PrimitiveNode",
+        "SaveAudioMP3",
+        "TextEncodeAceStepAudio1.5",
+        "UNETLoader",
+        "VAEDecodeAudio",
+        "VAELoader"
+      ],
+      "runtime_nodes": [
+        "105",
+        "106",
+        "110",
+        "122",
+        "123",
+        "124",
+        "125",
+        "126",
+        "3",
+        "47",
+        "59",
+        "78"
+      ],
+      "runtime_packages": [],
+      "source": {
+        "id": "ace_step_1_5_t2a_song",
+        "path": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+        "provenance": {},
+        "source_type": "api"
+      },
+      "version": 1,
+      "workflow_id": "ace_step_1_5_t2a_song"
+    },
+    "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+    "diagnostics": [
+      {
+        "class_type": "PrimitiveFloat",
+        "code": "value_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveFloat node 110 is a value primitive; expected \u2014 will be stripped at conversion.",
+        "node_id": "110",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": "PrimitiveNode",
+        "code": "passthrough_helper_source_presence",
+        "detail": {
+          "category": "helper"
+        },
+        "message": "PrimitiveNode node 126 is a passthrough helper; expected \u2014 will be stripped at conversion.",
+        "node_id": "126",
+        "recommendation": null,
+        "severity": "info"
+      },
+      {
+        "class_type": null,
+        "code": "legacy_custom_nodes_unpinned",
+        "detail": {
+          "category": "custom_nodes",
+          "custom_nodes": [
+            "EmptyAceStep1",
+            "TextEncodeAceStepAudio1"
+          ]
+        },
+        "message": "Workflow declares custom_nodes without structured custom_node_refs; pack pins cannot be verified.",
+        "node_id": null,
+        "recommendation": "Align READY_METADATA requirements.custom_node_refs with custom_nodes.lock before running with ensured packs.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "ace_1.5_vae.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'ace_1.5_vae.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "VAELoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "vae_name",
+          "name": "ace_1.5_vae.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "vae"
+        },
+        "message": "Model asset candidate 'ace_1.5_vae.safetensors' has no source URL.",
+        "node_id": "106",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": null,
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "name": "acestep_v1.5_turbo.safetensors",
+          "source": "ready_requirements",
+          "sources": [
+            "ready_requirements"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'acestep_v1.5_turbo.safetensors' has no source URL.",
+        "node_id": null,
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "UNETLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "unet_name",
+          "name": "acestep_v1.5_turbo.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "diffusion_models"
+        },
+        "message": "Model asset candidate 'acestep_v1.5_turbo.safetensors' has no source URL.",
+        "node_id": "125",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "DualCLIPLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "clip_name1",
+          "name": "qwen_0.6b_ace15.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'qwen_0.6b_ace15.safetensors' has no source URL.",
+        "node_id": "105",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      },
+      {
+        "class_type": "DualCLIPLoader",
+        "code": "filename_only_asset_candidate",
+        "detail": {
+          "input": "clip_name2",
+          "name": "qwen_4b_ace15.safetensors",
+          "source": "api_prompt",
+          "sources": [
+            "api_prompt"
+          ],
+          "subdir": "checkpoints"
+        },
+        "message": "Model asset candidate 'qwen_4b_ace15.safetensors' has no source URL.",
+        "node_id": "105",
+        "recommendation": "Add a URL-bearing model asset entry before fetch, staging, or RunPod validation.",
+        "severity": "warning"
+      }
+    ],
+    "graph_contract": {
+      "edge_count": 14,
+      "named_output_count": 0,
+      "output_count": 1,
+      "runtime_class_types": [
+        "ConditioningZeroOut",
+        "DualCLIPLoader",
+        "EmptyAceStep1.5LatentAudio",
+        "KSampler",
+        "ModelSamplingAuraFlow",
+        "PrimitiveFloat",
+        "PrimitiveNode",
+        "SaveAudioMP3",
+        "TextEncodeAceStepAudio1.5",
+        "UNETLoader",
+        "VAEDecodeAudio",
+        "VAELoader"
+      ],
+      "runtime_node_count": 12,
+      "schema_sources": [],
+      "unresolved_positional_outputs": [],
+      "unresolved_widgets": []
+    },
+    "metadata": {
+      "contract": {
+        "comfy_configuration": {},
+        "contract_shape": "workflow_runtime_contract.v1.public_descriptors.v2",
+        "custom_nodes": [
+          "EmptyAceStep1",
+          "TextEncodeAceStepAudio1"
+        ],
+        "graph_contract": {
+          "edge_count": 14,
+          "named_output_count": 0,
+          "output_count": 1,
+          "runtime_class_types": [
+            "ConditioningZeroOut",
+            "DualCLIPLoader",
+            "EmptyAceStep1.5LatentAudio",
+            "KSampler",
+            "ModelSamplingAuraFlow",
+            "PrimitiveFloat",
+            "PrimitiveNode",
+            "SaveAudioMP3",
+            "TextEncodeAceStepAudio1.5",
+            "UNETLoader",
+            "VAEDecodeAudio",
+            "VAELoader"
+          ],
+          "runtime_node_count": 12,
+          "schema_sources": [],
+          "unresolved_positional_outputs": [],
+          "unresolved_widgets": []
+        },
+        "inputs": [
+          "model",
+          "steps"
+        ],
+        "metadata": {
+          "capability": null,
+          "coverage_tier": null,
+          "ready_template": null
+        },
+        "model_assets": [
+          {
+            "name": "ace_1.5_vae.safetensors"
+          },
+          {
+            "name": "acestep_v1.5_turbo.safetensors"
+          }
+        ],
+        "outputs": [
+          {
+            "node_id": "59",
+            "output_type": "SaveAudioMP3"
+          }
+        ],
+        "public_inputs": [
+          {
+            "aliases": [],
+            "default": null,
+            "field": "unet_name",
+            "media_semantics": null,
+            "name": "model",
+            "node_id": "125",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "unet_name",
+              "node_id": "125"
+            },
+            "type": null,
+            "value": "acestep_v1.5_turbo.safetensors"
+          },
+          {
+            "aliases": [],
+            "default": null,
+            "field": "steps",
+            "media_semantics": null,
+            "name": "steps",
+            "node_id": "3",
+            "range": null,
+            "required": false,
+            "target": {
+              "field": "steps",
+              "node_id": "3"
+            },
+            "type": null,
+            "value": 1
+          }
+        ],
+        "public_outputs": [
+          {
+            "artifact_kind": null,
+            "expected_cardinality": null,
+            "filename_prefix": null,
+            "mime_type": null,
+            "name": null,
+            "node_id": "59",
+            "output_type": "SaveAudioMP3"
+          }
+        ],
+        "readiness_level": "unknown",
+        "runtime_class_types": [
+          "ConditioningZeroOut",
+          "DualCLIPLoader",
+          "EmptyAceStep1.5LatentAudio",
+          "KSampler",
+          "ModelSamplingAuraFlow",
+          "PrimitiveFloat",
+          "PrimitiveNode",
+          "SaveAudioMP3",
+          "TextEncodeAceStepAudio1.5",
+          "UNETLoader",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ],
+        "runtime_nodes": [
+          "105",
+          "106",
+          "110",
+          "122",
+          "123",
+          "124",
+          "125",
+          "126",
+          "3",
+          "47",
+          "59",
+          "78"
+        ],
+        "runtime_packages": [],
+        "source": {
+          "id": "ace_step_1_5_t2a_song",
+          "path": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+          "provenance": {},
+          "source_type": "api"
+        },
+        "version": 1,
+        "workflow_id": "ace_step_1_5_t2a_song"
+      },
+      "custom_node_analysis": {
+        "diagnostics": [
+          {
+            "class_type": null,
+            "code": "legacy_custom_nodes_unpinned",
+            "detail": {
+              "category": "custom_nodes",
+              "custom_nodes": [
+                "EmptyAceStep1",
+                "TextEncodeAceStepAudio1"
+              ]
+            },
+            "message": "Workflow declares custom_nodes without structured custom_node_refs; pack pins cannot be verified.",
+            "node_id": null,
+            "recommendation": "Align READY_METADATA requirements.custom_node_refs with custom_nodes.lock before running with ensured packs.",
+            "severity": "warning"
+          }
+        ],
+        "helper_class_types_excluded": [],
+        "missing_runtime_class_types": [],
+        "runtime_class_types": [
+          "ConditioningZeroOut",
+          "DualCLIPLoader",
+          "EmptyAceStep1.5LatentAudio",
+          "KSampler",
+          "ModelSamplingAuraFlow",
+          "PrimitiveFloat",
+          "PrimitiveNode",
+          "SaveAudioMP3",
+          "TextEncodeAceStepAudio1.5",
+          "UNETLoader",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ],
+        "status": "analyzed",
+        "suggestions": [],
+        "unresolved_runtime_class_types": []
+      },
+      "runtime_class_types": [
+        "ConditioningZeroOut",
+        "DualCLIPLoader",
+        "EmptyAceStep1.5LatentAudio",
+        "KSampler",
+        "ModelSamplingAuraFlow",
+        "PrimitiveFloat",
+        "PrimitiveNode",
+        "SaveAudioMP3",
+        "TextEncodeAceStepAudio1.5",
+        "UNETLoader",
+        "VAEDecodeAudio",
+        "VAELoader"
+      ],
+      "schema_source": {
+        "object_info_cache": "out/cache/object_info.comfy-core.0.25.0.json",
+        "provider": "ConversionSchemaProvider",
+        "runtime_enabled": false,
+        "server_url": null
+      },
+      "schema_validation": {
+        "issue_count": 0,
+        "ok": true,
+        "schema_provider": true
+      },
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+      "widget_analysis": {
+        "missing_compiled_widget_inputs": [],
+        "suggestions": [],
+        "unresolved_widget_aliases": []
+      }
+    },
+    "node_counts": {
+      "ConditioningZeroOut": 1,
+      "DualCLIPLoader": 1,
+      "EmptyAceStep1.5LatentAudio": 1,
+      "KSampler": 1,
+      "ModelSamplingAuraFlow": 1,
+      "PrimitiveFloat": 1,
+      "PrimitiveNode": 1,
+      "SaveAudioMP3": 1,
+      "TextEncodeAceStepAudio1.5": 1,
+      "UNETLoader": 1,
+      "VAEDecodeAudio": 1,
+      "VAELoader": 1
+    },
+    "node_pack_suggestions": [],
+    "ok": true,
+    "output_mode": "analysis",
+    "provenance": {
+      "indexed_id": null,
+      "raw_workflow_shape": "ui",
+      "source_kind": "raw_json",
+      "source_path": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+      "source_ref": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+      "workflow_source_id": "ace_step_1_5_t2a_song",
+      "workflow_source_type": "api"
+    },
+    "public_inputs": [
+      {
+        "aliases": [],
+        "default": null,
+        "field": "unet_name",
+        "media_semantics": null,
+        "name": "model",
+        "node_id": "125",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "unet_name",
+          "node_id": "125"
+        },
+        "type": null,
+        "value": "acestep_v1.5_turbo.safetensors"
+      },
+      {
+        "aliases": [],
+        "default": null,
+        "field": "steps",
+        "media_semantics": null,
+        "name": "steps",
+        "node_id": "3",
+        "range": null,
+        "required": false,
+        "target": {
+          "field": "steps",
+          "node_id": "3"
+        },
+        "type": null,
+        "value": 1
+      }
+    ],
+    "public_outputs": [
+      {
+        "artifact_kind": null,
+        "expected_cardinality": null,
+        "filename_prefix": null,
+        "mime_type": null,
+        "name": null,
+        "node_id": "59",
+        "output_type": "SaveAudioMP3"
+      }
+    ],
+    "recommendations": [
+      "Run `vibecomfy validate ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json` after port fixes.",
+      "Run `vibecomfy nodes install-plan ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json` before installing custom nodes.",
+      "Use `vibecomfy port convert ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json --out out/scratchpads/<name>.py` for Python scratchpad materialization.",
+      "Review model assets before RunPod validation; use `vibecomfy fetch ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json --dry-run` for URL-backed assets."
+    ],
+    "source": "ready_templates/sources/official/audio/ace_step_1_5_t2a_song.json",
+    "source_hash": "sha256:820e0899c2996967929a8e1632c35da6c4fa52d0e5b503ec374ca44f58ba4494",
+    "workflow_id": "ace_step_1_5_t2a_song",
+    "workflow_shape": {
+      "edges": 14,
+      "helper_nodes": 0,
+      "inputs": 2,
+      "nodes": 12,
+      "outputs": 1,
+      "runtime_nodes": 12
+    }
+  },
+  "status": "ok",
+  "strict_ready_diagnostics": [],
+  "strict_ready_ok": null,
+  "write": {
+    "diff": null,
+    "diff_forced_dry_run": false,
+    "diff_requested": false,
+    "dry_run": false,
+    "target": "docs/handover/unified-workflow-integrity-20260909/evidence/workflow-conversion-corpus-20260911-20/03_ace_step_1_5_t2a_song.py",
+    "target_exists": false,
+    "validation": {
+      "api_node_count": 10,
+      "build_ok": true,
+      "compile_ok": true,
+      "emission_diagnostics": [
+        {
+          "class_type": null,
+          "code": "deprecated_scratchpad_projection_options",
+          "detail": {},
+          "message": "scratchpad projection options are migration-only and no longer select an alternate executable graph; canonical emission preserves virtual wires and authored branches",
+          "node_id": null,
+          "severity": "warning"
+        },
+        {
+          "class_type": "ModelSamplingAuraFlow",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "shift"
+            ]
+          },
+          "message": "Node 78 (ModelSamplingAuraFlow) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "78",
+          "severity": "warning"
+        },
+        {
+          "class_type": "TextEncodeAceStepAudio1.5",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "control_after_generate",
+            "schema_inputs": [
+              "bpm",
+              "cfg_scale",
+              "duration",
+              "generate_audio_codes",
+              "keyscale",
+              "language",
+              "lyrics",
+              "min_p",
+              "seed",
+              "tags",
+              "temperature",
+              "timesignature",
+              "top_k",
+              "top_p"
+            ]
+          },
+          "message": "Node 124 (TextEncodeAceStepAudio1.5) emits schema-unknown kwarg 'control_after_generate'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "124",
+          "severity": "warning"
+        },
+        {
+          "class_type": "TextEncodeAceStepAudio1.5",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "clip",
+            "linked": true,
+            "schema_inputs": [
+              "bpm",
+              "cfg_scale",
+              "duration",
+              "generate_audio_codes",
+              "keyscale",
+              "language",
+              "lyrics",
+              "min_p",
+              "seed",
+              "tags",
+              "temperature",
+              "timesignature",
+              "top_k",
+              "top_p"
+            ]
+          },
+          "message": "Node 124 (TextEncodeAceStepAudio1.5) emits schema-unknown linked kwarg 'clip'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "124",
+          "severity": "warning"
+        },
+        {
+          "class_type": "TextEncodeAceStepAudio1.5",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 893
+          },
+          "message": "node call for 'TextEncodeAceStepAudio1.5' (node 124) would be a single line of 893 chars (>120); multi-line formatting preferred.",
+          "node_id": "124",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "control_after_generate",
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown kwarg 'control_after_generate'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "latent_image",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'latent_image'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "model",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'model'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "negative",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'negative'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "positive",
+            "linked": true,
+            "schema_inputs": [
+              "cfg",
+              "denoise",
+              "sampler_name",
+              "scheduler",
+              "seed",
+              "steps"
+            ]
+          },
+          "message": "Node 3 (KSampler) emits schema-unknown linked kwarg 'positive'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "KSampler",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 357
+          },
+          "message": "node call for 'KSampler' (node 3) would be a single line of 357 chars (>120); multi-line formatting preferred.",
+          "node_id": "3",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "schema_unknown_kwarg_hidden_by_extras",
+          "detail": {
+            "input": "audio",
+            "linked": true,
+            "schema_inputs": [
+              "filename_prefix",
+              "quality"
+            ]
+          },
+          "message": "Node 59 (SaveAudioMP3) emits schema-unknown linked kwarg 'audio'; typed wrappers accept it through **_extras, so verify the field is intentional.",
+          "node_id": "59",
+          "severity": "warning"
+        },
+        {
+          "class_type": "SaveAudioMP3",
+          "code": "long_one_line_node_call",
+          "detail": {
+            "line_length": 130
+          },
+          "message": "node call for 'SaveAudioMP3' (node 59) would be a single line of 130 chars (>120); multi-line formatting preferred.",
+          "node_id": "59",
+          "severity": "warning"
+        }
+      ],
+      "emitted_class_type_counts": {
+        "ConditioningZeroOut": 1,
+        "DualCLIPLoader": 1,
+        "EmptyAceStep1.5LatentAudio": 1,
+        "KSampler": 1,
+        "ModelSamplingAuraFlow": 1,
+        "SaveAudioMP3": 1,
+        "TextEncodeAceStepAudio1.5": 1,
+        "UNETLoader": 1,
+        "VAEDecodeAudio": 1,
+        "VAELoader": 1
+      },
+      "emitted_model_snapshot": {
+        "105:clip_name1": "qwen_0.6b_ace15.safetensors",
+        "105:clip_name2": "qwen_4b_ace15.safetensors",
+        "106:vae_name": "ace_1.5_vae.safetensors",
+        "125:unet_name": "acestep_v1.5_turbo.safetensors"
+      },
+      "emitted_output_count": 10,
+      "emitted_topology_snapshot": 10,
+      "emitted_widget_value_snapshot": 20,
+      "error": null,
+      "hidden_model_filenames": [],
+      "import_ok": true,
+      "issues": [],
+      "low_confidence": false,
+      "metadata_model_snapshot": [],
+      "model_value_change": false,
+      "model_value_diffs": [],
+      "model_value_dropped": false,
+      "ok": true,
+      "parity_diffs": [],
+      "parity_error": null,
+      "parity_ok": true,
+      "ready_requirements_model_snapshot": [],
+      "schema_ok": null,
+      "source_class_type_counts": {
+        "ConditioningZeroOut": 1,
+        "DualCLIPLoader": 1,
+        "EmptyAceStep1.5LatentAudio": 1,
+        "KSampler": 1,
+        "ModelSamplingAuraFlow": 1,
+        "SaveAudioMP3": 1,
+        "TextEncodeAceStepAudio1.5": 1,
+        "UNETLoader": 1,
+        "VAEDecodeAudio": 1,
+        "VAELoader": 1
+      },
+      "source_model_snapshot": {
+        "105:clip_name1": "qwen_0.6b_ace15.safetensors",
+        "105:clip_name2": "qwen_4b_ace15.safetensors",
+        "106:vae_name": "ace_1.5_vae.safetensors",
+        "125:unet_name": "acestep_v1.5_turbo.safetensors"
+      },
+      "source_output_count": 10,
+      "source_topology_snapshot": 10,
+      "source_widget_value_snapshot": 20,
+      "strict_ready_diagnostics": [],
+      "strict_ready_ok": null,
+      "workflow_requirements_model_snapshot": [
+        "ace_1.5_vae.safetensors",
+        "acestep_v1.5_turbo.safetensors"
+      ]
+    },
+    "written": true
+  }
+}

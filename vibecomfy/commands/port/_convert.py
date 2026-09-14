@@ -14,9 +14,9 @@ from vibecomfy.porting.convert import (
     port_convert_and_write,
     port_convert_workflow,
 )
-from vibecomfy.porting.layout_store import write_layout
 from vibecomfy.porting.workbench import analyze_source, load_port_source
 from vibecomfy.porting.import_errors import native_boundary_recovery
+from vibecomfy.workflow_bundle import WorkflowBundleError
 
 from ._shared import (
     _attach_contract_fields,
@@ -61,16 +61,27 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         else "auto"
     )
     try:
+        loaded = load_port_source(args.workflow, schema_provider=schema_provider)
         report = analyze_source(
             args.workflow,
             schema_provider=schema_provider,
             head_check_models=args.head_check_models,
             mode=port_mode,
+            loaded_source=loaded,
         )
         _inject_schema_source_metadata(report, args)
         if getattr(args, "strict_ready_template", False):
             _port._apply_strict_ready_template_gate(report)
-        if report.has_errors:
+        # Draft scratchpads intentionally retain preflight readiness/schema
+        # diagnostics in the payload.  The canonical emitter's own
+        # validation/parity gate below is the authority for whether the
+        # artifact can be written.  Promotion paths remain fail-closed at
+        # preflight so --ready-id and strict-ready cannot turn unresolved
+        # source evidence into a candidate.
+        hard_preflight = bool(
+            args.ready_id or getattr(args, "strict_ready_template", False)
+        )
+        if report.has_errors and hard_preflight:
             payload = {
                 "status": "error",
                 "report": report.to_json(),
@@ -81,7 +92,20 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             _emit_convert_payload(payload, json_output=args.json)
             return 1
 
-        loaded = load_port_source(args.workflow, schema_provider=schema_provider)
+        # ``from_ui`` is the sole native-boundary materialization owner.  The
+        # the loader retains the authored source as evidence, but conversion
+        # consumes only the normalized IR.  Passing raw source back into the
+        # emitter would re-enter recursive-boundary handling outside the
+        # normalization owner.
+        # Draft emission is intentionally schema-tolerant: unresolved source
+        # diagnostics stay attached to ``report`` above, while the canonical
+        # emitter validates the editable module structurally and against
+        # parity. Ready promotion keeps provider-backed validation below.
+        conversion_schema_provider = schema_provider if hard_preflight else None
+        registered_inputs = {
+            str(name): (str(item.node_id), str(item.field))
+            for name, item in loaded.workflow.inputs.items()
+        }
         result = port_convert_workflow(
             loaded.workflow,
             ready_id=args.ready_id,
@@ -89,9 +113,13 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
             provenance=report.provenance,
             source_hash=report.source_hash,
             workflow_shape=report.workflow_shape,
-            schema_provider=schema_provider,
-            raw_workflow=loaded.raw_workflow,
+            registered_inputs=registered_inputs,
+            schema_provider=conversion_schema_provider,
             keep_virtual_wires=bool(getattr(args, "keep_virtual_wires", False)),
+            # The bundle writer rebuilds the diagnostic source before it joins
+            # captured UI nodes. Carry IDs only in this internal preflight;
+            # emit_bundle_with_candidate renders the final clean source again.
+            preserve_node_ids=True,
         )
     except Exception as exc:
         recovery = native_boundary_recovery(exc, args.workflow)
@@ -127,20 +155,93 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         out = Path(args.out)
     elif dry_run or diff_mode:
         # Derive target from ready-template argument
-        loaded = load_port_source(args.workflow, schema_provider=schema_provider)
         out = Path(loaded.source_path) if loaded.source_path else Path(args.workflow)
     else:
         print("--out is required for write mode.", file=sys.stderr)
         return 1
 
     try:
-        write_result = port_convert_and_write(
-            result,
-            out,
-            dry_run=dry_run,
-            diff=diff_mode,
-        )
-    except ManualTemplateRefusal as exc:
+        if not dry_run and not diff_mode:
+            # The default conversion path publishes the same canonical pair as
+            # SDK/canvas capture: readable Python plus its required v2
+            # companion.  ``port_convert_workflow`` remains the diagnostic and
+            # parity preflight above; the bundle writer is the final atomic
+            # publication gate, so a failed pair never leaves a new Python file
+            # without its custody/presentation partner.
+            from vibecomfy.porting.convert import (
+                _build_emitted_workflow_from_text,
+                _manual_template_refusal_preview,
+            )
+            from vibecomfy.porting.emit.ui import is_litegraph_candidate
+            from vibecomfy.workflow_bundle import emit_bundle_with_candidate
+
+            manual_refusal = _manual_template_refusal_preview(out)
+            if manual_refusal["refused"]:
+                raise ManualTemplateRefusal(str(manual_refusal["message"]))
+
+            # The diagnostic converter intentionally works on a detached,
+            # normalized copy.  Rebuild that exact copy before pair
+            # publication so native helper lowering/virtual-wire repair is
+            # shared with the successful preflight rather than re-admitting
+            # the raw importer graph at the bundle boundary.
+            bundle_workflow = _build_emitted_workflow_from_text(result.text)
+            if args.ready_id:
+                # A ready promotion changes the published workflow identity
+                # to its namespaced registry id.  The diagnostic conversion
+                # was deliberately built from the source workflow id; rebind
+                # that detached candidate before the shared pair writer so
+                # Python, READY_METADATA, and the companion agree.
+                bundle_workflow.id = str(args.ready_id)
+                bundle_workflow.source.id = str(args.ready_id)
+            ui_candidate = (
+                loaded.raw_workflow
+                if isinstance(loaded.raw_workflow, dict)
+                and is_litegraph_candidate(loaded.raw_workflow)
+                else None
+            )
+
+            bundle = emit_bundle_with_candidate(
+                bundle_workflow,
+                out,
+                report.provenance,
+                ui_candidate,
+                operation="captured" if ui_candidate is not None else "authored",
+                source_provenance={
+                    key: report.provenance[key]
+                    for key in (
+                        "source_kind",
+                        "ready_id",
+                    )
+                    if key in report.provenance
+                }
+                | {
+                    "source_hash": report.source_hash,
+                    "workflow_shape": report.workflow_shape,
+                    "output_mode": "ready_template" if args.ready_id else "scratchpad",
+                    "source_type": str(loaded.workflow.source.source_type),
+                },
+                source_format="ready_template" if args.ready_id else "scratchpad",
+            )
+            write_result = {
+                "written": True,
+                "dry_run": False,
+                "diff_requested": False,
+                "diff_forced_dry_run": False,
+                "target": str(out),
+                "target_exists": out.exists(),
+                "companion": str(out.with_suffix(".vibe.json")),
+                "revision_id": bundle.revision_id,
+                "semantic_digest": bundle.semantic_digest,
+                "ui_digest": bundle.ui_digest,
+            }
+        else:
+            write_result = port_convert_and_write(
+                result,
+                out,
+                dry_run=dry_run,
+                diff=diff_mode,
+            )
+    except (ManualTemplateRefusal, WorkflowBundleError) as exc:
         # In dry-run mode, skip manual refusal and show the diff anyway
         if dry_run:
             print(f"port convert note: {exc} (showing dry-run diff anyway)")
@@ -186,17 +287,6 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
         _attach_contract_fields(payload["report"])
         _emit_convert_payload(payload, json_output=args.json)
         return 1
-
-    # Emit layout sidecar alongside the .py (skip in dry-run/diff)
-    if not dry_run and not diff_mode:
-        try:
-            write_layout(out, loaded.workflow)
-        except Exception as exc:
-            # Legacy .layout.json is transient evidence, never an approval
-            # source.  Do not claim a successful publication when its write
-            # failed; surface the error to the caller.
-            print(f"port convert failed writing legacy layout evidence: {exc}", file=sys.stderr)
-            return 1
 
     payload = {
         "status": "ok" if write_result["written"] or write_result["dry_run"] else "error",

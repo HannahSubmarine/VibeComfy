@@ -192,7 +192,8 @@ def test_proof_a_full_roundtrip_pos_preservation(
     code = _run_convert(flat_json, "flat.py")
     assert code == 0, f"port convert failed with code {code}"
     assert (tmp_path / "flat.py").exists(), "flat.py not written"
-    assert (tmp_path / "flat.layout.json").exists(), "sidecar not written"
+    assert (tmp_path / "flat.vibe.json").exists(), "canonical companion not written"
+    assert not (tmp_path / "flat.layout.json").exists(), "legacy layout sidecar must not be canonical output"
 
     # Step 2 — export to UI
     out_emit = tmp_path / "flat_emit.json"
@@ -261,10 +262,15 @@ def test_proof_d_edit_invariance_position_survives_widget_edit(
     py_content = (tmp_path / "flat.py").read_text(encoding="utf-8")
     # The CLIPTextEncode (positive) node has a text prompt — change it
     mutated = py_content.replace(
+        "'beautiful scenery nature glass bottle landscape, purple galaxy bottle,'",
+        "'MUTATED PROMPT — position must survive this edit'",
+    )
+    mutated = mutated.replace(
         '"beautiful scenery nature glass bottle landscape, purple galaxy bottle,"',
         '"MUTATED PROMPT — position must survive this edit"',
     )
     # Also mutate the KSampler seed to prove uid is extrinsic
+    mutated = mutated.replace("noise_seed=42", "noise_seed=9999")
     mutated = mutated.replace("seed=42", "seed=9999")
     assert mutated != py_content, "mutation produced no change"
     (tmp_path / "flat.py").write_text(mutated, encoding="utf-8")

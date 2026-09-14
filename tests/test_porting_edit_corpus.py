@@ -330,10 +330,14 @@ def test_edit_corpus_set_mode_bypass_preserves_flat_fixture_nodes() -> None:
     _assert_preserves_out_of_delta_nodes(stamped_before, candidate, touched={("", "5")})
 
 
-def test_edit_corpus_native_subgraph_internal_edit_fails_closed() -> None:
+def test_edit_corpus_native_subgraph_internal_edit_is_admitted() -> None:
     original = _fixture("subgraphed_wan_i2v.json")
-    with pytest.raises(ValueError, match="unsupported_boundary_encoding"):
-        from_ui(dict(original), schema_provider=_SchemaProvider(), use_comfy_converter=False)
+    workflow = from_ui(
+        dict(original), schema_provider=_SchemaProvider(), use_comfy_converter=False
+    )
+    assert workflow.nodes
+    assert workflow.edges
+    assert workflow.metadata.get("_native_subgraph_provenance")
 
 
 def test_edit_corpus_python_owned_nested_set_mode_is_supported() -> None:

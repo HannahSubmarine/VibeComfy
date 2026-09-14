@@ -464,17 +464,51 @@ def _assemble_previews(
     return previews, False, bool(widget_fields), raw_widget_count
 
 
+def _legacy_surface_previews(
+    node: Mapping[str, Any],
+) -> tuple[list[str], bool]:
+    """Return the exact field projection used by the legacy diagnostic.
+
+    The main ranking intentionally uses the richer settings contract, which
+    includes UI-only controls.  The optional parity diagnostic must compare
+    against the historical ``EditableSurface`` projection instead, otherwise
+    a newly recognized presentation field changes its labels and ordering.
+    """
+    from vibecomfy.porting.edit.editable_surface import editable_surface_for
+
+    field_previews: list[str] = []
+    try:
+        surface = editable_surface_for(node, edges=None)
+        have_compact_names = bool(surface.literals or surface.inputs)
+        for field in surface.literals:
+            field_previews.append(field.name)
+        compact_set = {preview.split("[")[0] for preview in field_previews}
+        for slot in surface.inputs:
+            if slot.name and slot.name not in compact_set:
+                field_previews.append(slot.name)
+    except Exception:
+        return [], False
+    return field_previews, have_compact_names
+
+
 def _score_node(
     node: Mapping[str, Any],
     node_id: str,
     class_type: str,
     query_text: str,
+    *,
+    legacy_surface: bool = False,
 ) -> EditTargetCandidate | None:
     """Score one node with the legacy factor set; ``None`` when not editable."""
 
-    previews, have_compact_names, has_widget_fields, raw_widget_count = (
-        _assemble_previews(node, class_type)
-    )
+    if legacy_surface:
+        previews, have_compact_names = _legacy_surface_previews(node)
+        has_widget_fields = False
+        raw_widget_count = None
+    else:
+        previews, have_compact_names, has_widget_fields, raw_widget_count = (
+            _assemble_previews(node, class_type)
+        )
     if not previews:
         return None
     preview = ", ".join(previews)
@@ -917,7 +951,13 @@ def diagnose_existing_tweak_ranking(
         class_type = _node_class_type(node)
         if not class_type:
             continue
-        candidate = _score_node(node, node_id, class_type, normalized_query)
+        candidate = _score_node(
+            node,
+            node_id,
+            class_type,
+            normalized_query,
+            legacy_surface=True,
+        )
         if candidate is None:
             continue
         if candidate.label in seen:

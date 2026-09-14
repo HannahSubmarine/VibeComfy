@@ -316,6 +316,8 @@ def test_approval_compile_succeeds_or_typed_fail_closed(template_id: str) -> Non
                 "not locally registered",
                 "not present locally",
                 "object-info identity does not resolve",
+                "object-info identity is unavailable",
+                "unknown input",
             )
         ), text
 
