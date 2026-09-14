@@ -19,12 +19,33 @@ def _folder_name(source: Path) -> str:
     return name or "workflow"
 
 
+def _next_commands(folder: str | Path, *, project: str | None = None) -> dict[str, str]:
+    quoted_folder = shlex.quote(str(folder))
+    project_option = f" --project {shlex.quote(project)}" if project else ""
+    return {
+        "targets": f"vibecomfy edit {quoted_folder}{project_option} targets",
+        "set": f"vibecomfy edit {quoted_folder}{project_option} set <target>.<field> <JSON_VALUE>",
+        "validate": f"vibecomfy validate {quoted_folder}",
+        "node": "vibecomfy node <ClassType>",
+    }
+
+
 def _emit(payload: dict[str, Any], *, json_output: bool) -> None:
     if json_output:
         print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
         return
     if payload.get("status") == "error":
         print(f"Import failed: {payload.get('message', 'conversion failed')}", file=sys.stderr)
+        if payload.get("task_id"):
+            print(f"  Astrid task: {payload['task_id']} (stage: {payload.get('stage', 'unknown')})", file=sys.stderr)
+            astrid = payload.get("astrid_outputs", {})
+            if isinstance(astrid, dict):
+                print(f"  Astrid outputs: {astrid.get('status', 'unknown')}", file=sys.stderr)
+                if astrid.get("report_digest"):
+                    print(f"  report digest: {astrid['report_digest']}", file=sys.stderr)
+            print(f"  local publication: {payload.get('local_publication', 'unknown')}", file=sys.stderr)
+            if payload.get("recovery"):
+                print(f"  recover: {payload['recovery']}", file=sys.stderr)
         return
     if payload.get("status") == "preview":
         print(f"Would import {payload['source']} into {payload['folder']}/")
@@ -39,9 +60,12 @@ def _emit(payload: dict[str, Any], *, json_output: bool) -> None:
         return
 
     folder = payload["folder"]
-    quoted_folder = shlex.quote(folder)
     tracking = payload.get("tracking", {})
     tracking_mode = tracking.get("mode", "untracked") if isinstance(tracking, dict) else "untracked"
+    next_commands = payload.get("next")
+    if not isinstance(next_commands, dict):
+        project = tracking.get("project_id") if isinstance(tracking, dict) and tracking_mode == "astrid" else None
+        next_commands = _next_commands(folder, project=project)
     print(f"  tracking: {tracking_mode}")
     task_id = payload.get("task_id")
     if task_id:
@@ -49,11 +73,11 @@ def _emit(payload: dict[str, Any], *, json_output: bool) -> None:
         print(f"  history: astrid tasks show {task_id}; astrid tasks events {task_id}")
     print("Edit the Python file directly or use the typed workflow edit commands.")
     print("Find targets and node schemas:")
-    print(f"  vibecomfy edit targets {quoted_folder}")
-    print("  vibecomfy node <ClassType>")
+    print(f"  {next_commands.get('targets', '')}")
+    print(f"  {next_commands.get('node', 'vibecomfy node <ClassType>')}")
     print("Edit, then validate:")
-    print(f"  vibecomfy edit {quoted_folder} set <target>.<field> <JSON_VALUE>")
-    print(f"  vibecomfy validate {quoted_folder}")
+    print(f"  {next_commands.get('set', _next_commands(folder)['set'])}")
+    print(f"  {next_commands.get('validate', _next_commands(folder)['validate'])}")
     print("Editing guide: https://github.com/peteromallet/VibeComfy/blob/main/docs/guides/workflow-onboarding.md")
     diagnostics = payload.get("diagnostics", [])
     if diagnostics:
@@ -92,6 +116,13 @@ def _cmd_import(args: argparse.Namespace) -> int:
         try:
             payload = _tracked_import(args, source, source_bytes, destination)
         except Exception as exc:
+            from vibecomfy.commands._astrid_workflows import TrackedWorkflowFailure
+
+            if isinstance(exc, TrackedWorkflowFailure):
+                payload = exc.to_payload()
+                payload["folder"] = str(destination)
+                _emit(payload, json_output=args.json)
+                return 1
             _emit({"status": "error", "folder": str(destination), "message": f"{type(exc).__name__}: {exc}"}, json_output=args.json)
             return 1
         _emit(payload, json_output=args.json)
@@ -130,9 +161,7 @@ def _cmd_import(args: argparse.Namespace) -> int:
         "readiness": report.get("readiness"),
         "diagnostics": diagnostics if isinstance(diagnostics, list) else [],
         "next": {
-            "targets": f"vibecomfy edit targets {shlex.quote(str(destination))}",
-            "validate": f"vibecomfy validate {shlex.quote(str(destination))}",
-            "node": "vibecomfy node <ClassType>",
+            **_next_commands(destination, project=args.project),
         "tracking": (
             f"preview only; would record this import in Astrid project {args.project}"
             if args.project
@@ -178,7 +207,9 @@ def _tracked_import(args: argparse.Namespace, source: Path, source_bytes: bytes,
         report_for_outputs,
         resolve_project,
         save_receipt,
+        settled_output_digests,
         stable_idempotency_key,
+        track_admitted_task,
         upload_bytes,
         wait_for_task,
     )
@@ -206,50 +237,74 @@ def _tracked_import(args: argparse.Namespace, source: Path, source_bytes: bytes,
         uploads=[upload],
         idempotency_key=idempotency_key,
     )
-    receipt = {
-        "schema_version": 1,
-        "task_id": task_id,
-        "project_id": project_id,
-        "project": args.project,
-        "workflow_id": workflow_id,
-        "transition_kind": "origin",
-        "idempotency_key": idempotency_key,
-        "target_path": str(destination),
-        "parent_members": None,
-        "outputs": {},
-        "report_digest": None,
-        "input_digests": {"source": source_digest},
-    }
-    save_receipt(receipt)
-    task = wait_for_task(client, task_id)
-    _task_id, outputs, manifest = download_outputs(
-        client,
-        task,
-        expected_names={"python", "companion", "source", "report"},
-    )
-    if outputs["source"] != source_bytes:
-        raise ValueError("Astrid import output source.json differs from the exact source bytes")
-    report = report_for_outputs(
-        outputs,
-        manifest,
-        workflow_id=workflow_id,
-        transition_kind="origin",
-        parent_revision=None,
-        parent_task_id=None,
-        origin_task_id=None,
-    )
-    members = {
-        "workflow.py": manifest["python"],
-        "workflow.vibe.json": manifest["companion"],
-        "source.json": manifest["source"],
-    }
-    materialize_outputs(outputs, destination)
-    receipt.update({
-        "outputs": members,
-        "report_digest": manifest["report"],
-        "revision_id": report.get("revision_id"),
-    })
-    save_receipt(receipt)
+    with track_admitted_task(task_id, destination) as progress:
+        receipt = {
+            "schema_version": 1,
+            "task_id": task_id,
+            "project_id": project_id,
+            "project": args.project,
+            "workflow_id": workflow_id,
+            "transition_kind": "origin",
+            "idempotency_key": idempotency_key,
+            "target_path": str(destination),
+            "parent_members": None,
+            "outputs": {},
+            "report_digest": None,
+            "input_digests": {"source": source_digest},
+        }
+        save_receipt(receipt)
+        progress.stage = "task_settlement"
+        task = wait_for_task(client, task_id)
+        settled = settled_output_digests(task)
+        progress.astrid_outputs = "settled"
+        progress.report_digest = settled.get("report")
+        progress.output_digests = {
+            output_name: settled[name]
+            for output_name, name in (
+                ("workflow.py", "python"),
+                ("workflow.vibe.json", "companion"),
+                ("source.json", "source"),
+            )
+            if name in settled
+        }
+        progress.stage = "output_download"
+        _task_id, outputs, manifest = download_outputs(
+            client,
+            task,
+            expected_names={"python", "companion", "source", "report"},
+        )
+        progress.report_digest = manifest.get("report")
+        progress.output_digests = {
+            "workflow.py": manifest["python"],
+            "workflow.vibe.json": manifest["companion"],
+            "source.json": manifest["source"],
+        }
+        if outputs["source"] != source_bytes:
+            raise ValueError("Astrid import output source.json differs from the exact source bytes")
+        progress.stage = "report_validation"
+        report = report_for_outputs(
+            outputs,
+            manifest,
+            workflow_id=workflow_id,
+            transition_kind="origin",
+            parent_revision=None,
+            parent_task_id=None,
+            origin_task_id=None,
+        )
+        members = dict(progress.output_digests)
+        receipt.update({
+            "outputs": members,
+            "report_digest": manifest["report"],
+            "revision_id": report.get("revision_id"),
+        })
+        progress.stage = "settled_receipt"
+        save_receipt(receipt)
+        progress.stage = "local_publication"
+        progress.local_publication = "in_progress"
+        materialize_outputs(outputs, destination)
+        progress.local_publication = "published"
+        progress.stage = "final_receipt"
+        save_receipt(receipt)
     return {
         "status": "ok",
         "tracking": {"mode": "astrid", "astrid": True, "project_id": project_id},
@@ -267,9 +322,7 @@ def _tracked_import(args: argparse.Namespace, source: Path, source_bytes: bytes,
         "readiness": report.get("readiness"),
         "diagnostics": report.get("diagnostics", []),
         "next": {
-            "targets": f"vibecomfy edit targets {shlex.quote(str(destination))}",
-            "validate": f"vibecomfy validate {shlex.quote(str(destination))}",
-            "node": "vibecomfy node <ClassType>",
+            **_next_commands(destination, project=project_id),
             "tracking": f"tracked by task {task_id}",
             "history": f"astrid tasks show {task_id}; astrid tasks events {task_id}",
         },

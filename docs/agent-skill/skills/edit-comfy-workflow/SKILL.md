@@ -47,6 +47,16 @@ executor does not take VibeComfy's `--project` option. The
 [workflow onboarding guide](../../../guides/workflow-onboarding.md) gives the
 Astrid-native task command and history path.
 
+Loading a canonical bundle executes its `workflow.py` to build the graph, so
+inspection, typed editing, capture, and validation use VibeComfy's existing
+Python-consent gate. In a terminal, let the prompt ask before proceeding. For
+an unattended command, use the explicit `vibecomfy --yes ...` opt-in only when
+the user has authorized this source; `--non-interactive` otherwise refuses.
+An Astrid-native canonical-bundle task must include the explicit
+`python_execution_consent: "confirmed"` input. Do not infer that consent from
+task admission or from an `authority_context` value. Importing raw workflow
+JSON and inspecting a UI JSON graph do not execute workflow Python.
+
 The `edit` command supports `set`, `add`, `remove`, `connect`, `disconnect`,
 `mode`, and `batch`. A batch file or standard input lets an agent submit a
 single ordered group of typed changes; later operations can refer to a node
@@ -70,6 +80,12 @@ automatically; use explicit project-bound capture to add an applied canvas to
 the Astrid history. Import, accepted edit, capture, validation, and execution
 are separate actions: validation checks the exact edited bundle but does not
 run generation.
+
+Typed edits and UI capture regenerate Python from the canonical graph. If a
+captured Python file contains extra executable code that the graph cannot
+represent, VibeComfy refuses the rewrite and leaves all three bundle files
+unchanged. Continue editing Python and capture it, or restore canonical
+generated source before switching back to typed edits.
 
 Use `vibecomfy port check` and `vibecomfy port convert` when you need advanced
 preflight, a standalone scratchpad, or the intentional ready-template

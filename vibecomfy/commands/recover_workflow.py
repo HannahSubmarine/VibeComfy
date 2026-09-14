@@ -20,19 +20,32 @@ def _cmd_recover(args: argparse.Namespace) -> int:
         read_receipt,
         report_for_outputs,
         save_receipt,
+        task_workflow_context,
         wait_for_task,
     )
 
     try:
         receipt = read_receipt(args.task_id)
-        if receipt is None:
+        if receipt is None and not args.out:
             raise AstridWorkflowError(
-                f"no local recovery receipt exists for {args.task_id}; recover only tasks admitted by `vibecomfy import/edit --project`"
+                f"no local recovery receipt exists for {args.task_id}; pass --out so recovery never guesses a local write target"
             )
         client = open_client()
         task = _data(client.tasks.show(args.task_id), action=f"read task {args.task_id}")
-        if str(getattr(task, "state", task.get("state", "")) if isinstance(task, Mapping) else getattr(task, "state", "")).lower() not in {"succeeded", "completed"}:
+        state = str(task.get("state", "") if isinstance(task, Mapping) else getattr(task, "state", "")).lower()
+        if state not in {"succeeded", "completed"}:
             task = wait_for_task(client, args.task_id)
+        if receipt is None:
+            context = task_workflow_context(task, args.task_id)
+            receipt = {
+                "schema_version": 1,
+                "task_id": args.task_id,
+                **context,
+                "target_path": str(Path(args.out).expanduser().resolve()),
+                "separate_output": True,
+                "outputs": {},
+                "report_digest": None,
+            }
         _task_id, outputs, manifest = download_outputs(
             client,
             task,
@@ -100,7 +113,13 @@ def _cmd_recover(args: argparse.Namespace) -> int:
         else:
             receipt["target_path"] = str(destination)
             receipt["materialized"] = True
-        save_receipt(receipt)
+        try:
+            save_receipt(receipt)
+            receipt_persisted = True
+        except Exception:
+            # Publication is already complete. The returned task ID and this
+            # command remain sufficient to repeat/verify recovery.
+            receipt_persisted = False
         payload = {
             "status": status,
             "task_id": args.task_id,
@@ -111,6 +130,7 @@ def _cmd_recover(args: argparse.Namespace) -> int:
             "folder": str(destination),
             "members": expected_outputs,
             "re_admitted": False,
+            "receipt_persisted": receipt_persisted,
             "next": {
                 "validate": f"vibecomfy validate {destination}",
                 "history": f"astrid tasks show {args.task_id}; astrid tasks events {args.task_id}",
@@ -141,11 +161,12 @@ def register(subparsers) -> None:
         help="Materialize an already-settled Astrid workflow task by ID.",
         description=(
             "Recover exact settled outputs from an existing Astrid task. This only reads the task and its output objects;\n"
-            "it never admits another edit. A changed local parent is preserved and requires an alternate --out path."
+            "it never admits another edit. A changed local parent is preserved and requires an alternate --out path.\n"
+            "If the original local receipt could not be written, pass the --out path shown by the failed import/edit command."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("task_id", help="Task ID printed by tracked import/edit output.")
+    parser.add_argument("task_id", help="Task ID printed by tracked import/edit output or its post-admission error.")
     parser.add_argument("--out", help="Write a separate recovered bundle if the original parent changed.")
     parser.add_argument("--json", action="store_true", help="Emit a machine-readable result.")
     parser.set_defaults(func=_cmd_recover)

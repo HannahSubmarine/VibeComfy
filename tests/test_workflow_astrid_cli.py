@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import shlex
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -41,6 +43,11 @@ def _provider() -> FrozenSchemaSnapshotProvider:
 
 def _digest(payload: bytes) -> str:
     return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+class _FakeTTY(io.StringIO):
+    def isatty(self) -> bool:
+        return True
 
 
 class _FakeAstrid:
@@ -145,6 +152,22 @@ class _FakeAstrid:
 
         from vibecomfy.porting.edit.bundle_service import transition_bundle
 
+        from vibecomfy.security import GateContext, set_gate_context
+        executor_gate_audit: list[dict] = []
+
+        def run_executor_transition(*args, **kwargs):
+            # Astrid's executor validates the consent input and runs the shared
+            # Python loader under its audited non-interactive approval scope.
+            if spec["inputs"].get("python_execution_consent") != "confirmed":
+                raise AssertionError("tracked edit task omitted explicit Python execution consent")
+            executor_gate = GateContext(non_interactive=True, assume_yes=True)
+            token = set_gate_context(executor_gate)
+            try:
+                return transition_bundle(*args, **kwargs)
+            finally:
+                executor_gate_audit.extend(executor_gate.audit)
+                token.var.reset(token)
+
         with TemporaryDirectory(prefix="fake-astrid-edit-") as directory:
             root = Path(directory)
             parent = root / "parent"
@@ -157,7 +180,7 @@ class _FakeAstrid:
             parent_revision = spec["inputs"]["parent_revision"]
             if "operations" in inputs:
                 envelope = json.loads(inputs["operations"])
-                result = transition_bundle(
+                result = run_executor_transition(
                     parent_path,
                     tool_calls=[{"tool": "edit_batch", "args": {"ops": envelope["ops"]}}],
                     schema_provider=self.schema_provider,
@@ -168,7 +191,7 @@ class _FakeAstrid:
                 candidate_path = candidate_dir / "workflow.py"
                 candidate_path.write_bytes(inputs["capture_python"])
                 candidate_path.with_suffix(".vibe.json").write_bytes(inputs["companion"])
-                result = transition_bundle(
+                result = run_executor_transition(
                     parent_path,
                     capture=True,
                     candidate_python=candidate_path,
@@ -219,6 +242,8 @@ class _FakeAstrid:
                 "operations": list(result.operations),
                 "diff": result.to_dict().get("diff"),
                 "diagnostics": list(result.diagnostics),
+                "python_execution_consent": spec["inputs"].get("python_execution_consent"),
+                "security_gate_audit": executor_gate_audit,
             }
             return {
                 "python": python_bytes,
@@ -239,6 +264,8 @@ class _FakeAstrid:
         if capability == "vibecomfy.import":
             outputs = self._origin(spec["inputs"]["workflow_id"], inputs["source"])
         elif capability == "vibecomfy.edit":
+            if spec.get("inputs", {}).get("python_execution_consent") != "confirmed":
+                raise AssertionError("fake Astrid SDK received an unconsented edit task")
             outputs = self._edit(inputs, spec)
         else:
             raise AssertionError(capability)
@@ -246,6 +273,8 @@ class _FakeAstrid:
         self.tasks_by_id[task_id] = {
             "task_id": task_id,
             "state": "succeeded",
+            "project_id": project_id,
+            "spec": spec,
             "result": {"outputs": manifest},
         }
         self.tasks_by_key[idempotency_key] = task_id
@@ -259,6 +288,12 @@ class _FakeAstrid:
 def _run(argv: list[str]) -> int:
     args = build_parser().parse_args(argv)
     return args.func(args)
+
+
+def _run_recovery_command(command: str) -> int:
+    parts = shlex.split(command)
+    assert parts[0] == "vibecomfy"
+    return _run(parts[1:])
 
 
 def test_tracked_import_edit_capture_and_recover_use_task_lineage_without_extra_admission(
@@ -280,6 +315,20 @@ def test_tracked_import_edit_capture_and_recover_use_task_lineage_without_extra_
     assert _run(["import", str(source), "--project", "demo", "--json"]) == 0
     origin = json.loads(capsys.readouterr().out)
     assert origin["tracking"]["mode"] == "astrid"
+    assert origin["next"]["targets"] == (
+        f"vibecomfy edit {bundle_dir} --project project-1 targets"
+    )
+    assert origin["next"]["set"] == (
+        f"vibecomfy edit {bundle_dir} --project project-1 set "
+        "<target>.<field> <JSON_VALUE>"
+    )
+    for command, expected_action in (
+        (origin["next"]["targets"], "targets"),
+        (origin["next"]["set"], "set"),
+    ):
+        parsed = build_parser().parse_args(shlex.split(command)[1:])
+        assert parsed.project == "project-1"
+        assert parsed.action == expected_action
     assert sorted(path.name for path in bundle_dir.iterdir()) == ["source.json", "workflow.py", "workflow.vibe.json"]
     origin_bundle = load_bundle(bundle_dir, trust=Provenance.USER_CONFIRMED, schema_provider=provider)
     assert origin_bundle.workflow.source.provenance["operation"] == "imported"
@@ -288,12 +337,18 @@ def test_tracked_import_edit_capture_and_recover_use_task_lineage_without_extra_
     # A typed edit uses the last accepted task outputs as immutable parent and
     # publishes a separate bundle only after verifying all task/report digests.
     edit_dir = tmp_path / "branches" / "edited"
-    assert _run([
-        "edit", str(bundle_dir), "--project", "demo", "--out", str(edit_dir), "--json", "set", "integer-one.value", "23"
+    from vibecomfy.cli import main as cli_main
+
+    assert cli_main([
+        "--yes", "edit", str(bundle_dir), "--project", "demo", "--out", str(edit_dir),
+        "--json", "set", "integer-one.value", "23",
     ]) == 0
     edit = json.loads(capsys.readouterr().out)
     edit_admission = fake.admissions[-1]
+    assert edit_admission["spec"]["inputs"]["python_execution_consent"] == "confirmed"
     assert edit["transition_kind"] == "typed_edit"
+    assert edit["report"]["python_execution_consent"] == "confirmed"
+    assert any(item.get("decision") == "allow" for item in edit["report"]["security_gate_audit"])
     assert edit["parent_task_id"] == origin["task_id"]
     assert edit["origin_task_id"] == origin["task_id"]
     assert edit_admission["spec"]["inputs"]["parent_revision"] == origin["revision"]
@@ -308,10 +363,26 @@ def test_tracked_import_edit_capture_and_recover_use_task_lineage_without_extra_
     python_path = edit_dir / "workflow.py"
     candidate = python_path.read_bytes().replace(b"value=23", b"value=31")
     python_path.write_bytes(candidate)
+    interactive_gate = GateContext(
+        non_interactive=False,
+        assume_yes=False,
+        stdin=_FakeTTY("yes\n"),
+        stdout=io.StringIO(),
+    )
+    set_gate_context(interactive_gate)
     assert _run(["edit", str(edit_dir), "--project", "demo", "--json", "capture"]) == 0
     capture = json.loads(capsys.readouterr().out)
     capture_admission = fake.admissions[-1]
+    assert capture_admission["spec"]["inputs"]["python_execution_consent"] == "confirmed"
     assert capture["transition_kind"] == "manual_capture"
+    assert capture["report"]["python_execution_consent"] == "confirmed"
+    assert any(item.get("decision") == "allow" for item in capture["report"]["security_gate_audit"])
+    local_confirmation = next(
+        item for item in interactive_gate.audit
+        if item["operation"] == "astrid_workflow_python_execution"
+    )
+    assert local_confirmation["reason"] == "interactive_confirm"
+    assert local_confirmation["details"]["python_digest"] == _digest(candidate)
     assert capture["parent_task_id"] == edit["task_id"]
     assert capture["origin_task_id"] == origin["task_id"]
     assert capture_admission["spec"]["inputs"]["parent_revision"] == edit["revision_id"]
@@ -465,3 +536,203 @@ def test_receipt_write_failure_removes_temporary_file(tmp_path: Path, monkeypatc
     else:  # pragma: no cover - assertion clarity
         raise AssertionError("injected failure should escape")
     assert list(root.iterdir()) == []
+
+
+def test_tracked_import_initial_receipt_failure_recovers_from_task_id_only(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    import importlib
+
+    provider = _provider()
+    fake = _FakeAstrid(provider, b'{"source":"receipt-failure"}\n')
+    monkeypatch.chdir(tmp_path)
+    adapter = importlib.import_module("vibecomfy.commands._astrid_workflows")
+    monkeypatch.setattr(adapter, "open_client", lambda: fake)
+    monkeypatch.setattr(adapter, "receipt_root", lambda: tmp_path / "receipts")
+    monkeypatch.setattr("vibecomfy.schema.get_authoring_schema_provider", lambda **_kwargs: provider)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    set_gate_context(GateContext(non_interactive=True, assume_yes=True))
+
+    source = tmp_path / "incoming.json"
+    source.write_bytes(fake.source_bytes)
+    monkeypatch.setattr(adapter, "save_receipt", lambda _receipt: (_ for _ in ()).throw(OSError("receipt disk unavailable")))
+
+    assert _run(["import", str(source), "--project", "demo", "--json"]) == 1
+    failure = json.loads(capsys.readouterr().out)
+    assert failure["task_id"] == "task-1"
+    assert failure["stage"] == "initial_receipt"
+    assert failure["astrid_outputs"]["status"] == "unknown"
+    assert failure["local_publication"] == "not_started"
+    assert "vibecomfy recover task-1 --out " in failure["recovery"]
+    assert not list((tmp_path / "receipts").glob("*.json"))
+
+    # The exact command returned by the failed import is enough to recover;
+    # no receipt or second task admission is needed.
+    assert _run_recovery_command(failure["recovery"]) == 0
+    recovered = json.loads(capsys.readouterr().out)
+    assert recovered["task_id"] == failure["task_id"]
+    assert recovered["re_admitted"] is False
+    assert recovered["receipt_persisted"] is False
+    assert len(fake.admissions) == 1
+    recovered_folder = Path(recovered["folder"])
+    assert sorted(path.name for path in recovered_folder.iterdir()) == [
+        "source.json", "workflow.py", "workflow.vibe.json"
+    ]
+
+
+def test_tracked_edit_materialization_failure_reports_settled_outputs_and_recovers(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    import importlib
+
+    provider = _provider()
+    fake = _FakeAstrid(provider, b'{"source":"materialization-failure"}\n')
+    monkeypatch.chdir(tmp_path)
+    adapter = importlib.import_module("vibecomfy.commands._astrid_workflows")
+    monkeypatch.setattr(adapter, "open_client", lambda: fake)
+    monkeypatch.setattr(adapter, "receipt_root", lambda: tmp_path / "receipts")
+    monkeypatch.setattr("vibecomfy.schema.get_authoring_schema_provider", lambda **_kwargs: provider)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    set_gate_context(GateContext(non_interactive=True, assume_yes=True))
+
+    source = tmp_path / "incoming.json"
+    source.write_bytes(fake.source_bytes)
+    bundle_dir = tmp_path / "workflows" / "incoming"
+    assert _run(["import", str(source), "--project", "demo", "--json"]) == 0
+    capsys.readouterr()
+
+    real_materialize = adapter.materialize_outputs
+    failed = False
+
+    def fail_once(outputs, destination, *, expected_members=None):
+        nonlocal failed
+        if not failed:
+            failed = True
+            raise OSError("destination became unavailable")
+        return real_materialize(outputs, destination, expected_members=expected_members)
+
+    monkeypatch.setattr(adapter, "materialize_outputs", fail_once)
+    assert _run([
+        "edit", str(bundle_dir), "--project", "demo", "--out", str(tmp_path / "branches" / "edited"),
+        "--json", "set", "integer-one.value", "42",
+    ]) == 1
+    failure = json.loads(capsys.readouterr().out)
+    assert failure["task_id"] == "task-2"
+    assert failure["stage"] == "local_publication"
+    assert failure["astrid_outputs"]["status"] == "settled"
+    assert failure["astrid_outputs"]["report_digest"]
+    assert failure["local_publication"] == "failed"
+    assert "vibecomfy recover task-2 --out " in failure["recovery"]
+    assert len(fake.admissions) == 2
+
+    # Again, use only the returned task ID and recovery command. The task is
+    # read and its exact report/member digests are materialized without re-admission.
+    assert _run_recovery_command(failure["recovery"]) == 0
+    recovered = json.loads(capsys.readouterr().out)
+    assert recovered["task_id"] == failure["task_id"]
+    assert recovered["re_admitted"] is False
+    assert recovered["report_digest"] == failure["astrid_outputs"]["report_digest"]
+    assert len(fake.admissions) == 2
+    assert sorted(path.name for path in Path(recovered["folder"]).iterdir()) == [
+        "source.json", "workflow.py", "workflow.vibe.json"
+    ]
+
+
+def test_tracked_edit_initial_receipt_failure_recovers_lineage_from_task_spec(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    import importlib
+
+    provider = _provider()
+    fake = _FakeAstrid(provider, b'{"source":"edit-receipt-failure"}\n')
+    monkeypatch.chdir(tmp_path)
+    adapter = importlib.import_module("vibecomfy.commands._astrid_workflows")
+    monkeypatch.setattr(adapter, "open_client", lambda: fake)
+    monkeypatch.setattr(adapter, "receipt_root", lambda: tmp_path / "receipts")
+    monkeypatch.setattr("vibecomfy.schema.get_authoring_schema_provider", lambda **_kwargs: provider)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    set_gate_context(GateContext(non_interactive=True, assume_yes=True))
+
+    source = tmp_path / "incoming.json"
+    source.write_bytes(fake.source_bytes)
+    bundle_dir = tmp_path / "workflows" / "incoming"
+    assert _run(["import", str(source), "--project", "demo", "--json"]) == 0
+    origin = json.loads(capsys.readouterr().out)
+
+    monkeypatch.setattr(adapter, "save_receipt", lambda _receipt: (_ for _ in ()).throw(OSError("receipt disk unavailable")))
+    out = tmp_path / "branches" / "edited"
+    assert _run([
+        "edit", str(bundle_dir), "--project", "demo", "--out", str(out), "--json",
+        "set", "integer-one.value", "17",
+    ]) == 1
+    failure = json.loads(capsys.readouterr().out)
+    assert failure["task_id"] == "task-2"
+    assert failure["stage"] == "initial_receipt"
+    assert failure["astrid_outputs"]["status"] == "unknown"
+    assert "vibecomfy recover task-2 --out " in failure["recovery"]
+
+    assert _run_recovery_command(failure["recovery"]) == 0
+    recovered = json.loads(capsys.readouterr().out)
+    assert recovered["transition_kind"] == "typed_edit"
+    assert recovered["task_id"] == failure["task_id"]
+    assert recovered["re_admitted"] is False
+    assert recovered["receipt_persisted"] is False
+    assert len(fake.admissions) == 2
+    assert fake.admissions[-1]["spec"]["inputs"]["parent_task_id"] == origin["task_id"]
+    assert sorted(path.name for path in Path(recovered["folder"]).iterdir()) == [
+        "source.json", "workflow.py", "workflow.vibe.json"
+    ]
+
+
+def test_tracked_edit_consent_refusal_does_not_upload_or_admit(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    import importlib
+
+    provider = _provider()
+    fake = _FakeAstrid(provider, b'{"source":"consent-refusal"}\n')
+    monkeypatch.chdir(tmp_path)
+    adapter = importlib.import_module("vibecomfy.commands._astrid_workflows")
+    monkeypatch.setattr(adapter, "open_client", lambda: fake)
+    monkeypatch.setattr(adapter, "receipt_root", lambda: tmp_path / "receipts")
+    monkeypatch.setattr("vibecomfy.schema.get_authoring_schema_provider", lambda **_kwargs: provider)
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    source = tmp_path / "incoming.json"
+    source.write_bytes(fake.source_bytes)
+    bundle_dir = tmp_path / "workflows" / "incoming"
+    assert _run(["import", str(source), "--project", "demo", "--json"]) == 0
+    capsys.readouterr()
+    original_object_count = len(fake.objects)
+
+    declined_gate = GateContext(
+        non_interactive=False,
+        assume_yes=False,
+        stdin=_FakeTTY("no\n"),
+        stdout=io.StringIO(),
+    )
+    set_gate_context(declined_gate)
+    assert _run([
+        "edit", str(bundle_dir), "--project", "demo", "--json", "set", "integer-one.value", "8"
+    ]) == 1
+    declined = json.loads(capsys.readouterr().out)
+    assert "interactive_refusal" in declined["message"]
+    assert declined_gate.audit[-1]["decision"] == "deny"
+    assert declined_gate.audit[-1]["reason"] == "interactive_refusal"
+    assert len(fake.admissions) == 1
+    assert len(fake.objects) == original_object_count
+
+    # Direct capture asks about the exact changed Python candidate and refuses
+    # a non-interactive run unless --yes is explicitly supplied.
+    python_path = bundle_dir / "workflow.py"
+    python_path.write_bytes(python_path.read_bytes().replace(b"value=7", b"value=9"))
+    refused_gate = GateContext(non_interactive=True, assume_yes=False)
+    set_gate_context(refused_gate)
+    assert _run(["edit", str(bundle_dir), "--project", "demo", "--json", "capture"]) == 1
+    refused = json.loads(capsys.readouterr().out)
+    assert "non_interactive_refusal" in refused["message"]
+    assert refused_gate.audit[-1]["decision"] == "deny"
+    assert refused_gate.audit[-1]["details"]["candidate"] == "direct_python_capture"
+    assert refused_gate.audit[-1]["details"]["python_digest"] == _digest(python_path.read_bytes())
+    assert len(fake.admissions) == 1
+    assert len(fake.objects) == original_object_count

@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
-import builtins
+import shlex
 from pathlib import Path
 
 import pytest
 
+from tests._cli_helpers import (
+    _load_emitted_provenance,
+    _write_port_node_index,
+    _write_port_workflow,
+)
 from vibecomfy.cli import build_parser
 from vibecomfy.commands import import_workflow
 from vibecomfy.porting.import_service import ImportArtifacts
-from tests._cli_helpers import _load_emitted_provenance, _write_port_node_index, _write_port_workflow
 
 
 def _run(argv: list[str]) -> int:
@@ -47,7 +52,10 @@ def test_import_creates_inspectable_origin_bundle_and_points_to_tools(
     assert str(tmp_path) not in emitted_python
     assert str(source.resolve()) not in emitted_python
     assert str(tmp_path).encode() not in (destination / "workflow.vibe.json").read_bytes()
-    assert output["next"]["targets"] == f"vibecomfy edit targets {destination}"
+    assert output["next"]["targets"] == f"vibecomfy edit {destination} targets"
+    parsed_targets = build_parser().parse_args(output["next"]["targets"].split()[1:])
+    assert parsed_targets.action == "targets"
+    assert parsed_targets.workflow == str(destination)
     assert output["next"]["validate"] == f"vibecomfy validate {destination}"
     assert output["next"]["node"] == "vibecomfy node <ClassType>"
     assert output["tracking"]["mode"] == "untracked"
@@ -58,6 +66,9 @@ def test_import_creates_inspectable_origin_bundle_and_points_to_tools(
 
     bundle = load_bundle(destination, trust=Provenance.USER_CONFIRMED)
     bundle.require_canonical_authority("workflow validation")
+    from vibecomfy.porting.edit.bundle_service import _is_canonical_python_source
+
+    assert _is_canonical_python_source(bundle, destination / "workflow.py")
     assert bundle.workflow.id == "port_workflow"
     assert bundle.provenance["operation"] == "imported"
     assert bundle.revision_id == output["revision"]
@@ -180,5 +191,43 @@ def test_import_followup_commands_quote_folder_paths_with_spaces(capsys: pytest.
         json_output=False,
     )
     output = capsys.readouterr().out
-    assert f"vibecomfy edit targets '{folder}'" in output
+    command = next(line.strip() for line in output.splitlines() if " targets" in line and "vibecomfy edit" in line)
+    assert command == f"vibecomfy edit '{folder}' targets"
+    import shlex
+
+    parsed_targets = build_parser().parse_args(shlex.split(command)[1:])
+    assert parsed_targets.action == "targets"
+    assert parsed_targets.workflow == folder
     assert f"vibecomfy validate '{folder}'" in output
+
+
+def test_tracked_import_followups_keep_project_scope_in_human_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    folder = "/tmp/my workflows/first import"
+    project_id = "project with spaces"
+    import_workflow._emit(
+        {
+            "status": "ok",
+            "folder": folder,
+            "python": f"{folder}/workflow.py",
+            "companion": f"{folder}/workflow.vibe.json",
+            "source_copy": f"{folder}/source.json",
+            "tracking": {"mode": "astrid", "project_id": project_id},
+            "next": import_workflow._next_commands(folder, project=project_id),
+        },
+        json_output=False,
+    )
+    output = capsys.readouterr().out
+    targets_command = next(
+        line.strip() for line in output.splitlines()
+        if " targets" in line and "vibecomfy edit" in line
+    )
+    edit_command = next(
+        line.strip() for line in output.splitlines()
+        if " set <target>.<field> " in line
+    )
+    for command, expected_action in ((targets_command, "targets"), (edit_command, "set")):
+        parsed = build_parser().parse_args(shlex.split(command)[1:])
+        assert parsed.project == project_id
+        assert parsed.action == expected_action

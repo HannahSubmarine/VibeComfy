@@ -8,15 +8,89 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Mapping
 
 
 class AstridWorkflowError(RuntimeError):
     """A tracked workflow operation could not be admitted or recovered."""
+
+
+class _AdmissionProgress:
+    def __init__(self, task_id: str, target: str | Path):
+        self.task_id = task_id
+        self.target = Path(target).expanduser()
+        self.stage = "initial_receipt"
+        self.astrid_outputs = "unknown"
+        self.local_publication = "not_started"
+        self.report_digest: str | None = None
+        self.output_digests: dict[str, str] = {}
+
+    def recovery_command(self) -> str:
+        target = self.target
+        # Existing local bundles are never guessed as write targets when a
+        # receipt is unavailable. Recovery always has a safe explicit path.
+        candidate = target
+        if candidate.exists() or candidate.is_symlink():
+            base = candidate if candidate.is_dir() else candidate.parent
+            stem = f"{base.name}-recovered-{self.task_id}"
+            candidate = base.with_name(stem)
+            suffix = 2
+            while candidate.exists() or candidate.is_symlink():
+                candidate = base.with_name(f"{stem}-{suffix}")
+                suffix += 1
+        return f"vibecomfy recover {shlex.quote(self.task_id)} --out {shlex.quote(str(candidate))} --json"
+
+
+class TrackedWorkflowFailure(AstridWorkflowError):
+    """A failure after Astrid admitted a task, with a usable task-ID recovery path."""
+
+    def __init__(self, progress: _AdmissionProgress, cause: Exception):
+        self.task_id = progress.task_id
+        self.stage = progress.stage
+        self.astrid_outputs = progress.astrid_outputs
+        self.local_publication = progress.local_publication
+        self.report_digest = progress.report_digest
+        self.output_digests = dict(progress.output_digests)
+        self.recovery = progress.recovery_command()
+        self.original_type = type(cause).__name__
+        self.original_message = str(cause)
+        super().__init__(self.original_message)
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "status": "error",
+            "stage": self.stage,
+            "task_id": self.task_id,
+            "message": f"{self.original_type}: {self.original_message}",
+            "astrid_outputs": {
+                "status": self.astrid_outputs,
+                "report_digest": self.report_digest,
+                "members": self.output_digests,
+            },
+            "local_publication": self.local_publication,
+            "recovery": self.recovery,
+        }
+        return payload
+
+
+@contextmanager
+def track_admitted_task(task_id: str, target: str | Path):
+    """Retain task identity and recovery guidance for every post-admission error."""
+    progress = _AdmissionProgress(task_id, target)
+    try:
+        yield progress
+    except TrackedWorkflowFailure:
+        raise
+    except Exception as exc:
+        if progress.local_publication == "in_progress":
+            progress.local_publication = "failed"
+        raise TrackedWorkflowFailure(progress, exc) from exc
 
 
 def _value(value: Any, key: str, default: Any = None) -> Any:
@@ -180,6 +254,48 @@ def wait_for_task(client: Any, task_id: str, *, timeout_seconds: float = 90.0) -
             )
         time.sleep(delay)
         delay = min(delay * 1.5, 2.0)
+
+
+def settled_output_digests(task: Mapping[str, Any]) -> dict[str, str]:
+    """Return the immutable named output digests advertised by a settled task."""
+    result = _value(task, "result")
+    outputs = _value(result, "outputs")
+    if not isinstance(outputs, list):
+        return {}
+    digests: dict[str, str] = {}
+    for item in outputs:
+        name = _value(item, "name")
+        digest = _value(item, "digest")
+        if isinstance(name, str) and isinstance(digest, str):
+            digests[name] = digest
+    return digests
+
+
+def task_workflow_context(task: Any, task_id: str) -> dict[str, Any]:
+    """Read the workflow transition identity from a settled task's public spec."""
+    task_data = _value(task, "task", task)
+    spec = _value(task_data, "spec", {})
+    if not isinstance(spec, Mapping):
+        raise AstridWorkflowError(f"Astrid task {task_id} has no recoverable workflow spec")
+    # Some runtime read models wrap the submitted capability document in the
+    # task envelope; the SDK's direct read model exposes it without that layer.
+    if not isinstance(spec.get("inputs"), Mapping) and isinstance(spec.get("spec"), Mapping):
+        spec = spec["spec"]
+    inputs = _value(spec, "inputs", {})
+    if not isinstance(inputs, Mapping):
+        raise AstridWorkflowError(f"Astrid task {task_id} has no workflow transition inputs")
+    transition_kind = inputs.get("transition_kind", _value(spec, "transition_kind"))
+    workflow_id = inputs.get("workflow_id")
+    if transition_kind not in {"origin", "typed_edit", "manual_capture"} or not isinstance(workflow_id, str) or not workflow_id:
+        raise AstridWorkflowError(f"Astrid task {task_id} is not a recoverable VibeComfy workflow transition")
+    return {
+        "project_id": _value(task_data, "project_id"),
+        "workflow_id": workflow_id,
+        "transition_kind": transition_kind,
+        "parent_revision": inputs.get("parent_revision"),
+        "parent_task_id": inputs.get("parent_task_id", _value(spec, "parent_task_id")),
+        "origin_task_id": inputs.get("origin_task_id", _value(spec, "origin_task_id")),
+    }
 
 
 def download_outputs(client: Any, task: Mapping[str, Any], *, expected_names: set[str]) -> tuple[str, dict[str, bytes], dict[str, str]]:

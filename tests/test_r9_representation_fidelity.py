@@ -5,7 +5,7 @@ from __future__ import annotations
 from vibecomfy.porting.emit.ui import _compare_expected_ui_links, _expected_ui_links
 from vibecomfy.porting.edit._gates import _GatesMixin
 from vibecomfy.porting.edit._session_types import DoneResult, _diag
-from vibecomfy.workflow import VibeWorkflow, WorkflowSource
+from vibecomfy.workflow import VibeEdge, VibeNode, VibeWorkflow, WorkflowSource
 from vibecomfy.workflow_bundle import (
     _ui_candidate_sidecar,
     materialize_ui_json,
@@ -41,6 +41,53 @@ def test_expected_link_fold_projects_native_ids_before_strict_compare() -> None:
         scope_path="",
         scope_ops=(),
     )
+
+
+def test_ui_candidate_links_map_named_sockets_to_python_native_port_indices() -> None:
+    workflow = VibeWorkflow("named-port-capture", WorkflowSource("named-port-capture"))
+    workflow.nodes["1"] = VibeNode(
+        "1", "LoadImage", uid="n1", native_output_names=["IMAGE"]
+    )
+    workflow.nodes["2"] = VibeNode(
+        "2",
+        "SaveImage",
+        uid="n2",
+        native_input_names=["filename_prefix", "extra_pnginfo", "prompt", "images"],
+    )
+    workflow.edges.append(VibeEdge("1", "0", "2", "images"))
+    candidate = {
+        "nodes": [
+            {
+                "id": 1,
+                "type": "LoadImage",
+                "properties": {"vibecomfy_uid": "n1"},
+                "outputs": [{"name": "IMAGE", "type": "IMAGE"}],
+            },
+            {
+                "id": 2,
+                "type": "SaveImage",
+                "properties": {"vibecomfy_uid": "n2"},
+                "inputs": [
+                    {"name": "extra_pnginfo"},
+                    {"name": "prompt"},
+                    {"name": "images"},
+                ],
+            },
+        ],
+        "links": [[9, 1, 0, 2, 2, "IMAGE"]],
+        "groups": [],
+    }
+
+    sidecar = _ui_candidate_sidecar(workflow, candidate)
+
+    assert sidecar["links"][0]["edge_ref"] == {
+        "scope_path": "",
+        "from_uid": "n1",
+        "from_port": 0,
+        "to_uid": "n2",
+        "to_port": 3,
+    }
+    validate_sidecar(sidecar, workflow)
 
 
 def test_ui_only_markdown_note_is_retained_as_sidecar_custody() -> None:

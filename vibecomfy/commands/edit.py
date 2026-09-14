@@ -185,6 +185,41 @@ def _read_members(
     return python_path, members, digests
 
 
+def _confirm_python_execution(
+    *,
+    args: argparse.Namespace,
+    workflow_id: str,
+    transition_kind: str,
+    python_path: Path,
+    python_digest: str,
+    direct_capture: bool,
+    request_digest: str | None,
+) -> str:
+    """Require explicit local approval before Astrid can execute workflow Python."""
+    from vibecomfy.security import current_gate_context, require_confirmation
+
+    require_confirmation(
+        operation="astrid_workflow_python_execution",
+        class_type="VibeWorkflow",
+        provenance="untrusted_source",
+        capabilities={"code_exec"},
+        details={
+            "workflow_id": workflow_id,
+            "project": args.project,
+            "transition_kind": transition_kind,
+            "candidate": "direct_python_capture" if direct_capture else "tracked_workflow_edit",
+            "python_path": str(python_path),
+            "python_digest": python_digest,
+            "request_digest": request_digest,
+        },
+        ctx=current_gate_context(),
+    )
+    # This exact scalar is an Astrid task input and is copied into its immutable
+    # workflow-transition report. It is only returned after require_confirmation
+    # allowed this operation through --yes or an interactive approval.
+    return "confirmed"
+
+
 def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
     """Admit one canonical typed edit/capture, then materialize settled bytes."""
     from vibecomfy.commands._astrid_workflows import (
@@ -198,7 +233,9 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
         report_for_outputs,
         resolve_project,
         save_receipt,
+        settled_output_digests,
         stable_idempotency_key,
+        track_admitted_task,
         upload_bytes,
         wait_for_task,
     )
@@ -238,6 +275,35 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
         raise AstridWorkflowError("the tracked parent receipt has no origin task identity")
 
     transition_kind = "manual_capture" if args.action == "capture" else "typed_edit"
+    capture_graph_bytes: bytes | None = None
+    if args.action == "batch":
+        ops = _load_batch(args.operations)
+    elif args.action == "capture":
+        ops = []
+        if args.ui is not None:
+            capture_graph_bytes = Path(args.ui).expanduser().read_bytes()
+            graph_value = json.loads(capture_graph_bytes.decode("utf-8"))
+            if not isinstance(graph_value, dict):
+                raise ValueError("UI capture source must be a JSON object")
+    else:
+        call = _operation(args)
+        if call is None:
+            raise ValueError(f"unsupported tracked edit action {args.action}")
+        ops = [{"op": call["tool"], **call["args"]}]
+    request_digest = (
+        digest_bytes(json.dumps(ops, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+        if transition_kind == "typed_edit"
+        else digest_bytes(capture_graph_bytes) if capture_graph_bytes is not None else None
+    )
+    python_execution_consent = _confirm_python_execution(
+        args=args,
+        workflow_id=workflow_id,
+        transition_kind=transition_kind,
+        python_path=python_path,
+        python_digest=digest_bytes(current_members["workflow.py"]),
+        direct_capture=direct_capture,
+        request_digest=request_digest,
+    )
     input_members = dict(current_members)
     local_precondition = dict(current_hashes)
     if direct_capture:
@@ -282,16 +348,6 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
             if parent_receipt["outputs"].get(key) != digest_bytes(current_members[key]):
                 raise AstridWorkflowError("local workflow bytes differ from its last settled Astrid task")
 
-    if args.action == "batch":
-        ops = _load_batch(args.operations)
-    elif args.action == "capture":
-        ops = []
-    else:
-        call = _operation(args)
-        if call is None:
-            raise ValueError(f"unsupported tracked edit action {args.action}")
-        ops = [{"op": call["tool"], **call["args"]}]
-
     uploads: list[dict[str, str]] = []
     upload_payloads: list[tuple[str, str, bytes]] = [
         ("python", "workflow.py", input_members["workflow.py"]),
@@ -303,6 +359,7 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
         "parent_task_id": parent_task_id,
         "origin_task_id": origin_task_id,
         "transition_kind": transition_kind,
+        "python_execution_consent": python_execution_consent,
     }
     operation_envelope: dict[str, Any] | None = None
     if transition_kind == "typed_edit":
@@ -312,11 +369,8 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
     elif direct_capture:
         upload_payloads.append(("capture_python", "capture_python.py", current_members["workflow.py"]))
     else:
-        graph_bytes = Path(args.ui).expanduser().read_bytes()
-        graph_value = json.loads(graph_bytes.decode("utf-8"))
-        if not isinstance(graph_value, dict):
-            raise ValueError("UI capture source must be a JSON object")
-        upload_payloads.append(("capture_graph", "capture_graph.json", graph_bytes))
+        assert capture_graph_bytes is not None
+        upload_payloads.append(("capture_graph", "capture_graph.json", capture_graph_bytes))
 
     request_digests: dict[str, str] = {}
     for input_name, filename, payload in upload_payloads:
@@ -344,8 +398,10 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
         "origin_task_id": origin_task_id,
         "input_digests": request_digests,
         "operations": operation_envelope,
+        "python_execution_consent": python_execution_consent,
     }
     idempotency_key = stable_idempotency_key("vibecomfy-edit-", task_request)
+    target = Path(args.out).expanduser().resolve() if args.out else Path(args.workflow).expanduser().resolve()
     task_id = create_task(
         client,
         project_id=project_id,
@@ -359,61 +415,88 @@ def _tracked_edit(args: argparse.Namespace) -> dict[str, Any]:
         origin_task_id=origin_task_id,
         extra_inputs={key: value for key, value in extra_inputs.items() if key not in {"parent_revision", "parent_task_id", "origin_task_id", "transition_kind"}},
     )
-    target = Path(args.out).expanduser().resolve() if args.out else Path(args.workflow).expanduser().resolve()
-    receipt = {
-        "schema_version": 1,
-        "task_id": task_id,
-        "project_id": project_id,
-        "project": args.project,
-        "workflow_id": workflow_id,
-        "transition_kind": transition_kind,
-        "idempotency_key": idempotency_key,
-        "target_path": str(target),
-        "separate_output": bool(args.out),
-        "parent_task_id": parent_task_id,
-        "origin_task_id": origin_task_id,
-        "parent_revision": parent_revision,
-        "parent_members": {name: digest_bytes(payload) for name, payload in input_members.items()},
-        "materialize_precondition": local_precondition if not args.out else None,
-        "outputs": {},
-        "report_digest": None,
-    }
-    save_receipt(receipt)
-    task = wait_for_task(client, task_id)
-    _finished_id, outputs, manifest = download_outputs(
-        client,
-        task,
-        expected_names={"python", "companion", "source", "report"},
-    )
-    if outputs["source"] != input_members["source.json"]:
-        raise AstridWorkflowError("edit task changed immutable source.json bytes")
-    report = report_for_outputs(
-        outputs,
-        manifest,
-        workflow_id=workflow_id,
-        transition_kind=transition_kind,
-        parent_revision=parent_revision,
-        parent_task_id=parent_task_id,
-        origin_task_id=origin_task_id,
-    )
-    receipt["outputs"] = {
-        "workflow.py": manifest["python"],
-        "workflow.vibe.json": manifest["companion"],
-        "source.json": manifest["source"],
-    }
-    receipt["report_digest"] = manifest["report"]
-    receipt["revision_id"] = report.get("revision_id")
-    save_receipt(receipt)
-    expected_local = None
-    if not args.out:
-        precondition = receipt.get("materialize_precondition")
-        expected_local = {
-            name: (value.removeprefix("sha256:") if isinstance(value, str) else value)
-            for name, value in precondition.items()
-        } if isinstance(precondition, Mapping) else None
-    destination = materialize_outputs(outputs, target, expected_members=expected_local)
-    receipt["target_path"] = str(destination)
-    save_receipt(receipt)
+    with track_admitted_task(task_id, target) as progress:
+        receipt = {
+            "schema_version": 1,
+            "task_id": task_id,
+            "project_id": project_id,
+            "project": args.project,
+            "workflow_id": workflow_id,
+            "transition_kind": transition_kind,
+            "idempotency_key": idempotency_key,
+            "target_path": str(target),
+            "separate_output": bool(args.out),
+            "parent_task_id": parent_task_id,
+            "origin_task_id": origin_task_id,
+            "parent_revision": parent_revision,
+            "python_execution_consent": python_execution_consent,
+            "parent_members": {name: digest_bytes(payload) for name, payload in input_members.items()},
+            "materialize_precondition": local_precondition if not args.out else None,
+            "outputs": {},
+            "report_digest": None,
+        }
+        save_receipt(receipt)
+        progress.stage = "task_settlement"
+        task = wait_for_task(client, task_id)
+        settled = settled_output_digests(task)
+        progress.astrid_outputs = "settled"
+        progress.report_digest = settled.get("report")
+        progress.output_digests = {
+            output_name: settled[name]
+            for output_name, name in (
+                ("workflow.py", "python"),
+                ("workflow.vibe.json", "companion"),
+                ("source.json", "source"),
+            )
+            if name in settled
+        }
+        progress.stage = "output_download"
+        _finished_id, outputs, manifest = download_outputs(
+            client,
+            task,
+            expected_names={"python", "companion", "source", "report"},
+        )
+        progress.report_digest = manifest.get("report")
+        progress.output_digests = {
+            "workflow.py": manifest["python"],
+            "workflow.vibe.json": manifest["companion"],
+            "source.json": manifest["source"],
+        }
+        if outputs["source"] != input_members["source.json"]:
+            raise AstridWorkflowError("edit task changed immutable source.json bytes")
+        progress.stage = "report_validation"
+        report = report_for_outputs(
+            outputs,
+            manifest,
+            workflow_id=workflow_id,
+            transition_kind=transition_kind,
+            parent_revision=parent_revision,
+            parent_task_id=parent_task_id,
+            origin_task_id=origin_task_id,
+        )
+        if report.get("python_execution_consent") != python_execution_consent:
+            raise AstridWorkflowError("settled report does not record the admitted Python execution consent")
+        if not isinstance(report.get("security_gate_audit"), list):
+            raise AstridWorkflowError("settled report is missing its Python security gate audit")
+        receipt["outputs"] = dict(progress.output_digests)
+        receipt["report_digest"] = manifest["report"]
+        receipt["revision_id"] = report.get("revision_id")
+        progress.stage = "settled_receipt"
+        save_receipt(receipt)
+        expected_local = None
+        if not args.out:
+            precondition = receipt.get("materialize_precondition")
+            expected_local = {
+                name: (value.removeprefix("sha256:") if isinstance(value, str) else value)
+                for name, value in precondition.items()
+            } if isinstance(precondition, Mapping) else None
+        progress.stage = "local_publication"
+        progress.local_publication = "in_progress"
+        destination = materialize_outputs(outputs, target, expected_members=expected_local)
+        progress.local_publication = "published"
+        receipt["target_path"] = str(destination)
+        progress.stage = "final_receipt"
+        save_receipt(receipt)
     return {
         **report,
         "status": "saved",
@@ -539,15 +622,28 @@ def _cmd_edit(args: argparse.Namespace) -> int:
                     "tracking": payload["tracking"],
                 }
     except Exception as exc:
-        payload = {
-            "status": "error",
-            "message": f"{type(exc).__name__}: {exc}",
-            "recovery": "Inspect targets with `vibecomfy edit targets <workflow>`, check node details with `vibecomfy node <ClassType>`, and retry with a fresh workflow revision.",
-        }
+        from vibecomfy.commands._astrid_workflows import TrackedWorkflowFailure
+
+        if isinstance(exc, TrackedWorkflowFailure):
+            payload = exc.to_payload()
+        else:
+            payload = {
+                "status": "error",
+                "message": f"{type(exc).__name__}: {exc}",
+                "recovery": "Inspect targets with `vibecomfy edit <workflow> targets`, check node details with `vibecomfy node <ClassType>`, and retry with a fresh workflow revision.",
+            }
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
         else:
             print(f"Edit failed: {payload['message']}", file=sys.stderr)
+            if payload.get("task_id"):
+                print(f"  Astrid task: {payload['task_id']} (stage: {payload.get('stage', 'unknown')})", file=sys.stderr)
+                astrid = payload.get("astrid_outputs", {})
+                if isinstance(astrid, dict):
+                    print(f"  Astrid outputs: {astrid.get('status', 'unknown')}", file=sys.stderr)
+                    if astrid.get("report_digest"):
+                        print(f"  report digest: {astrid['report_digest']}", file=sys.stderr)
+                print(f"  local publication: {payload.get('local_publication', 'unknown')}", file=sys.stderr)
             print(payload["recovery"], file=sys.stderr)
         return 1
 

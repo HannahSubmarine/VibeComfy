@@ -31,6 +31,25 @@ There is no separate import manifest. Move or share the whole folder to keep
 these files together; importing preserves the graph, not the models or custom
 node packages it depends on.
 
+Import converts JSON without executing its generated Python. Commands that
+load `workflow.py` (such as bundle inspection, editing, and validation) build
+the Python workflow and therefore pass through VibeComfy's source-execution
+gate. In an interactive terminal, review and confirm the prompt. In a trusted
+non-interactive job, make the opt-in explicit:
+
+```bash
+vibecomfy --yes inspect workflows/my_workflow
+vibecomfy --yes edit workflows/my_workflow set sampler.steps 30
+vibecomfy --yes validate workflows/my_workflow
+```
+
+`--yes` is audited as an explicit bypass. `--non-interactive` refuses if the
+source has not been authorized; do not add `--yes` to automate unreviewed
+workflow code. `vibecomfy node <ClassType>` reads node source as text and does
+not import it. The Astrid-native task route records workflow changes in
+Astrid's task history and requires its own explicit Python-execution consent
+for canonical bundles; see the Astrid task examples below.
+
 The folder name comes from the source filename, with unusual characters
 sanitized. Use the path printed by the command. To choose a destination:
 
@@ -245,6 +264,12 @@ available, capture starts a new baseline and reports that the earlier graph
 diff is unavailable. Add `--project demo` before `capture` to record it in
 Astrid. A ComfyUI browser candidate or canvas Apply is not tracked
 automatically; capture it explicitly if it should enter project history.
+
+Typed edits and UI capture regenerate Python from the canonical workflow graph.
+If captured `workflow.py` includes extra executable Python that the graph cannot
+represent, VibeComfy refuses to rewrite it and leaves the bundle unchanged.
+Continue editing that Python and capture it, or restore a canonical generated
+source before using typed edits.
 
 For a tracked import or edit, the command prints the Astrid task ID and history
 commands. Inspect the event history with `astrid tasks show <TASK_ID>` and

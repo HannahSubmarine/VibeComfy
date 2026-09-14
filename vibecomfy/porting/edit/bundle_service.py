@@ -6,6 +6,7 @@ kernel and canonical bundle publisher. It retains no second graph model.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import tempfile
@@ -22,7 +23,11 @@ from vibecomfy.workflow_bundle import (
     _import_identity,
     _resolve_reference,
     _sidecar_path,
+    _sidecar_ui_digest,
+    _source_provenance,
     _split_import_api,
+    _validate_v2_marker,
+    _v2_marker,
     emit_bundle_with_candidate,
     load_bundle,
     validate_sidecar,
@@ -104,6 +109,158 @@ def _jsonable(value: Any) -> Any:
 
 def _digest_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def _is_canonical_python_source(bundle: WorkflowBundle, python_path: Path) -> bool:
+    """Return whether the source is exactly a VibeComfy-rendered representation.
+
+    Typed/UI edits regenerate Python from the canonical IR. Refuse that rewrite
+    when a user has added executable Python that the IR cannot represent.
+    Compare the source outside its generated metadata assignment with both
+    canonical renderers. Imported scratchpads and ready templates can carry
+    different provenance in that call, but their graph-building code must
+    still match one of VibeComfy's canonical renderers.
+    """
+    if bundle.ui_sidecar is None:
+        return False
+    try:
+        actual = python_path.read_bytes()
+        workflow = bundle.workflow.copy()
+        workflow.metadata["source_bundle"] = _v2_marker(bundle.ui_sidecar)
+        provenance = _source_provenance(bundle.provenance)
+        from vibecomfy.porting.emit import emit_scratchpad_python
+
+        scratchpad = emit_scratchpad_python(
+            workflow,
+            workflow_id=workflow.id,
+            source_path=str(python_path),
+            provenance=provenance,
+            external_custody=True,
+        ).encode("utf-8")
+
+        expected_marker = _v2_marker(bundle.ui_sidecar)
+
+        def normalized_source(source: bytes) -> tuple[dict[str, str], bytes]:
+            module = ast.parse(source)
+
+            def target_binds_metadata(target: ast.AST) -> bool:
+                if isinstance(target, ast.Name):
+                    return target.id == "READY_METADATA"
+                if isinstance(target, (ast.Tuple, ast.List)):
+                    return any(target_binds_metadata(item) for item in target.elts)
+                return False
+
+            def is_metadata_assignment(statement: ast.stmt) -> bool:
+                if isinstance(statement, ast.Assign):
+                    targets = statement.targets
+                elif isinstance(statement, ast.AnnAssign):
+                    targets = [statement.target]
+                else:
+                    return False
+                return any(target_binds_metadata(target) for target in targets)
+
+            metadata_assignments = [
+                statement
+                for statement in module.body
+                if is_metadata_assignment(statement)
+            ]
+            if len(metadata_assignments) != 1:
+                raise BundleTransitionError("expected one canonical READY_METADATA assignment")
+            assignment = metadata_assignments[0]
+            if not (
+                isinstance(assignment, ast.Assign)
+                and len(assignment.targets) == 1
+                and isinstance(assignment.targets[0], ast.Name)
+                and assignment.targets[0].id == "READY_METADATA"
+            ):
+                raise BundleTransitionError(
+                    "READY_METADATA must use one unannotated assignment target"
+                )
+            call = assignment.value
+            if not (
+                isinstance(call, ast.Call)
+                and not call.args
+                and isinstance(call.func, ast.Attribute)
+                and call.func.attr == "build"
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "ReadyMetadata"
+            ):
+                raise BundleTransitionError(
+                    "READY_METADATA must be a named-field ReadyMetadata.build call"
+                )
+            values: dict[str, Any] = {}
+            metadata_fields: dict[str, str] = {}
+            seen_fields: set[str] = set()
+            for keyword in call.keywords:
+                if keyword.arg is None or keyword.arg in seen_fields:
+                    raise BundleTransitionError("READY_METADATA must use unique named fields")
+                seen_fields.add(keyword.arg)
+                if keyword.arg in {"source_bundle", "provenance", "operation"}:
+                    try:
+                        values[keyword.arg] = ast.literal_eval(keyword.value)
+                    except (ValueError, TypeError, SyntaxError) as exc:
+                        raise BundleTransitionError(
+                            f"READY_METADATA {keyword.arg!r} must be a literal"
+                        ) from exc
+                else:
+                    metadata_fields[keyword.arg] = ast.dump(
+                        keyword.value,
+                        include_attributes=False,
+                    )
+            try:
+                marker = _validate_v2_marker(values["source_bundle"])
+            except (KeyError, WorkflowBundleError) as exc:
+                raise BundleTransitionError("READY_METADATA has no valid v2 source marker") from exc
+            if marker != expected_marker:
+                raise BundleTransitionError("READY_METADATA source marker does not match the bundle")
+            expected_operation = bundle.provenance.get("operation")
+            provenance = values.get("provenance")
+            if not isinstance(provenance, Mapping) or provenance.get("operation") != expected_operation:
+                raise BundleTransitionError("READY_METADATA provenance does not match the bundle")
+            if "operation" in values and values["operation"] != expected_operation:
+                raise BundleTransitionError("READY_METADATA operation does not match the bundle")
+
+            # The supported canonical renderers may order metadata keywords
+            # differently, so compare non-custody fields by their AST values.
+            # Keep every byte outside this single assignment exact. In
+            # particular, a second statement after a semicolon on the same
+            # line remains in the comparison and cannot be silently dropped.
+            line_offsets = [0]
+            for line in source.splitlines(keepends=True):
+                line_offsets.append(line_offsets[-1] + len(line))
+
+            def byte_offset(line: int, column: int) -> int:
+                return line_offsets[line - 1] + column
+
+            start = byte_offset(assignment.lineno, assignment.col_offset)
+            end = byte_offset(assignment.end_lineno, assignment.end_col_offset)
+            normalized = source[:start] + b"__VIBECOMFY_READY_METADATA__" + source[end:]
+            return metadata_fields, normalized
+
+        actual_normalized = normalized_source(actual)
+        if actual_normalized == normalized_source(scratchpad):
+            return True
+
+        from vibecomfy.porting.convert import _ready_requirements
+        from vibecomfy.porting.emit.emit_ready import emit_ready_template_python
+
+        metadata = workflow.metadata
+        ready_source = emit_ready_template_python(
+            workflow,
+            ready_metadata=metadata,
+            ready_requirements=_ready_requirements(workflow),
+            template_id=str(metadata.get("ready_template") or workflow.id),
+            registered_inputs={
+                str(name): (str(item.node_id), str(item.field))
+                for name, item in workflow.inputs.items()
+            },
+            external_custody=True,
+        ).encode("utf-8")
+        return actual_normalized == normalized_source(ready_source)
+    except Exception:
+        # This check is a safety gate before an IR-based rewrite. Any inability
+        # to prove source equivalence must preserve the user's bytes.
+        return False
 
 
 def _read_member(path: Path) -> tuple[bytes | None, str | None]:
@@ -307,13 +464,9 @@ def _ui_capture_input(
     source_kind = door_import_source_kind(graph)
     explicit = any(key in graph for key in ("workflow_id", "workflow_identity"))
     # ComfyUI canvas documents use top-level `id` for the canvas document,
-    # not for the VibeComfy workflow. A caller that supplied a canonical
-    # bundle path already identifies the workflow, so bind this common flat
-    # export shape to that known identity.
-    is_ui_document = isinstance(graph.get("nodes"), list) and (
-        "last_node_id" in graph or "last_link_id" in graph
-    )
-    if source_kind != "ui" and "id" in graph and not is_ui_document:
+    # not for the VibeComfy workflow. The single import-shape classifier has
+    # already identified those as UI, so API/envelope `id` can bind identity.
+    if source_kind != "ui" and "id" in graph:
         explicit = True
     source_identity = graph.get("source")
     if isinstance(source_identity, Mapping) and any(
@@ -351,40 +504,129 @@ def _ui_capture_input(
     return workflow, graph, provenance, delta
 
 
-def _schema_provider_with_uid_aliases(provider: Any, workflow: VibeWorkflow) -> Any:
-    """Bind the frozen class catalog to canonical UIDs used by edit tools.
+def _schema_provider_with_uid_aliases(
+    provider: Any,
+    workflow: VibeWorkflow,
+    *,
+    tool_calls: Sequence[Mapping[str, Any]] = (),
+) -> Any:
+    """Freeze the edit catalog and bind classes to canonical UIDs.
 
     UI ingress schema snapshots key node classes by numeric canvas IDs, while
     typed tools correctly target stable canonical UIDs. Add that proven
-    identity correspondence to a detached snapshot; do not add or resolve any
-    schema classes outside the caller's frozen catalog.
+    identity correspondence to a detached snapshot. The normal offline
+    authoring provider is a live catalog and does not itself expose a
+    ``SchemaSnapshot``; freeze exactly the classes in the current workflow
+    and any explicitly added by this operation once at the transition
+    boundary so all subsequent edit work is snapshot-only.
     """
-    from vibecomfy.schema import FrozenSchemaSnapshotProvider
+    from vibecomfy.schema import (
+        FrozenSchemaSnapshotProvider,
+        schema_for,
+    )
     from vibecomfy.schema.types import (
         capture_schema_snapshot,
+        schema_payload_from_node_schema,
         schema_snapshot_to_payload,
     )
 
     snapshot = getattr(provider, "snapshot", None)
     from vibecomfy.schema.types import SchemaSnapshot
 
-    if not isinstance(snapshot, SchemaSnapshot):
-        raise BundleTransitionError(
-            "workflow editing requires a frozen schema snapshot; configure local node schemas first"
-        )
-    node_classes = dict(snapshot.node_classes)
-    node_classes.update({
-        str(node_id): str(node.class_type)
-        for node_id, node in workflow.nodes.items()
-    })
-    node_classes.update(
-        {
-            str(node.uid): str(node.class_type)
-            for node in workflow.nodes.values()
-            if str(getattr(node, "uid", "") or "")
+    generated_snapshot = not isinstance(snapshot, SchemaSnapshot)
+    try:
+        from vibecomfy.identity.uid import make_uid
+        from vibecomfy.porting.edit._ir_utils import build_recursive_edit_index
+
+        recursive_index = build_recursive_edit_index(workflow)
+        requested = set()
+        identity_classes: dict[str, set[str]] = {}
+        scoped_node_classes: dict[str, str] = {}
+        for scope_path, scope in recursive_index.scopes.items():
+            for ref in scope.nodes.values():
+                node = ref.node
+                class_type = (
+                    getattr(node, "class_type", None)
+                    if not isinstance(node, Mapping)
+                    else node.get("type", node.get("class_type"))
+                )
+                if not isinstance(class_type, str) or not class_type:
+                    continue
+                requested.add(class_type)
+                for identity in {str(ref.uid), str(ref.node_id)}:
+                    scoped_node_classes[make_uid(scope_path, identity)] = class_type
+                    identity_classes.setdefault(identity, set()).add(class_type)
+        ambiguous_local_identities = {
+            identity for identity, class_types in identity_classes.items()
+            if len(class_types) > 1
         }
-    )
-    if all(snapshot.node_classes.get(key) == value for key, value in node_classes.items()):
+        # Existing edit admission resolves ordinary node references through
+        # local UIDs. Keep those aliases only when they identify one class
+        # across the full recursive workflow; scoped keys preserve exact
+        # identity for future scope-aware consumers and avoid lossy overwrite.
+        for identity, class_types in identity_classes.items():
+            if len(class_types) == 1:
+                scoped_node_classes[identity] = next(iter(class_types))
+    except Exception as exc:
+        raise BundleTransitionError(
+            "could not index recursive workflow schemas for editing: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
+
+    if not isinstance(snapshot, SchemaSnapshot):
+        # CLI authoring providers intentionally expose schemas without a
+        # snapshot. Query only classes that this operation can touch, then
+        # freeze those results rather than making callers configure a second
+        # provider or allowing the edit session to consult ambient schemas.
+        try:
+            def include_added_class(tool: str, args: Any) -> None:
+                if tool == "add_node" and isinstance(args, Mapping):
+                    class_type = args.get("class_type")
+                    if isinstance(class_type, str) and class_type:
+                        requested.add(class_type)
+                elif tool == "edit_batch" and isinstance(args, Mapping):
+                    ops = args.get("ops")
+                    if isinstance(ops, list):
+                        for item in ops:
+                            if isinstance(item, Mapping) and isinstance(item.get("op"), str):
+                                include_added_class(
+                                    str(item["op"]),
+                                    {key: value for key, value in item.items() if key != "op"},
+                                )
+
+            for call in tool_calls:
+                if isinstance(call, Mapping) and isinstance(call.get("tool"), str):
+                    include_added_class(str(call["tool"]), call.get("args"))
+
+            raw_schemas: dict[str, Any] = {}
+            for class_type in sorted(requested):
+                schema = schema_for(provider, class_type)
+                if schema is not None:
+                    raw_schemas[class_type] = schema_payload_from_node_schema(
+                        class_type, schema
+                    )
+            missing = sorted(requested - set(raw_schemas))
+            frozen = capture_schema_snapshot(
+                class_types=tuple(sorted(requested)),
+                request_snapshot={
+                    "schemas": raw_schemas,
+                    "missing_classes": missing,
+                },
+                node_classes=scoped_node_classes,
+            )
+            snapshot = frozen
+        except Exception as exc:
+            raise BundleTransitionError(
+                "could not freeze the available node schemas for workflow editing: "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
+    node_classes = dict(snapshot.node_classes)
+    node_classes.update(scoped_node_classes)
+    for identity in ambiguous_local_identities:
+        node_classes.pop(identity, None)
+    if not generated_snapshot and all(
+        snapshot.node_classes.get(key) == value for key, value in node_classes.items()
+    ) and not ambiguous_local_identities:
         return provider
     payload = schema_snapshot_to_payload(snapshot)
     payload.pop("content_digest", None)
@@ -620,6 +862,12 @@ def transition_bundle(
         assert initial is not None
         if initial.python_path is None:
             raise BundleTransitionError("UI capture needs a local canonical Python bundle")
+        if not _is_canonical_python_source(initial, source_path):
+            raise BundleTransitionError(
+                "workflow.py differs from the canonical generated source, so a UI capture "
+                "cannot safely preserve it; keep the current bundle unchanged and reconcile "
+                "the graph in Python first"
+            )
         if not isinstance(capture_graph, Mapping):
             raise BundleTransitionError("capture_graph must be a UI graph object")
         try:
@@ -644,9 +892,17 @@ def transition_bundle(
         assert initial is not None
         if initial.ui_sidecar is None:
             raise BundleTransitionError("workflow edits require a validated canonical .vibe.json companion")
+        if not _is_canonical_python_source(initial, source_path):
+            raise BundleTransitionError(
+                "workflow.py differs from the canonical generated source, so a typed edit "
+                "cannot safely preserve it; edit it directly and capture it, or restore the "
+                "canonical generated source before typed editing"
+            )
         if schema is None:
             raise BundleTransitionError("workflow edit needs an authoring schema provider")
-        edit_schema = _schema_provider_with_uid_aliases(schema, initial.workflow)
+        edit_schema = _schema_provider_with_uid_aliases(
+            schema, initial.workflow, tool_calls=tool_calls
+        )
         raw_ui = initial.materialize_ui(schema_provider=edit_schema, strict=True)
         from vibecomfy.ingest.snapshot import snapshot_of
         from vibecomfy.porting.edit.session import EditSession

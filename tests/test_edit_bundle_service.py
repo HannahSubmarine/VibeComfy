@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import ast
 import shutil
 from pathlib import Path
 
 import pytest
 
-from vibecomfy.porting.edit.bundle_service import BundleTransitionError, transition_bundle
+from vibecomfy.identity.scope import sg_key
+from vibecomfy.porting.edit.bundle_service import (
+    BundleTransitionError,
+    _schema_provider_with_uid_aliases,
+    transition_bundle,
+)
 from vibecomfy.schema import (
     FrozenSchemaSnapshotProvider,
     InputSpec,
@@ -99,6 +105,152 @@ def test_typed_edit_saves_and_reloads_pair_with_parent_revision(tmp_path: Path) 
     assert reloaded.workflow.nodes["1"].inputs["value"] == 23
     assert (python_path.parent / "source.json").read_bytes() == source_bytes
     assert any(entry["reason"] == "assume_yes_bypass" for entry in context.audit)
+
+
+def test_typed_edit_freezes_live_authoring_catalog_at_transition_boundary(tmp_path: Path) -> None:
+    class LiveCatalogProvider:
+        """Representative authoring provider: queryable, but no snapshot attr."""
+
+        def __init__(self) -> None:
+            self.schemas_by_name = {
+                name: NodeSchema(
+                    class_type=name,
+                    pack="fixture",
+                    inputs={"value": InputSpec(type="INT", required=True)},
+                    outputs=[],
+                    widget_input_order=("value",),
+                )
+                for name in ("FixtureInteger", "FixtureAdded")
+            }
+            self.lookups: list[str] = []
+
+        def get_schema(self, class_type: str):
+            self.lookups.append(class_type)
+            return self.schemas_by_name.get(class_type)
+
+    provider = LiveCatalogProvider()
+    directory = tmp_path / "live-catalog"
+    directory.mkdir()
+    source_bytes = b'{"workflow_id":"live-catalog-fixture"}\n'
+    (directory / "source.json").write_bytes(source_bytes)
+    workflow = VibeWorkflow(
+        "live-catalog-fixture", WorkflowSource("live-catalog-fixture")
+    )
+    workflow.add_node("FixtureInteger", uid="fixture-integer", value=7)
+    python_path = directory / "workflow.py"
+    emit_bundle(workflow, python_path, {"operation": "authored"})
+
+    _gate()
+    result = transition_bundle(
+        python_path,
+        tool_calls=[
+            {
+                "tool": "edit_batch",
+                "args": {
+                    "ops": [
+                        {
+                            "op": "add_node",
+                            "class_type": "FixtureAdded",
+                            "uid": "new-node",
+                            "fields": {"value": 1},
+                        },
+                        {
+                            "op": "edit_node",
+                            "target": "new-node",
+                            "field": "value",
+                            "value": 23,
+                        },
+                    ]
+                },
+            }
+        ],
+        schema_provider=provider,
+    )
+
+    assert result.status == "saved"
+    reloaded = load_bundle(
+        python_path,
+        trust=Provenance.USER_CONFIRMED,
+        schema_provider=provider,
+    )
+    assert reloaded.workflow.nodes["2"].inputs["value"] == 23
+    assert {"FixtureInteger", "FixtureAdded"} <= set(provider.lookups)
+    assert (directory / "source.json").read_bytes() == source_bytes
+
+
+def test_schema_fallback_freezes_recursive_classes_and_scoped_uids() -> None:
+    class LiveCatalogProvider:
+        def get_schema(self, class_type: str):
+            if class_type not in {"FixtureNested", "FixtureOther"}:
+                return None
+            return NodeSchema(
+                class_type=class_type,
+                pack="fixture",
+                inputs={"widget_0": InputSpec(type="INT")},
+                outputs=[],
+                widget_input_order=("widget_0",),
+            )
+
+    def definition(class_type: str) -> dict[str, object]:
+        return {
+            "name": class_type,
+            "nodes": [
+                {
+                    "id": 1,
+                    "uid": "shared-local-uid",
+                    "type": class_type,
+                    "inputs": [],
+                    "outputs": [],
+                    "widgets_values": [7],
+                    "mode": 0,
+                }
+            ],
+            "links": [],
+        }
+
+    workflow = VibeWorkflow(
+        "recursive-schema-fixture",
+        WorkflowSource("recursive-schema-fixture"),
+        definitions={
+            "subgraphs": [definition("FixtureNested"), definition("FixtureOther")]
+        },
+    )
+
+    frozen = _schema_provider_with_uid_aliases(LiveCatalogProvider(), workflow)
+
+    assert isinstance(frozen, FrozenSchemaSnapshotProvider)
+    snapshot = frozen.snapshot
+    assert {"FixtureNested", "FixtureOther"} <= set(snapshot.schemas)
+    scopes = [sg_key(definition) for definition in workflow.definitions["subgraphs"]]
+    paths = [f"{scope}#shared-local-uid" for scope in scopes]
+    assert snapshot.node_classes[paths[0]] == "FixtureNested"
+    assert snapshot.node_classes[paths[1]] == "FixtureOther"
+    # A bare UID cannot safely identify two classes in separate scopes.
+    assert "shared-local-uid" not in snapshot.node_classes
+
+    from vibecomfy.porting.edit.ops import NodeFieldTarget, SetNodeFieldOp
+    from vibecomfy.schema.types import require_known_touched_schema
+
+    nested_edit = SetNodeFieldOp(
+        "set_node_field",
+        NodeFieldTarget(
+            scopes[0],
+            "shared-local-uid",
+            "widget_0",
+        ),
+        23,
+    )
+    other_edit = SetNodeFieldOp(
+        "set_node_field",
+        NodeFieldTarget(
+            scopes[1],
+            "shared-local-uid",
+            "widget_0",
+        ),
+        29,
+    )
+    assert require_known_touched_schema(nested_edit, snapshot) == ("FixtureNested",)
+    assert require_known_touched_schema(other_edit, snapshot) == ("FixtureOther",)
 
 
 def test_dry_run_and_out_preserve_parent_and_copy_source_bytes(tmp_path: Path) -> None:
@@ -340,3 +492,131 @@ def test_direct_python_capture_preserves_custom_executable_source_bytes(tmp_path
         schema_provider=_provider(),
     )
     assert reopened.workflow.nodes["1"].inputs["value"] == 23
+
+
+def test_typed_edit_refuses_to_discard_custom_python_after_capture(tmp_path: Path) -> None:
+    python_path, _source_bytes, provider = _bundle(tmp_path / "input")
+    custom_code = b"\nCUSTOM_CAPTURE_SENTINEL = ('keep this code', 23)\n"
+    python_path.write_bytes(python_path.read_bytes().replace(b"value=7", b"value=23") + custom_code)
+    _gate()
+    transition_bundle(python_path, capture=True, schema_provider=provider)
+
+    before = {
+        path.name: path.read_bytes()
+        for path in (
+            python_path,
+            python_path.with_suffix(".vibe.json"),
+            python_path.parent / "source.json",
+        )
+    }
+    with pytest.raises(BundleTransitionError, match="typed edit cannot safely preserve"):
+        transition_bundle(
+            python_path,
+            tool_calls=_edit_call(31),
+            schema_provider=provider,
+        )
+
+    after = {
+        path.name: path.read_bytes()
+        for path in (
+            python_path,
+            python_path.with_suffix(".vibe.json"),
+            python_path.parent / "source.json",
+        )
+    }
+    assert after == before
+    assert python_path.read_bytes().endswith(custom_code)
+
+    with pytest.raises(BundleTransitionError, match="UI capture cannot safely preserve"):
+        transition_bundle(
+            python_path,
+            capture_graph={},
+            schema_provider=provider,
+        )
+    assert {
+        path.name: path.read_bytes()
+        for path in (
+            python_path,
+            python_path.with_suffix(".vibe.json"),
+            python_path.parent / "source.json",
+        )
+    } == before
+
+
+@pytest.mark.parametrize("mutation", ["same_line_statement", "chained_assignment_target"])
+def test_noncanonical_metadata_statement_cannot_be_rewritten_by_typed_or_ui_capture(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    python_path, _source_bytes, provider = _bundle(tmp_path / mutation)
+    source = python_path.read_bytes()
+    module = ast.parse(source)
+    assignment = next(
+        statement
+        for statement in module.body
+        if isinstance(statement, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "READY_METADATA"
+            for target in statement.targets
+        )
+    )
+    lines = source.splitlines(keepends=True)
+
+    def byte_offset(line: int, column: int) -> int:
+        return sum(len(item) for item in lines[: line - 1]) + column
+
+    if mutation == "same_line_statement":
+        insertion = byte_offset(assignment.end_lineno, assignment.end_col_offset)
+        source = (
+            source[:insertion]
+            + b"; CUSTOM_CAPTURE_SENTINEL = ('keep this code', 23)"
+            + source[insertion:]
+        )
+    else:
+        insertion = byte_offset(assignment.value.lineno, assignment.value.col_offset)
+        source = source[:insertion] + b"CUSTOM_CAPTURE_SENTINEL = " + source[insertion:]
+    python_path.write_bytes(source)
+    _gate()
+
+    members = (
+        python_path,
+        python_path.with_suffix(".vibe.json"),
+        python_path.parent / "source.json",
+    )
+    before = {path.name: path.read_bytes() for path in members}
+    with pytest.raises(BundleTransitionError, match="typed edit cannot safely preserve"):
+        transition_bundle(
+            python_path,
+            tool_calls=_edit_call(31),
+            schema_provider=provider,
+        )
+    assert {path.name: path.read_bytes() for path in members} == before
+
+    with pytest.raises(BundleTransitionError, match="UI capture cannot safely preserve"):
+        transition_bundle(
+            python_path,
+            capture_graph={},
+            schema_provider=provider,
+        )
+    assert {path.name: path.read_bytes() for path in members} == before
+
+
+def test_direct_capture_after_typed_edit_reads_previous_ui_digest_without_report_sidecar(
+    tmp_path: Path,
+) -> None:
+    python_path, _source_bytes, provider = _bundle(tmp_path / "input")
+    _gate()
+    transition_bundle(
+        python_path,
+        tool_calls=_edit_call(9),
+        schema_provider=provider,
+    )
+    python_path.write_bytes(python_path.read_bytes().replace(b"value=9", b"value=11"))
+
+    captured = transition_bundle(python_path, capture=True, schema_provider=provider)
+
+    assert captured.kind == "python_capture"
+    assert captured.parent_revision
+    # This bundle has only the three canonical sibling files, so the previous
+    # UI digest comes from the trusted companion instead of a local report.
+    assert captured.before_ui_digest
