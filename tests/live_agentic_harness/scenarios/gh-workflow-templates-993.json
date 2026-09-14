@@ -2,16 +2,18 @@
  "id": "gh-workflow-templates-993",
  "query": "Z-Image-Turbo Text to Image template throws RuntimeError: shape '[9728, 2560]' is invalid for input of size 10971515 in CLIPLoader for multiple users - caused by incomplete/misplaced model files (qwen_3_4b.safetensors etc.) in ComfyUI Desktop installs, not the workflow.",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/synth_image_z_image.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "Commenter ProgramDrifter confirmed the fix: move qwen_3_4b.safetensors / z_image_turbo_bf16.safetensors / ae.safetensors into ComfyUI-Shared instead of ComfyUI-Installs model folders (comment 2026-07-26). Maintainer (comfyui-wiki) also asked users to verify the text encoder file is complete - shape-mismatch errors indicate a truncated file.",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "Commenter ProgramDrifter confirmed the fix: move qwen_3_4b.safetensors / z_image_turbo_bf16.safetensors / ae.safetensors into ComfyUI-Shared instead of ComfyUI-Installs model folders (comment 2026-07-26). Maintainer (comfyui-wiki) also asked users to verify the text encoder file is complete - shape-mismatch errors indicate a truncated file.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,18 @@
   "techniques": [
    "z-image"
   ],
-  "solution_confirmed": true
- }
+  "solution_confirmed": true,
+  "pitfalls": [
+   "env-specific",
+   "information-poor"
+  ],
+  "update_trap": false,
+  "hidden_requirement": "Recognize a CLIPLoader shape-mismatch as a truncated/misplaced text-encoder model file in ComfyUI Desktop's install layout, not a workflow bug.",
+  "eval_value": "medium",
+  "recommended_grade_mode": "strict",
+  "has_answer_guidance": true,
+  "failure_class": "missing-component",
+  "task_type": "missing-component"
+ },
+ "interaction_mode": "answer_only"
 }

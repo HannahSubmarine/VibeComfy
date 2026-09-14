@@ -2,16 +2,18 @@
  "id": "gh-comfyui-13139",
  "query": "With dynamic VRAM, 2-pass Qwen-Image-Edit unloads all models between samplers and after the run (RAM flushed), doubling generation time vs --disable-dynamic-vram.",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/synth_image-qwen_image_edit_2511_lora_inflation.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "Workaround --disable-dynamic-vram confirmed working by Kozatiju (C5) and others, but rattus128 only reproduced/asked for logs and the flag is slated for removal; underlying reload behavior not fixed.",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "Workaround --disable-dynamic-vram confirmed working by Kozatiju (C5) and others, but rattus128 only reproduced/asked for logs and the flag is slated for removal; underlying reload behavior not fixed.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,18 @@
   "techniques": [
    "qwen"
   ],
-  "solution_confirmed": false
- }
+  "solution_confirmed": false,
+  "pitfalls": [
+   "version-drift",
+   "env-specific"
+  ],
+  "update_trap": false,
+  "hidden_requirement": "Know that dynamic VRAM management forces full model unloads between 2-pass Qwen-Image-Edit samplers and that --disable-dynamic-vram (or equivalent memory policy) avoids the reload penalty.",
+  "eval_value": "medium",
+  "recommended_grade_mode": "rubric",
+  "has_answer_guidance": true,
+  "failure_class": "software-bug",
+  "task_type": "software-bug"
+ },
+ "interaction_mode": "answer_only"
 }

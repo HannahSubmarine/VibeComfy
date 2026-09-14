@@ -2,16 +2,18 @@
  "id": "gh-sageattention-403",
  "query": "MiniMax H3 generation in ComfyUI via KJNodes' MiniMaxH3MemoryEfficientSageAttentionPatch hard-crashes the CUDA context on SM89 (L20) inside the int8-QK/FP8-PV kernel path (_sageattn_int8_fp8_nhd); KJNodes PR #748 V-offset fix does not help.",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/synth_audio_minimax_music_3.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "OP A/B confirmed a settings-level workaround: switch the 'Patch Sage Attention KJ' mode to sageattn_qk_int8_pv_fp16_cuda and the same workflow runs cleanly \u2014 crash is specific to the SM89 FP8-PV kernel, which remains unfixed upstream.",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "OP A/B confirmed a settings-level workaround: switch the 'Patch Sage Attention KJ' mode to sageattn_qk_int8_pv_fp16_cuda and the same workflow runs cleanly \u2014 crash is specific to the SM89 FP8-PV kernel, which remains unfixed upstream.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,19 @@
   "techniques": [
    "minimax-h3"
   ],
-  "solution_confirmed": true
- }
+  "solution_confirmed": true,
+  "pitfalls": [
+   "gpu-only",
+   "env-specific",
+   "solution-too-specific"
+  ],
+  "update_trap": false,
+  "hidden_requirement": "Isolate a hard CUDA-context crash to one SM89 FP8-PV kernel path and A/B to the safe sageattn_qk_int8_pv_fp16_cuda mode.",
+  "eval_value": "high",
+  "recommended_grade_mode": "strict",
+  "has_answer_guidance": true,
+  "task_type": "software-bug",
+  "failure_class": "software-bug"
+ },
+ "interaction_mode": "answer_only"
 }

@@ -2,16 +2,18 @@
  "id": "gh-comfyui-gguf-444",
  "query": "ComfyUI-GGUF 2.0.0 on Windows: GGUFModelPatcher.unpatch_model with unpatch_weights=True touches GGUF mmap'd raw tensor memory during cache cleanup \u2192 access-violation crash (regression from 2.0.0 refactor; 1.1.6 had the fix).",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/synth_ltxv_image_to_video.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "OP gives definitive cause + one-line fix: pass unpatch_weights=False to super().unpatch_model(device_to, unpatch_weights=False) so the base patcher never touches mmap weight memory; model still unloads normally, no crash (OP-verified).",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "raffetazarius suggests using the v1.1 LTX-2.3 upscaler since v1.0 had a known issue; unconfirmed by OP.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,18 @@
   "techniques": [
    "ltx"
   ],
-  "solution_confirmed": true
- }
+  "solution_confirmed": true,
+  "pitfalls": [
+   "solution-too-specific",
+   "version-drift"
+  ],
+  "update_trap": false,
+  "hidden_requirement": "Debug a 2.0.0-regression access violation where GGUFModelPatcher.unpatch_model touches mmap'd weight memory during cache cleanup, and reason about why unpatch_weights=False prevents it.",
+  "eval_value": "high",
+  "recommended_grade_mode": "rubric",
+  "has_answer_guidance": true,
+  "failure_class": "quality-mystery",
+  "task_type": "quality-mystery"
+ },
+ "interaction_mode": "answer_only"
 }
