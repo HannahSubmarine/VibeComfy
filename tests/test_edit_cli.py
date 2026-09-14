@@ -90,3 +90,9 @@ def test_edit_set_value_file_preserves_multiline_text(tmp_path: Path) -> None:
         "tool": "edit_node",
         "args": {"target": "prompt_node", "field": "text", "value": "first line\nsecond line\n"},
     }
+
+    list_args = build_parser().parse_args([
+        "edit", "workflows/example", "set", "prompt_node.choices", '["first", "second"]'
+    ])
+    list_operation = _operation(list_args)
+    assert list_operation["args"]["value"] == ["first", "second"]

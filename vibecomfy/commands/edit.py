@@ -571,6 +571,8 @@ def _cmd_edit(args: argparse.Namespace) -> int:
             print(f"  validate: vibecomfy validate {args.out or args.workflow}")
             if args.action == "capture":
                 print("  capture records the aggregate workflow state; it does not invent individual edits")
+                if result.parent_revision is None:
+                    print("  baseline: no trusted pre-capture snapshot was available; this capture starts a new baseline")
     return 0
 
 

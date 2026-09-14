@@ -272,6 +272,7 @@ def test_direct_python_capture_does_not_invent_missing_revision_lineage(tmp_path
     assert result.operations == ()
     assert result.to_dict()["baseline"] == "unknown"
     assert result.to_dict()["diff_status"] == "unavailable"
+    assert result.diagnostics[0]["code"] == "capture_baseline_unavailable"
     assert (python_path.parent / "source.json").read_bytes() == source_bytes
     reopened = load_bundle(
         python_path,

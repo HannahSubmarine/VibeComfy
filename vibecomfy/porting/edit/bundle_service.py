@@ -608,7 +608,11 @@ def transition_bundle(
                 "severity": "info",
             },)
             if parent_revision
-            else ()
+            else ({
+                "code": "capture_baseline_unavailable",
+                "message": "No trusted pre-capture revision or graph was available; this capture starts a new baseline and claims no before diff or individual operations.",
+                "severity": "info",
+            },)
         )
         operation = "captured"
         preserved_python_source = payloads[source_path]

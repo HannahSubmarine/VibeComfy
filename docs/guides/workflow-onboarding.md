@@ -240,8 +240,10 @@ vibecomfy edit workflows/my_workflow capture
 ```
 
 Capture publishes the canonical pair and records the aggregate change without
-inventing individual edit operations. Add `--project demo` before `capture`
-to record it in Astrid. A ComfyUI browser candidate or canvas Apply is not tracked
+inventing individual edit operations. When no trusted pre-capture snapshot is
+available, capture starts a new baseline and reports that the earlier graph
+diff is unavailable. Add `--project demo` before `capture` to record it in
+Astrid. A ComfyUI browser candidate or canvas Apply is not tracked
 automatically; capture it explicitly if it should enter project history.
 
 For a tracked import or edit, the command prints the Astrid task ID and history
