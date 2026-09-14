@@ -73,7 +73,13 @@ def test_no_change_reconciliation_and_rubric_contract() -> None:
         assert "grounded" in rubric["pass_condition"]
         assert len(rubric["fail_conditions"]) == 5
 
-    desired_edits = [s for s in scenarios if s.get("desired")]
+    desired_scenarios = [s for s in scenarios if s.get("desired")]
+    answer_only = [s for s in desired_scenarios if s.get("interaction_mode") == "answer_only"]
+    for scenario in answer_only:
+        assert scenario["apply"] is False, scenario["id"]
+        assert scenario["assessment"]["expect_graph_changed"] is False, scenario["id"]
+        assert scenario["desired"].get("answer_guidance"), scenario["id"]
+    desired_edits = [s for s in desired_scenarios if s.get("interaction_mode") != "answer_only"]
     assert desired_edits
     for scenario in desired_edits:
         assessment = scenario["assessment"]
