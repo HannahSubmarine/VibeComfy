@@ -27,9 +27,25 @@ vibecomfy analyze info <target>
 If the target is raw JSON, load it only as import evidence and materialize Python before editing:
 
 ```bash
-vibecomfy port check <workflow.json> --json
-vibecomfy port convert <workflow.json> --out out/scratchpads/<name>.py --json
+vibecomfy import <workflow.json>
+vibecomfy inspect workflows/<source-stem> --json
+vibecomfy analyze info workflows/<source-stem>
+vibecomfy validate workflows/<source-stem> --json
 ```
+
+The import folder contains editable `workflow.py`, its canonical
+`workflow.vibe.json` companion, and byte-identical `source.json`; provenance
+stays in the bundle metadata. Edit the existing node arguments in Python for
+simple changes. If you use a recipe that loads the imported folder as a
+`VibeWorkflow`, common supported controls are `set_prompt`, `set_seed`,
+`set_steps`, and `set_input`; first check available fields with
+`vibecomfy inspect <folder> --field <field>`. For unfamiliar node parameters,
+use `vibecomfy nodes spec <ClassType>` and visible graph evidence. Validate and
+diagnose the folder before handing it off.
+
+Use `vibecomfy port check` and `vibecomfy port convert` when you need advanced
+preflight, a standalone scratchpad, or the intentional ready-template
+conversion path; import does not promote a template.
 
 If the target is a ready template and the edit is user-specific:
 

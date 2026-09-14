@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -42,6 +43,131 @@ def test_load_workflow_any_accepts_scratchpad_path(tmp_path: Path) -> None:
 
     assert workflow.id == "scratch"
     assert workflow.outputs[0].output_type == "SaveImage"
+
+
+def test_load_workflow_any_accepts_workflow_directory(tmp_path: Path) -> None:
+    folder = tmp_path / "imported-workflow"
+    folder.mkdir()
+    (folder / "workflow.py").write_text(
+        "from vibecomfy.workflow import VibeWorkflow, WorkflowSource\n\n"
+        "def build():\n"
+        "    return VibeWorkflow('folder-loaded', WorkflowSource('folder-loaded'))\n",
+        encoding="utf-8",
+    )
+
+    workflow = load_workflow_any(str(folder))
+
+    assert workflow.id == "folder-loaded"
+
+
+def test_workflow_directory_load_preserves_companion_binding_after_scalar_edit(
+    tmp_path: Path,
+) -> None:
+    from vibecomfy.workflow import VibeWorkflow, WorkflowSource
+    from vibecomfy.workflow_bundle import emit_bundle
+
+    folder = tmp_path / "imported-workflow"
+    folder.mkdir()
+    workflow = VibeWorkflow("folder-edit", WorkflowSource("folder-edit"))
+    workflow.add_node("Integer", uid="integer-node", value=7)
+    emit_bundle(workflow, folder / "workflow.py", {"operation": "authored"})
+    source = folder / "workflow.py"
+    source.write_text(
+        source.read_text(encoding="utf-8").replace("value=7", "value=8"),
+        encoding="utf-8",
+    )
+    (folder / "source.json").write_text("{}", encoding="utf-8")
+
+    bundle = load_bundle(folder, trust=Provenance.USER_CONFIRMED)
+    bundle.require_canonical_authority("workflow validation")
+    report = bundle.workflow.validate()
+
+    assert bundle.python_path == source
+    integer = next(
+        node for node in bundle.workflow.nodes.values() if node.class_type == "Integer"
+    )
+    assert integer.inputs["value"] == 8
+    assert report.ok
+
+
+def test_import_generated_folder_loads_and_validates_after_python_scalar_edit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from tests._cli_helpers import _write_port_node_index, _write_port_workflow
+    from vibecomfy.cli import build_parser, main
+
+    _write_port_node_index(tmp_path)
+    source = _write_port_workflow(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    args = build_parser().parse_args(["import", str(source)])
+    assert args.func(args) == 0
+    capsys.readouterr()
+
+    folder = tmp_path / "workflows" / "port_workflow"
+    python_source = folder / "workflow.py"
+    original = python_source.read_text(encoding="utf-8")
+    assert "filename_prefix='out/port'" in original
+    python_source.write_text(
+        original.replace("filename_prefix='out/port'", "filename_prefix='out/edited'"),
+        encoding="utf-8",
+    )
+
+    bundle = load_bundle(folder, trust=Provenance.USER_CONFIRMED)
+    bundle.require_canonical_authority("workflow validation")
+    report = bundle.workflow.validate()
+
+    assert bundle.python_path == python_source
+    assert any(
+        node.inputs.get("filename_prefix") == "out/edited"
+        for node in bundle.workflow.nodes.values()
+    )
+    assert bundle.workflow.source.provenance["source_hash"] == (
+        "sha256:"
+        + hashlib.sha256((folder / "source.json").read_bytes()).hexdigest()
+    )
+    assert report.ok
+
+    from vibecomfy.commands import validate as validate_command
+
+    freshness_paths: list[Path] = []
+
+    def record_freshness(path: Path) -> list[str]:
+        freshness_paths.append(path)
+        return []
+
+    monkeypatch.setattr(validate_command, "_subgraph_freshness_diagnostics", record_freshness)
+    command_pairs = [
+        ["inspect", "--json"],
+        ["analyze", "info", "--json"],
+        ["validate", "--no-schema", "--check-freshness", "--json"],
+        ["doctor", "--json"],
+    ]
+    for command in command_pairs:
+        results: list[tuple[int, object]] = []
+        for reference in (str(folder), str(python_source)):
+            argv = [command[0], "--yes", *command[1:]]
+            # Analyze has a nested verb; place its workflow after that verb.
+            argv.insert(3 if command[0] == "analyze" else 2, reference)
+            code = main(argv)
+            captured = capsys.readouterr()
+            output = captured.out.strip()
+            parsed: object = json.loads(output) if output.startswith("{") else output
+            results.append((code, parsed))
+        assert results[0] == results[1], command
+
+    assert freshness_paths == [python_source, python_source]
+
+
+def test_workflow_directory_without_workflow_py_has_actionable_error(
+    tmp_path: Path,
+) -> None:
+    folder = tmp_path / "empty-workflow"
+    folder.mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"workflow directory.*workflow.py"):
+        load_bundle(folder)
 
 
 def test_load_workflow_any_accepts_json_path(tmp_path: Path) -> None:

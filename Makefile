@@ -21,6 +21,7 @@ PARITY_NETWORK ?= 0
 
 FAST_PYTEST := \
 	tests/test_cli_loader.py \
+	tests/test_import_command.py \
 	tests/test_scratchpad_loader.py \
 	tests/test_virtual_wire_round_trip.py \
 	tests/test_strict_ready.py \

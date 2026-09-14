@@ -2476,6 +2476,14 @@ def _resolve_reference(reference: str | Path) -> tuple[str | Path, Path | None, 
     if value.suffix.lower() == ".vibe.json":
         python = value.with_suffix("").with_suffix(".py")
         return python, python if python.is_file() else None, "authored"
+    if value.is_dir():
+        # A workflow folder is a convenient locator for the canonical source;
+        # resolve to workflow.py so its sibling companion remains bound to the
+        # same logical path during scratchpad loading.
+        from vibecomfy.commands._workflow_path import resolve_workflow_path
+
+        python = Path(resolve_workflow_path(str(value)))
+        return python, python, "authored"
     if value.is_file() and value.suffix.lower() in {".py", ".json"}:
         return value, value if value.suffix.lower() == ".py" else None, (
             "authored" if value.suffix.lower() == ".py" else "imported"

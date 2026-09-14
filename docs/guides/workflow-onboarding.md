@@ -1,67 +1,92 @@
 # Workflow onboarding
 
-Use this path when you have a workflow from ComfyUI or an upstream repository and want a local, editable VibeComfy surface.
+Use this path when you have a ComfyUI workflow and want an editable local copy.
 
-## 1. Save the source and provenance
+## Import and inspect
 
-Keep the upstream file unchanged under a stable source path, and record its URL, upstream commit or release, local path, and SHA-256. For example, the MiniMax H3 AV inpainting source used by the Matrix experiment is:
+Import the JSON into a self-contained folder. The default destination is
+`./workflows/<source-stem>/`; `--out` selects a different destination
+directory. The destination must not already exist.
 
-- upstream: [LanPaint `MiniMax_H3_AV_EncodeDecode_Inpaint.json`](https://github.com/scraed/LanPaint/blob/32cf848e93971da380d868936e007f5611218bee/example_workflows/MiniMax_H3_AV_EncodeDecode_Inpaint.json)
-- local: `planning/comfy-inspection/MiniMax_H3_AV_EncodeDecode_Inpaint.json`
-- SHA-256: `2dd64fe26c42281962e434841c458cc935b1d1858e83093b882bbaeb02dc3121`
+```bash
+vibecomfy import path/to/my_workflow.json
+vibecomfy inspect workflows/my_workflow --json
+vibecomfy analyze info workflows/my_workflow
+vibecomfy validate workflows/my_workflow --json
+vibecomfy doctor workflows/my_workflow --json
+```
 
-Keep source JSON as evidence. Put hand edits in a recipe or scratchpad so the upstream graph can still be compared with the candidate.
+The imported folder contains `workflow.py` (the editable authoring surface),
+`workflow.vibe.json` (the canonical bundle companion), and `source.json` (a
+byte-identical copy of the input). The source hash and existing conversion
+provenance remain in the bundle metadata; no separate import manifest is
+needed. Use `--dry-run` to preview without writing, or `--json` for
+machine-readable output.
 
-## 2. Preflight, then understand the graph
+Import converts the graph for authoring; it does not install nodes or models,
+configure a runtime, or run the workflow.
 
-From the VibeComfy repository root, use the console entrypoint (or replace `vibecomfy` with `python -m vibecomfy.cli` in an editable checkout):
+If you need to examine a source before creating a bundle, the advanced porting
+commands remain available:
 
 ```bash
 vibecomfy port check path/to/workflow.json --json
-vibecomfy inspect path/to/workflow.json --json
-vibecomfy analyze info path/to/workflow.json
+vibecomfy port convert path/to/workflow.json --out out/scratchpads/my_workflow.py --json
 ```
 
-For a ready template, discovery and inspection use its id:
+`port convert` is still useful when you want a standalone scratchpad, a
+preflight report, or the advanced ready-template conversion path. For a
+reusable curated template, follow [Adding templates and models](../templates/adding_templates_models.md).
 
-```bash
-vibecomfy workflows list --ready
-vibecomfy inspect image/z_image --json
-```
+## Make a small edit
 
-`inspect` and `analyze info` describe the graph and public inputs; they do not prove that models, custom nodes, a ComfyUI checkout, or a server are available. If a class schema is missing, `doctor` identifies the gap and the supported recovery command is `vibecomfy schemas ensure <workflow>`; provisioning is an environment change and should be treated separately. A missing schema does not by itself prevent a draft scratchpad from being emitted.
-
-## 3. Materialize the editable Python candidate
-
-For a supported source workflow, convert it to a scratchpad and keep the emitted path as the canonical edit surface:
-
-```bash
-vibecomfy port convert path/to/workflow.json \
-  --out out/scratchpads/my_workflow.py --json
-vibecomfy inspect out/scratchpads/my_workflow.py --json
-```
-
-For a curated ready template, copy a user-specific recipe instead:
-
-```bash
-vibecomfy copy-to-recipe image/z_image --out recipes/my_run.py
-```
-
-Load the candidate through `load_bundle()` before editing or running. A minimal recipe looks like this:
+Open `workflows/my_workflow/workflow.py` and change the existing node argument
+that represents the desired value. Use `inspect` or `analyze info` to find
+the relevant node and field first. If you want a separate recipe instead of
+editing the imported bundle directly, save it as `recipes/workflow_variation.py`.
+For example, common `VibeWorkflow` controls are:
 
 ```python
 from vibecomfy.cli_loader import load_bundle
 
 
 def build():
-    wf = load_bundle("image/z_image").workflow
+    wf = load_bundle("workflows/my_workflow").workflow
     wf.set_prompt("a glass teapot on basalt")
     wf.set_seed(42)
     wf.set_steps(20)
     return wf.finalize_metadata()
 ```
 
-Use `vibecomfy inspect <candidate> --field <PUBLIC_INPUTS field>` when you need to resolve one public handle. Use `vibecomfy nodes spec <ClassType>` before relying on a custom node's sockets or widgets.
+Only call a setter when the imported graph exposes that input. Use
+`vibecomfy inspect workflows/my_workflow --field <field>` to resolve a public
+handle, and `vibecomfy nodes spec <ClassType>` before relying on a node's
+sockets or widgets. For structural edits, follow the [edit-comfy-workflow
+agent skill](../agent-skill/skills/edit-comfy-workflow/SKILL.md); use supported
+`VibeWorkflow` methods, patches, or blocks rather than editing compiled API
+JSON.
+
+Validate and review the result before execution:
+
+```bash
+vibecomfy validate workflows/my_workflow --json
+vibecomfy doctor workflows/my_workflow --json
+vibecomfy runtime doctor --json
+```
+
+Validation checks the candidate; `doctor` reports graph and dependency
+findings. Neither installs missing dependencies nor proves runtime readiness.
+Only run after the candidate and selected runtime are ready, for example:
+
+```bash
+vibecomfy run workflows/my_workflow --runtime server --server-url http://127.0.0.1:8188
+```
+
+`inspect` and `analyze info` describe the graph and public inputs; they do not
+prove that models, custom nodes, a ComfyUI checkout, or a server are available.
+If a class schema is missing, `doctor` identifies the gap and the supported
+recovery command is `vibecomfy schemas ensure <workflow>`; provisioning is an
+environment change and should be treated separately.
 
 ### Native subgraphs
 
@@ -77,31 +102,12 @@ rosters, unsupported nesting, contradictory socket backlinks, malformed links,
 or unmapped native edges produce `unsupported_boundary_encoding` and do not
 write a candidate. Preserve the original JSON and provenance when this occurs.
 
-## 4. Edit, validate, and inspect readiness
-
-Make the smallest change in the Python candidate, then run structural and dependency checks:
-
-```bash
-vibecomfy validate out/scratchpads/my_workflow.py --json
-vibecomfy doctor out/scratchpads/my_workflow.py --json
-vibecomfy runtime doctor --json
-```
-
-`validate`/`doctor` describe the candidate. `runtime doctor` reports local runtime findings; configured `models` or `custom_nodes` directories alone do not make embedded execution ready, and an external server remains unverified until a URL is supplied to a run.
-
-Only after the candidate and runtime are ready should execution be attempted, for example:
-
-```bash
-vibecomfy run out/scratchpads/my_workflow.py \
-  --runtime server --server-url http://127.0.0.1:8188
-```
-
 ## Evidence and blockers
 
 There are four distinct claims:
 
 1. **Source evidence:** the saved JSON, provenance, and inspection output show what the upstream graph contains.
-2. **Draft candidate:** conversion produced a structurally valid Python scratchpad. Unresolved class schemas remain visible in the report and may make fields unavailable; this is not a claim of strict readiness or runtime execution.
+2. **Imported candidate:** import produced the Python and canonical companion bundle, preserving the input as `source.json`. Unresolved class schemas can leave fields unavailable; this is not a claim of runtime readiness or execution.
 3. **Strict readiness:** `port check --strict-ready-template`, `port convert --strict-ready-template`, or ready-template promotion with `--ready-id` passed the provider-backed gates, including required schema/widget resolution.
 4. **Runtime readiness:** the selected ComfyUI runtime, custom nodes, models, and server or embedded environment were checked.
 
@@ -115,7 +121,8 @@ invalid.
 
 For a durable authored candidate, `load_bundle()` binds the Python source to a
 workflow identity, semantic digest, provenance, revision, and optional UI
-sidecar. `emit_bundle()` publishes the Python and canonical `.vibe.json` pair
+sidecar. The imported folder carries this bundle alongside the original JSON;
+`emit_bundle()` publishes the Python and canonical `.vibe.json` pair
 atomically; reload validates that identity and revision before approval. The
 legacy `.layout.json` sidecar is presentation-only and optional: `port export
 --to ui` uses it for layout preservation, persists it on the canonical output

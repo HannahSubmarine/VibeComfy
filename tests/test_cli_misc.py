@@ -20,6 +20,7 @@ from tests._cli_helpers import _top_level_commands
 def test_cli_command_registry_is_explicit_and_ordered() -> None:
     assert [spec.name for spec in COMMANDS] == [
         "sources",
+        "import",
         "workflows",
         "nodes",
         "analyze",

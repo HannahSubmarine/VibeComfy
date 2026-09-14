@@ -46,10 +46,18 @@ vibecomfy run recipes/my_run.py --runtime server --server-url http://127.0.0.1:8
 For raw JSON:
 
 ```bash
-vibecomfy port check workflow.json --json
-vibecomfy port convert workflow.json --out out/scratchpads/workflow.py --json
-vibecomfy validate out/scratchpads/workflow.py
+vibecomfy import workflow.json
+vibecomfy inspect workflows/workflow --json
+vibecomfy validate workflows/workflow --json
+vibecomfy doctor workflows/workflow --json
 ```
+
+`import` creates an editable folder with `workflow.py`,
+`workflow.vibe.json`, and a byte-identical `source.json`; provenance stays in
+the bundle metadata. Use `--out <directory>`, `--dry-run`, or `--json` as
+needed. This prepares authoring files but does not install dependencies or run
+the workflow. Keep `port check` and `port convert` for advanced preflight,
+standalone scratchpad generation, and intentional ready-template conversion.
 
 For setup trouble:
 
@@ -87,7 +95,7 @@ Keep ComfyUI's terms precise: a **workflow** is any graph; a **template** is a c
 
 ## Rules
 
-- Treat raw UI/API JSON as import evidence. Load the canonical Python candidate through `load_bundle()` before editing or running.
+- Treat raw UI/API JSON as import evidence. Use `vibecomfy import <workflow.json>` for a local bundle, then load the folder through `load_bundle()` before editing or running. The folder is accepted by `inspect`, `analyze info`, `validate`, `doctor`, and `run`.
 - Treat the worktree as shared. Do not revert, overwrite, or clean up edits you did not make.
 - Keep changes scoped to the requested workflow, command, template, or doc surface.
 - Do not change runtime behavior, workflow corpus files, generated snapshots, or template manifests unless the task explicitly covers them.

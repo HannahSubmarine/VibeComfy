@@ -15,6 +15,7 @@ class CommandSpec:
 
 COMMANDS: tuple[CommandSpec, ...] = (
     CommandSpec("sources", "vibecomfy.commands.sources"),
+    CommandSpec("import", "vibecomfy.commands.import_workflow"),
     CommandSpec("workflows", "vibecomfy.commands.workflows"),
     CommandSpec("nodes", "vibecomfy.commands.nodes"),
     CommandSpec("analyze", "vibecomfy.commands.analyze"),

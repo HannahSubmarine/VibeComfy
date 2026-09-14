@@ -62,6 +62,21 @@ def _cmd_port_convert(args: argparse.Namespace) -> int:
     )
     try:
         loaded = load_port_source(args.workflow, schema_provider=schema_provider)
+        logical_source_path = getattr(args, "_logical_source_path", None)
+        if logical_source_path:
+            # Internal callers may convert a staged snapshot while assigning
+            # provenance to its eventual published path. Keep all canonical
+            # source witnesses aligned before analysis and emission.
+            loaded.source_ref = str(logical_source_path)
+            loaded.source_path = str(logical_source_path)
+            loaded.workflow.source.path = str(logical_source_path)
+            logical_workflow_id = getattr(args, "_logical_workflow_id", None)
+            if logical_workflow_id:
+                loaded.workflow.id = str(logical_workflow_id)
+                loaded.workflow.source.id = str(logical_workflow_id)
+            for key in ("source_ref", "source_path", "source_workflow_path", "source_workflow"):
+                if key in loaded.workflow.source.provenance:
+                    loaded.workflow.source.provenance[key] = str(logical_source_path)
         report = analyze_source(
             args.workflow,
             schema_provider=schema_provider,
