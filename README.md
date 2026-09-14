@@ -72,7 +72,24 @@ patterns, making complex edits, and preserving the result. See
 
 ## Getting Started
 
-Each path below is meant to be copied directly into an agent. The ComfyUI path
+### Import an Existing Workflow
+
+With VibeComfy installed, start in your project directory:
+
+```bash
+vibecomfy import path/to/my_workflow.json
+vibecomfy inspect workflows/my_workflow
+# Edit workflows/my_workflow/workflow.py, then check your changes:
+vibecomfy validate workflows/my_workflow
+```
+
+The folder keeps your editable Python, its `.vibe.json` companion, and the
+unchanged original `source.json` together. Import prints the paths and next
+commands. Use `doctor` to investigate dependency findings; validation does
+not run generation. Follow [Import and edit a ComfyUI workflow](docs/guides/workflow-onboarding.md)
+for a concrete edit, file responsibilities, and troubleshooting.
+
+For installation, each path below can be copied directly into an agent. The ComfyUI path
 also includes a manual install block because it is a normal custom-node install.
 
 ### Use VibeComfy Inside ComfyUI
@@ -141,8 +158,8 @@ If I give you an unfamiliar ComfyUI JSON workflow instead of a ready template, i
 Inspect the imported folder with `python -m vibecomfy.cli inspect workflows/<source-stem> --json` and `python -m vibecomfy.cli analyze info workflows/<source-stem>`. Edit `workflow.py` at the existing node call/value you want to change, using `nodes spec <ClassType>` to confirm unfamiliar sockets or widgets. For recipes using public handles, `VibeWorkflow` supports `set_prompt`, `set_seed`, `set_steps`, and `set_input`; check `inspect --field <name>` before calling a setter.
 Validate and diagnose the imported folder with `python -m vibecomfy.cli validate workflows/<source-stem> --json` and `python -m vibecomfy.cli doctor workflows/<source-stem> --json`. Existing `port check` and `port convert` remain available for advanced preflight, standalone scratchpad generation, and intentional ready-template conversion.
 Edit the copied, imported, or converted Python itself: change prompts, seeds, steps, model choices, wiring, and output prefixes in the Python authoring surface, not by editing compiled API JSON.
-Validate the recipe with `python -m vibecomfy.cli validate recipes/my_z_image.py`.
-Export the runtime API JSON with `python -m vibecomfy.cli port export recipes/my_z_image.py --to json --json`.
+Validate the artifact you actually edited: the imported folder for a direct edit, or `python -m vibecomfy.cli validate recipes/my_z_image.py` for the copied recipe. A separate variation must be validated at its own path, not at the source folder it loads.
+Export that same edited artifact with `python -m vibecomfy.cli port export <edited-folder-or-python-path> --to json --json`.
 If node packs are missing, use `python -m vibecomfy.cli nodes ensure <workflow>`. If model assets are missing, prefer normal `run` because it reconciles declared assets before queueing; use `fetch` only when explicitly staging authored model assets.
 Summarize what changed and show me the exact API JSON fields ComfyUI will receive before any GPU run.
 ```

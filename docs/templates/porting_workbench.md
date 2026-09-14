@@ -1,6 +1,6 @@
 # Template Porting Workbench
 
-The porting workbench is the first stop when importing or repairing a ComfyUI workflow for VibeComfy. Run it before hand-editing a converted template, before spending RunPod time, and whenever a raw workflow fails with missing custom nodes, schema errors, model asset problems, helper nodes, or positional `widget_N` ambiguity.
+For a first import, start with [`vibecomfy import`](../guides/workflow-onboarding.md): it creates an editable workflow folder and shows the next commands. This workbench covers advanced conversion, template promotion, and diagnosis of missing custom nodes, schema errors, model asset problems, helper nodes, or positional `widget_N` ambiguity.
 
 The steady-state output should be Python: an editable scratchpad or a ready-template candidate. Raw JSON is source material, not the long-term authoring surface.
 
@@ -23,6 +23,7 @@ There is one promotion path for durable templates: source workflow -> `port chec
 
 | Need | Command |
 | --- | --- |
+| Import a ComfyUI JSON file into a local editable folder | `vibecomfy import <workflow.json>` |
 | Preflight a source workflow before editing or RunPod | `python -m vibecomfy.cli port check <workflow> --json` |
 | Turn raw JSON or an indexed workflow into editable Python | `python -m vibecomfy.cli port convert <workflow> --out out/scratchpads/<id>.py --json` |
 | Produce a ready-template candidate | `python -m vibecomfy.cli port convert <workflow> --ready-id <kind>/<name> --out ready_templates/<kind>/<name>.py --json` |

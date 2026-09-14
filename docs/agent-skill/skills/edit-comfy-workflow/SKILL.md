@@ -41,7 +41,9 @@ simple changes. If you use a recipe that loads the imported folder as a
 `set_steps`, and `set_input`; first check available fields with
 `vibecomfy inspect <folder> --field <field>`. For unfamiliar node parameters,
 use `vibecomfy nodes spec <ClassType>` and visible graph evidence. Validate and
-diagnose the folder before handing it off.
+diagnose the artifact you edited: the imported folder for direct edits, or
+the separate recipe `.py` if you created a variation. Validating the source
+folder does not check a recipe that loads it.
 
 Use `vibecomfy port check` and `vibecomfy port convert` when you need advanced
 preflight, a standalone scratchpad, or the intentional ready-template

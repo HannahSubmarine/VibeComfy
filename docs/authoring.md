@@ -6,12 +6,16 @@
 
 ## Import Before Editing
 
+For a first edit, follow [Import and edit a ComfyUI workflow](guides/workflow-onboarding.md).
+This page is the reference for composing and extending Python workflows.
+
 For the normal ComfyUI JSON onboarding path, create an editable workflow bundle:
 
 ```bash
 vibecomfy import <workflow.json>
 vibecomfy inspect workflows/<source-stem> --json
 vibecomfy analyze info workflows/<source-stem>
+# Edit workflows/<source-stem>/workflow.py before checking your changes:
 vibecomfy validate workflows/<source-stem> --json
 vibecomfy doctor workflows/<source-stem> --json
 ```

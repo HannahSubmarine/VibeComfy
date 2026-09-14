@@ -31,7 +31,10 @@ import/runtime blockers, see [workflow onboarding](../guides/workflow-onboarding
 
 ## First Moves
 
-Work from the repo root. Prefer the `vibecomfy ...` console entrypoint; if an editable checkout has no console script, use `python -m vibecomfy.cli ...`.
+Work from the user's project directory so relative import destinations and
+recipe paths are predictable. Repository maintenance commands may require the
+VibeComfy repo root. Prefer the `vibecomfy ...` console entrypoint; if an
+editable checkout has no console script, use `python -m vibecomfy.cli ...`.
 
 For a runnable starting point:
 
@@ -48,6 +51,7 @@ For raw JSON:
 ```bash
 vibecomfy import workflow.json
 vibecomfy inspect workflows/workflow --json
+# Edit workflows/workflow/workflow.py, then check the edited bundle:
 vibecomfy validate workflows/workflow --json
 vibecomfy doctor workflows/workflow --json
 ```
