@@ -335,6 +335,7 @@ class EmbeddedSessionOwner:
         self._thread_error: BaseException | None = None
         self._session: EmbeddedSession | None = None
         self._closed = False
+        self._operation_lock = threading.Lock()
         self._incarnation_id = uuid.uuid4().hex
         self._thread = threading.Thread(
             target=self._thread_main,
@@ -368,15 +369,18 @@ class EmbeddedSessionOwner:
             self._ready.set()
 
     def _submit(self, coroutine: Any) -> Any:
-        if self._closed:
-            raise RuntimeError("embedded session owner is closed")
-        if self._loop is None:
-            raise RuntimeError("embedded session owner event loop is unavailable")
-        future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
-        try:
-            return future.result()
-        except concurrent.futures.CancelledError as exc:
-            raise RuntimeError("embedded session owner task was cancelled") from exc
+        with self._operation_lock:
+            if self._closed:
+                coroutine.close()
+                raise RuntimeError("embedded session owner is closed")
+            if self._loop is None:
+                coroutine.close()
+                raise RuntimeError("embedded session owner event loop is unavailable")
+            future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
+            try:
+                return future.result()
+            except concurrent.futures.CancelledError as exc:
+                raise RuntimeError("embedded session owner task was cancelled") from exc
 
     @staticmethod
     def _verify_rebound_output(session: EmbeddedSession, config: SessionConfig) -> None:
@@ -458,16 +462,17 @@ class EmbeddedSessionOwner:
             self._session = None
 
     def close(self) -> None:
-        if self._closed:
-            return
-        if self._loop is not None:
-            future = asyncio.run_coroutine_threadsafe(self._close(), self._loop)
-            future.result()
-            self._loop.call_soon_threadsafe(self._loop.stop)
-        self._thread.join(timeout=10)
-        if self._thread.is_alive():
-            raise RuntimeError("embedded session owner event loop did not stop")
-        self._closed = True
+        with self._operation_lock:
+            if self._closed:
+                return
+            if self._loop is not None:
+                future = asyncio.run_coroutine_threadsafe(self._close(), self._loop)
+                future.result()
+                self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join(timeout=10)
+            if self._thread.is_alive():
+                raise RuntimeError("embedded session owner event loop did not stop")
+            self._closed = True
 
     def __enter__(self) -> "EmbeddedSessionOwner":
         return self

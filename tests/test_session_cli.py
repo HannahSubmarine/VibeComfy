@@ -112,6 +112,7 @@ def test_session_cli_start_list_flush_stop_flow(
         memory_profile=None,
     )
     assert session_cmd._cmd_session_start(start_args) == 0
+    assert "--require-source-attestation" in FakePopen.started[0]
     assert (tmp_path / "out/sessions/default/pid").exists()
     assert (tmp_path / "out/sessions/default/url").read_text(encoding="utf-8") == "http://127.0.0.1:8200"
     config = json.loads((tmp_path / "out/sessions/default/config.json").read_text(encoding="utf-8"))

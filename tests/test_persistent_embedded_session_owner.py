@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
+import asyncio
+import threading
 from importlib import import_module
+from pathlib import Path
 
 import pytest
 
@@ -85,6 +87,52 @@ def test_owner_rejects_unobservable_output_rebind(
     with pytest.raises(RuntimeError, match="not independently observable"):
         owner.run("record", "bundle")
     owner.close()
+
+
+def test_owner_serializes_concurrent_callers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(run_module, "EmbeddedSession", _FakeSession)
+    first_entered = threading.Event()
+    release_first = threading.Event()
+    second_entered = threading.Event()
+    order: list[str] = []
+
+    async def fake_run(_session, record, _bundle, **_kwargs):
+        order.append(f"enter:{record}")
+        if record == "first":
+            first_entered.set()
+            while not release_first.is_set():
+                await asyncio.sleep(0.001)
+        else:
+            second_entered.set()
+        order.append(f"exit:{record}")
+        return record
+
+    monkeypatch.setattr(run_module, "run_embedded_with_session", fake_run)
+    owner = EmbeddedSessionOwner(
+        SessionConfig(extra={"output_directory": str(tmp_path / "output")})
+    )
+    results: list[str] = []
+    first = threading.Thread(
+        target=lambda: results.append(owner.run("first", "bundle"))
+    )
+    second = threading.Thread(
+        target=lambda: results.append(owner.run("second", "bundle"))
+    )
+    first.start()
+    assert first_entered.wait(timeout=2)
+    second.start()
+    assert not second_entered.wait(timeout=0.05)
+    release_first.set()
+    first.join(timeout=2)
+    second.join(timeout=2)
+    owner.close()
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert results == ["first", "second"]
+    assert order == ["enter:first", "exit:first", "enter:second", "exit:second"]
 
 
 def test_owner_drives_actual_embedded_session_across_two_cpu_tasks(

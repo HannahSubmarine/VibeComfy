@@ -2028,6 +2028,15 @@ def _terminate_session_pid(pid: int, *, session_dir: Path) -> bool:
     return True
 
 
+def _checkout_git_environment() -> dict[str, str]:
+    """Return an environment that cannot redirect Git away from this checkout."""
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith("GIT_")
+    }
+
+
 def current_source_revision() -> str | None:
     """Return the checkout's actual git revision.
 
@@ -2045,6 +2054,7 @@ def current_source_revision() -> str | None:
             stderr=subprocess.DEVNULL,
             text=True,
             timeout=5,
+            env=_checkout_git_environment(),
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -2071,6 +2081,7 @@ def current_source_content_digest() -> str | None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             timeout=5,
+            env=_checkout_git_environment(),
         )
     except (OSError, subprocess.SubprocessError):
         return None

@@ -173,6 +173,7 @@ def _cmd_session_start(args: argparse.Namespace) -> int:
         args.id,
         "--launch-token",
         launch_token,
+        "--require-source-attestation",
         "--config",
         json.dumps(config),
     ]
