@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from vibecomfy.commands import build_security_parent, register_commands
+from vibecomfy.commands import add_security_flags, register_commands
 from vibecomfy.security.gate import (
     CapabilityFenceError,
     GateContext,
@@ -21,8 +21,9 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Suppress informational output such as configuration nudges.",
     )
+    add_security_flags(parser)
     subparsers = parser.add_subparsers(dest="cmd", required=True)
-    register_commands(subparsers, security_parent=build_security_parent())
+    register_commands(subparsers)
     return parser
 
 
@@ -63,7 +64,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     ctx = GateContext(
         non_interactive=bool(getattr(args, "non_interactive", False)),
-        assume_yes=bool(getattr(args, "assume_yes", False)),
+        assume_yes=bool(
+            getattr(args, "assume_yes", False) or getattr(args, "yes", False)
+        ),
         audit=[],
     )
     set_gate_context(ctx)

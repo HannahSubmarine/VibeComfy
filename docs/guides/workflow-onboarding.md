@@ -67,6 +67,22 @@ its class specification. For example, for an image-saving node:
 vibecomfy nodes spec SaveImage
 ```
 
+`nodes spec` already returns JSON: `inputs` contains parameter types, required
+flags, defaults, and choices where known; `outputs` lists the output sockets.
+It also records where the schema came from. This describes the node interface,
+not its implementation code. A schema's `source_path` may be absent when it
+came from cached ComfyUI metadata.
+
+For a focused view, if you have `jq` installed:
+
+```bash
+vibecomfy nodes spec SaveImage | jq '.inputs'
+vibecomfy nodes spec SaveImage | jq '.outputs'
+```
+
+There are currently no `--inputs`, `--outputs`, or source-code display options
+on this command.
+
 Some workflows also expose named public controls. `analyze info` lists their
 inputs; `inspect --field <name>` traces an existing public control to its node
 and field. A workflow need not expose every prompt, seed, or step count as a
