@@ -31,7 +31,10 @@ import/runtime blockers, see [workflow onboarding](../guides/workflow-onboarding
 
 ## First Moves
 
-Work from the repo root. Prefer the `vibecomfy ...` console entrypoint; if an editable checkout has no console script, use `python -m vibecomfy.cli ...`.
+Work from the user's project directory so relative import destinations and
+recipe paths are predictable. Repository maintenance commands may require the
+VibeComfy repo root. Prefer the `vibecomfy ...` console entrypoint; if an
+editable checkout has no console script, use `python -m vibecomfy.cli ...`.
 
 For a runnable starting point:
 
@@ -46,10 +49,34 @@ vibecomfy run recipes/my_run.py --runtime server --server-url http://127.0.0.1:8
 For raw JSON:
 
 ```bash
-vibecomfy port check workflow.json --json
-vibecomfy port convert workflow.json --out out/scratchpads/workflow.py --json
-vibecomfy validate out/scratchpads/workflow.py
+vibecomfy import workflow.json
+vibecomfy inspect workflows/workflow --json
+vibecomfy edit workflows/workflow set sampler.steps 30
+vibecomfy validate workflows/workflow --json
+vibecomfy doctor workflows/workflow --json
 ```
+
+`import` creates an editable folder with `workflow.py`,
+`workflow.vibe.json`, and a byte-identical `source.json`; provenance stays in
+the bundle metadata. Use `--out <directory>`, `--dry-run`, or `--json` as
+needed. This prepares authoring files but does not install dependencies or run
+the workflow. Keep `port check` and `port convert` for advanced preflight,
+standalone scratchpad generation, and intentional ready-template conversion.
+This standalone route is local and untracked by default. Add `--project <name>`
+to `import` and `edit` to opt those transitions into an existing Astrid
+project. If the workflow is already being handled by Astrid, use its native
+`astrid media import` plus `astrid tasks create --capability vibecomfy.import`
+route instead; it inherits the admitted project/task context and does not use
+VibeComfy's `--project` flag. The [workflow onboarding guide](../guides/workflow-onboarding.md)
+explains the three routes, atomic batch edits, direct Python capture, validation,
+and Astrid history.
+
+For node details, use `vibecomfy node <ClassType>`. Its default view includes
+inputs, outputs, schema provenance, and locally available implementation class
+source. Use `--inputs`, `--outputs`, or `--source` to focus the result, combine
+filters when useful, and add `--json` for machine-readable output. Treat source
+unavailability separately from a missing schema; never substitute a generated
+wrapper for the underlying node implementation.
 
 For setup trouble:
 
@@ -87,11 +114,11 @@ Keep ComfyUI's terms precise: a **workflow** is any graph; a **template** is a c
 
 ## Rules
 
-- Treat raw UI/API JSON as import evidence. Load the canonical Python candidate through `load_bundle()` before editing or running.
+- Treat raw UI/API JSON as import evidence. Use `vibecomfy import <workflow.json>` for a local bundle, then load the folder through `load_bundle()` before editing or running. The folder is accepted by `inspect`, `analyze info`, `validate`, `doctor`, and `run`.
 - Treat the worktree as shared. Do not revert, overwrite, or clean up edits you did not make.
 - Keep changes scoped to the requested workflow, command, template, or doc surface.
 - Do not change runtime behavior, workflow corpus files, generated snapshots, or template manifests unless the task explicitly covers them.
-- Never invent node class names, sockets, widget fields, or model layouts. Use `inspect`, `analyze info`, `nodes spec`, local precedents, or `search-comfy-workflows`.
+- Never invent node class names, sockets, widget fields, or model layouts. Use `inspect`, `analyze info`, `node <ClassType>`, local precedents, or `search-comfy-workflows`.
 - Sync indexes only when needed: `vibecomfy sources sync`.
 - Add focused tests when changing command routing, parser behavior, conversion, validation, search, runtime-facing code, or template coverage.
 - Keep tests deterministic; avoid requiring ComfyUI, RunPod, network, or local model files unless the test is explicitly marked for that environment.

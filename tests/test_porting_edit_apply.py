@@ -1057,7 +1057,7 @@ def test_apply_gate_rejects_unclaimed_semantic_edge_mismatches() -> None:
         if kind == "source_node":
             edge.from_node = "3"
         elif kind == "source_slot":
-            edge.from_output = "CLIP"
+            edge.from_output = "MODEL"
         elif kind == "destination_node":
             edge.to_node = "6"
         elif kind == "destination_slot":
@@ -1710,6 +1710,36 @@ def test_apply_gate_does_not_waive_semantic_mismatch_for_counter_decrease() -> N
     assert any(
         item.code == "apply_gate_replay_mismatch" for item in gate.diagnostics
     )
+
+
+def test_editable_signature_normalizes_only_roster_proven_output_aliases() -> None:
+    from vibecomfy.porting.edit.apply_gate import editable_signature
+    from vibecomfy.workflow import VibeEdge, VibeNode, VibeWorkflow, WorkflowSource
+
+    def workflow(output_slot: str, *, has_roster: bool) -> VibeWorkflow:
+        metadata = (
+            {"output_names": ["IMAGE"], "output_types": ["IMAGE"]}
+            if has_roster
+            else {}
+        )
+        graph = VibeWorkflow("output-alias", WorkflowSource("output-alias"))
+        graph.nodes["source"] = VibeNode(
+            "source", "Source", uid="source", metadata=metadata
+        )
+        graph.nodes["target"] = VibeNode("target", "Sink", uid="target")
+        graph.edges.append(VibeEdge("source", output_slot, "target", "image"))
+        return graph
+
+    assert editable_signature(workflow("IMAGE", has_roster=True)) == editable_signature(
+        workflow("0", has_roster=True)
+    )
+    assert editable_signature(workflow("IMAGE", has_roster=False)) != editable_signature(
+        workflow("0", has_roster=False)
+    )
+    assert editable_signature(workflow("OTHER", has_roster=True)) != editable_signature(
+        workflow("0", has_roster=True)
+    )
+
 
 def test_apply_gate_empty_replay_is_not_eligible() -> None:
     from vibecomfy.porting.edit.apply_gate import verify_apply

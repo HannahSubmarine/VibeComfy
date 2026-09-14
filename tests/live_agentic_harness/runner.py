@@ -994,6 +994,8 @@ def run_single(
     output_base: Any,
     out_file: Path | None,
     transport: str | None = None,
+    profile: str | None = None,
+    pipeline_mode: str | None = None,
 ) -> dict[str, Any]:
     """Run ONE scenario in-process; write its summary JSON to *out_file* if given.
 
@@ -1010,20 +1012,53 @@ def run_single(
     scenario.setdefault("id", path.stem)
     scenario_id = str(scenario.get("id") or path.stem)
     scenario["id"] = scenario_id
+    if profile == "baseline":
+        from .baseline_lane import run_baseline_scenario
+        baseline = run_baseline_scenario(
+            scenario, tag=tag, output_base=output_base
+        )
+        baseline["guard"] = {
+            "assessment": {"verdict": baseline.get("judge_verdict"),
+                           "pass": baseline.get("ok")},
+            "live_agentic_success": bool(baseline.get("ok")),
+        }
+        baseline.setdefault("transport", transport)
+        _persist_scenario_summary(baseline, output_base, tag)
+        if out_file is not None:
+            _write_json_atomic(out_file, baseline)
+        return baseline
     summary = run_headless_scenario(
-        scenario, output_base=output_base, tag=tag, transport=transport
+        scenario, output_base=output_base, tag=tag, transport=transport,
+        pipeline_mode=pipeline_mode or scenario.get("pipeline_mode"),
     )
-    _canonicalize_summary_output(
-        summary,
-        output_base=output_base,
-        tag=tag,
-        scenario_id=scenario_id,
-    )
+    if summary.get("lane") == "baseline":
+        # Baseline has no graph artifacts; write the canonical summary file the
+        # runner's aggregation reads (agentic_summary.json) directly.
+        out_dir = summary.get("output_dir")
+        if out_dir:
+            from pathlib import Path as _P
+            _pd = _P(out_dir)
+            _pd.mkdir(parents=True, exist_ok=True)
+            (_pd / "agentic_summary.json").write_text(json.dumps(summary, indent=1))
+    else:
+        _canonicalize_summary_output(
+            summary,
+            output_base=output_base,
+            tag=tag,
+            scenario_id=scenario_id,
+        )
     summary.setdefault("transport", transport)
-    summary["guard"] = _guard_scenario_output(
-        summary["output_dir"],
-        scenario=scenario,
-    )
+    if summary.get("lane") == "baseline":
+        summary["guard"] = {
+            "assessment": {"verdict": summary.get("judge_verdict"),
+                           "pass": summary.get("ok")},
+            "live_agentic_success": bool(summary.get("ok")),
+        }
+    else:
+        summary["guard"] = _guard_scenario_output(
+            summary["output_dir"],
+            scenario=scenario,
+        )
     _classify_retryable_infra_summary(summary)
     _persist_scenario_summary(summary, output_base, tag)
     if out_file is not None:
@@ -1039,6 +1074,8 @@ def run_tag(
     *,
     scenarios_dir: Path | None = None,
     output_base: Path | str | None = None,
+    profile: str | None = None,
+    pipeline_mode: str | None = None,
     max_workers: int = DEFAULT_MAX_WORKERS,
     per_scenario_timeout: int = DEFAULT_PER_SCENARIO_TIMEOUT,
     progress_every: int = DEFAULT_PROGRESS_EVERY,
@@ -1146,6 +1183,10 @@ def run_tag(
                         cmd += ["--output-base", str(output_base)]
                     if transport is not None:
                         cmd += ["--transport", transport]
+                    if profile is not None:
+                        cmd += ["--profile", profile]
+                    if pipeline_mode is not None:
+                        cmd += ["--pipeline-mode", pipeline_mode]
                     child_env = _pinned_child_env(transport)
                     # I-B: the retry of a zero-attempt research-hang kill must
                     # NOT be a second 1200s black hole — the research path is
@@ -1500,6 +1541,23 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--pipeline-mode",
+        default=None,
+        choices=(None, "staged", "threaded"),
+        help="Executor pipeline mode (default staged). 'threaded' runs the single-session tool loop.",
+    )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        choices=(None, "baseline"),
+        help=(
+            "Executor lane selector. 'baseline' runs each scenario as ONE "
+            "tool-free model turn (problem + full fixture workflow JSON) "
+            "graded by the pinned judge — the no-tools counterpart of the "
+            "agentic lane, for paired tool-value measurement."
+        ),
+    )
+    parser.add_argument(
         "--progress-every",
         type=int,
         default=DEFAULT_PROGRESS_EVERY,
@@ -1596,7 +1654,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.single:
         out_file = Path(args.single_out) if args.single_out else None
         ob = Path(args.output_base) if args.output_base else None
-        summary = run_single(args.single, args.tag, ob, out_file, transport=args.transport)
+        summary = run_single(args.single, args.tag, ob, out_file, transport=args.transport, profile=args.profile)
         # Compact one-line stdout for liveness; the real payload is in --single-out.
         print(json.dumps({"scenario_id": summary.get("scenario_id"),
                           "ok": summary["guard"]["live_agentic_success"]}))
@@ -1613,6 +1671,8 @@ def main(argv: list[str] | None = None) -> int:
         infra_retries=args.infra_retries,
         manifest_path=Path(args.manifest) if args.manifest else None,
         transport=args.transport,
+        profile=args.profile,
+        pipeline_mode=args.pipeline_mode,
     )
     if args.prepare_failure_analysis or args.analyze_failures or args.recommend_fixes:
         run_summary_path = _run_dir_for(output_base, summary["tag"]) / "run_summary.json"

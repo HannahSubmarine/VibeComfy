@@ -2,16 +2,18 @@
  "id": "gh-comfyui-wanvideowrapper-1146",
  "query": "Wan 2.2 I2V workflow suddenly errors 'Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!' (workflow + log attached).",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/ComfyUI-WanVideoWrapper_1146_p1.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "Confirmed: caused by a recent wrapper regression; OP confirmed reverting to commit f36fa45 fixed it, and kijai merged a fix shortly after ('It's like whack-a-mole these days, fixed now I think').",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "Confirmed: caused by a recent wrapper regression; OP confirmed reverting to commit f36fa45 fixed it, and kijai merged a fix shortly after ('It's like whack-a-mole these days, fixed now I think').",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,19 @@
   "techniques": [
    "wan"
   ],
-  "solution_confirmed": true
- }
+  "solution_confirmed": true,
+  "pitfalls": [
+   "version-drift",
+   "solution-too-specific",
+   "unreproducible"
+  ],
+  "update_trap": true,
+  "hidden_requirement": "Rule out workflow/user error for a cuda:0-vs-cpu device mismatch and identify it as a wrapper regression needing revert/upgrade.",
+  "eval_value": "medium",
+  "recommended_grade_mode": "strict",
+  "has_answer_guidance": true,
+  "task_type": "software-bug",
+  "failure_class": "software-bug"
+ },
+ "interaction_mode": "answer_only"
 }

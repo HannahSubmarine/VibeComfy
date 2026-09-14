@@ -22,6 +22,13 @@ def resolve_workflow_path(value: str) -> str:
     path = Path(value)
     if path.is_file():
         return str(path)
+    if path.is_dir():
+        workflow = path / "workflow.py"
+        if workflow.is_file():
+            return str(workflow)
+        raise FileNotFoundError(
+            f"workflow directory does not contain workflow.py: {path}"
+        )
     if path.exists():
         raise FileNotFoundError(value)
     match = next((row for row in load_workflow_index_rows() if row.get("id") == value), None)

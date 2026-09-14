@@ -149,6 +149,14 @@ Agentic evidence packs use frozen artifacts such as `compiled_api.json`, `metada
 
 Use RunPod only when requested or when local execution is unavailable and a GPU run is necessary.
 
+Local RunPod commands read `RUNPOD_API_KEY` from the same shared Astrid file
+as Astrid: `~/.astrid/astrid.env`, or the path in `ASTRID_ENV_FILE`. The shared
+file takes precedence over project `.env` copies; project dotenv files may
+still provide non-secret RunPod settings. Relative `ASTRID_ENV_FILE` paths are
+resolved under `ASTRID_HOME` (default `~/.astrid`). CI and deployed
+environments can continue injecting `RUNPOD_API_KEY` through process
+environment.
+
 The retired live acceptance entry point is fail-closed and exits before provisioning or running a payload. It is retained only as a diagnostic refusal that points callers to the offline approved-record transport. The other commands below are live RunPod operations and require credentials, network access, and a suitable GPU environment:
 
 ```bash

@@ -4,9 +4,44 @@
 
 `VibeWorkflow` is the only editable IR. Blocks and patches mutate that object; API JSON is an escape hatch produced by `wf.compile("api")`, not an authoring surface.
 
-## Port Before Manual Editing
+## Import Before Editing
 
-When starting from a ComfyUI JSON export, indexed workflow, or failing ready template, run the porting workbench before hand-editing graph code or launching RunPod:
+For a first edit, follow [Import and edit a ComfyUI workflow](guides/workflow-onboarding.md).
+This page is the reference for composing and extending Python workflows.
+
+Before changing an unfamiliar node, use `vibecomfy node <ClassType>` to see
+its interface and available implementation source. `--inputs` shows parameter
+types and defaults, `--outputs` shows sockets, and `--source` shows the local
+implementation class. Filters can be combined; `--json` gives structured output.
+
+For the normal ComfyUI JSON onboarding path, create an editable workflow bundle:
+
+```bash
+vibecomfy import <workflow.json>
+vibecomfy inspect workflows/<source-stem> --json
+vibecomfy analyze info workflows/<source-stem>
+vibecomfy edit workflows/<source-stem> set sampler.steps 30
+vibecomfy validate workflows/<source-stem> --json
+vibecomfy doctor workflows/<source-stem> --json
+```
+
+Import creates `workflows/<source-stem>/` by default, containing editable
+`workflow.py`, the canonical `workflow.vibe.json` companion, and the original
+bytes as `source.json`. Use `--out <directory>` to choose the destination;
+existing destinations are refused. `--dry-run` previews without writing and
+`--json` returns machine-readable output. Provenance remains in the bundle
+metadata. Import prepares authoring files; it does not install dependencies,
+configure a runtime, run the graph, or promote it to a ready template.
+Standalone use is local and untracked by default. Pass `--project <name>` to
+`import` and `edit` when you want Astrid to record the origin and accepted
+revisions. For direct Python changes, run `vibecomfy edit <bundle> capture`
+to publish and record a capture. Astrid users already inside a project should
+use the native `vibecomfy.import` task route; the
+[workflow onboarding guide](guides/workflow-onboarding.md) describes all three
+paths and how to inspect their history.
+
+For advanced conversion and promotion work, the porting workbench remains
+available:
 
 ```bash
 python -m vibecomfy.cli port check <workflow> --json
@@ -14,11 +49,21 @@ python -m vibecomfy.cli port convert <workflow> --out out/scratchpads/<name>.py 
 python -m vibecomfy.cli port inventory --ready --json
 ```
 
-`port check` is the cheap preflight for helper/UI nodes, missing custom-node packs, missing required inputs, widget alias drift, and model asset problems. `port convert` turns the source into Python scratchpad form by default; add `--ready-id <kind>/<name>` only when you are intentionally creating a ready-template candidate. `port convert` uses atomic writes (temp file → validate/parity-check → `Path.replace()`), refuses to overwrite `# vibecomfy: manual` templates, and supports `--dry-run` and `--diff` modes. `port inventory` reports readability issues and source-provenance across all checked-in templates.
+`port check` reports helper/UI nodes, missing custom-node packs, missing
+required inputs, widget alias drift, and model asset problems. `port convert`
+creates standalone scratchpad Python by default; add `--ready-id <kind>/<name>`
+only when intentionally creating a ready-template candidate. It retains its
+existing dry-run/diff behavior and protects manual templates. `port inventory`
+reports readability issues and source provenance across checked-in templates.
 
 See [templates/porting_workbench.md](templates/porting_workbench.md) for the full workflow and when to use `doctor`, `validate`, `nodes install-plan`, `fetch`, and `--head-check-models`.
 
-The canonical promotion path is raw workflow source -> `port check` -> optional scratchpad -> `port convert --ready-id` or hand-authored Python ready template -> `tools.refresh_template_index` -> `validate`/`doctor`/strict-ready checks. Raw JSON and compiled API dictionaries are source/runtime material, not the reusable authoring surface.
+The canonical promotion path is raw workflow source -> inspect/import ->
+`port check` as needed -> intentional `port convert --ready-id` or
+hand-authored Python ready template -> `tools.refresh_template_index` ->
+`validate`/`doctor`/strict-ready checks. Import itself creates a local editable
+bundle, not a ready template. Raw JSON and compiled API dictionaries are
+source/runtime material, not the reusable authoring surface.
 
 Canonical conversion publishes one readable Python authoring file and one
 same-basename `.vibe.json` companion. Python owns constructors, topology, and

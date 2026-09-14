@@ -2,16 +2,18 @@
  "id": "gh-comfyui-wanvideowrapper-2044",
  "query": "_fp8_cache dict in WanI2VCrossAttention/WanT2VCrossAttention caches KV by id(context) and is never cleared; when the transformer object is reused across prompts (model kept resident / loader output cached) it leaks ~0.8GB VRAM per prompt and OOMs after ~15 prompts.",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/synth_image_to_video_wan.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "OP's detailed root-cause analysis: the cache is only cleared in __init__, never per prompt (wanvideo/modules/model.py); fix = clear the cache on new prompts. Masked in default workflows because loadmodel rebuilds the transformer each run. No maintainer response or merged fix.",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "OP's detailed root-cause analysis: the cache is only cleared in __init__, never per prompt (wanvideo/modules/model.py); fix = clear the cache on new prompts. Masked in default workflows because loadmodel rebuilds the transformer each run. No maintainer response or merged fix.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,17 @@
   "techniques": [
    "wan"
   ],
-  "solution_confirmed": false
- }
+  "solution_confirmed": false,
+  "pitfalls": [
+   "env-specific"
+  ],
+  "update_trap": false,
+  "hidden_requirement": "Root-cause a progressive VRAM leak to the _fp8_cache dict keyed by id(context) in WanI2VCrossAttention/WanT2VCrossAttention that is only cleared in __init__, and clear it per prompt in wanvideo/modules/model.py.",
+  "eval_value": "high",
+  "recommended_grade_mode": "rubric",
+  "has_answer_guidance": true,
+  "failure_class": "software-bug",
+  "task_type": "software-bug"
+ },
+ "interaction_mode": "answer_only"
 }

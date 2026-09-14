@@ -27,9 +27,69 @@ vibecomfy analyze info <target>
 If the target is raw JSON, load it only as import evidence and materialize Python before editing:
 
 ```bash
-vibecomfy port check <workflow.json> --json
-vibecomfy port convert <workflow.json> --out out/scratchpads/<name>.py --json
+vibecomfy import <workflow.json>
+vibecomfy inspect workflows/<source-stem> --json
+vibecomfy edit workflows/<source-stem> targets
+vibecomfy edit workflows/<source-stem> set sampler.steps 30
+vibecomfy validate workflows/<source-stem> --json
 ```
+
+The import folder contains editable `workflow.py`, its canonical
+`workflow.vibe.json` companion, and byte-identical `source.json`; provenance
+stays in the bundle metadata. Standalone import and edit are local and
+untracked by default. To record origin and accepted changes in Astrid, add
+`--project <existing-project>` to the standalone `import` and `edit` commands.
+For edits, put common options after the bundle and before the verb, for example
+`vibecomfy edit workflows/my_workflow --project demo set sampler.steps 30`.
+If you are already using Astrid, use its native `media import` followed by a
+`vibecomfy.import` task; Astrid supplies the project/task context, so the
+executor does not take VibeComfy's `--project` option. The
+[workflow onboarding guide](../../../guides/workflow-onboarding.md) gives the
+Astrid-native task command and history path.
+
+Loading a canonical bundle executes its `workflow.py` to build the graph, so
+inspection, typed editing, capture, and validation use VibeComfy's existing
+Python-consent gate. In a terminal, let the prompt ask before proceeding. For
+an unattended command, use the explicit `vibecomfy --yes ...` opt-in only when
+the user has authorized this source; `--non-interactive` otherwise refuses.
+An Astrid-native canonical-bundle task must include the explicit
+`python_execution_consent: "confirmed"` input. Do not infer that consent from
+task admission or from an `authority_context` value. Importing raw workflow
+JSON and inspecting a UI JSON graph do not execute workflow Python.
+
+The `edit` command supports `set`, `add`, `remove`, `connect`, `disconnect`,
+`mode`, and `batch`. A batch file or standard input lets an agent submit a
+single ordered group of typed changes; later operations can refer to a node
+added earlier in that batch. A failed batch does not save partial changes.
+Use `--dry-run` to preview and `--out <directory>` to write a separate bundle.
+For simple direct changes, you can instead edit existing node arguments in
+`workflow.py`. If you use a recipe that loads the imported folder as a
+`VibeWorkflow`, common supported controls are `set_prompt`, `set_seed`,
+`set_steps`, and `set_input`; first check available fields with
+`vibecomfy inspect <folder> --field <field>`. For unfamiliar node parameters,
+use `vibecomfy node <ClassType> --inputs` and visible graph evidence. Validate and
+diagnose the artifact you edited: the imported folder for direct edits, or
+the separate recipe `.py` if you created a variation. Validating the source
+folder does not check a recipe that loads it.
+
+After a direct Python edit, run `vibecomfy edit <bundle> capture` to publish
+the Python/companion pair and record the aggregate change. Add `--project` to
+track that capture in Astrid. Capture does not invent individual edit
+operations. A browser candidate and ComfyUI canvas Apply are not tracked
+automatically; use explicit project-bound capture to add an applied canvas to
+the Astrid history. Import, accepted edit, capture, validation, and execution
+are separate actions: validation checks the exact edited bundle but does not
+run generation.
+
+Typed edits and UI capture regenerate Python from the canonical graph. If a
+captured Python file contains extra executable code that the graph cannot
+represent, VibeComfy refuses the rewrite and leaves all three bundle files
+unchanged. Continue editing Python and capture it, or restore canonical
+generated source before switching back to typed edits.
+
+Use `vibecomfy port check` and `vibecomfy port convert` when you need advanced
+preflight, a standalone scratchpad, or the intentional ready-template
+conversion path; import does not promote a template.
 
 If the target is a ready template and the edit is user-specific:
 
@@ -56,7 +116,7 @@ def build():
 
 Reach for patches when decorating an existing graph. Reach for blocks or direct `VibeWorkflow` methods only when the edit changes handles, splices nodes, or rewires topology.
 
-Never invent node fields, sockets, or class names. Use `vibecomfy nodes spec <ClassType>`, visible graph data, local precedents, or `search-comfy-workflows`.
+Never invent node fields, sockets, or class names. Use `vibecomfy node <ClassType> --inputs`, visible graph data, local precedents, or `search-comfy-workflows`.
 
 ## Validate
 

@@ -2,16 +2,18 @@
  "id": "gh-comfyui-ltxvideo-458",
  "query": "MultimodalGuider with cfg=1.0 (distilled mode) crashes: noise_pred_neg only assigned inside the do_uncond() branch but unconditionally referenced by sampler_post_cfg_function hooks (euler_ancestral_cfg_pp/euler_cfg_pp) \u2014 UnboundLocalError.",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/synth_ltxv_image_to_video.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "OP provides root cause and patch: initialize `noise_pred_neg = noise_pred_pos` (and noise_pred_perturbed) before the conditional blocks in guiders/multimodal_guider.py; not merged or maintainer-confirmed.",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "OP provides root cause and patch: initialize `noise_pred_neg = noise_pred_pos` (and noise_pred_perturbed) before the conditional blocks in guiders/multimodal_guider.py; not merged or maintainer-confirmed.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,15 @@
   "techniques": [
    "ltx"
   ],
-  "solution_confirmed": false
- }
+  "solution_confirmed": false,
+  "pitfalls": [],
+  "update_trap": false,
+  "hidden_requirement": "Trace the multimodal guider code path where cfg=1.0 skips the uncond branch, leaving noise_pred_neg unbound for sampler post-CFG hooks, and apply the initialization patch.",
+  "eval_value": "high",
+  "recommended_grade_mode": "rubric",
+  "has_answer_guidance": true,
+  "failure_class": "software-bug",
+  "task_type": "software-bug"
+ },
+ "interaction_mode": "answer_only"
 }

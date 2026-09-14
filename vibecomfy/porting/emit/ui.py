@@ -137,6 +137,7 @@ def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str,
         raise WorkflowBundleError("captured candidate is not a strict sidecar or LiteGraph UI envelope")
     ids: dict[str, str] = {}
     nodes: dict[str, Any] = {}
+    raw_nodes_by_id: dict[str, Mapping[str, Any]] = {}
     workflow_by_id = {str(key): node for key, node in workflow.nodes.items()}
     workflow_by_uid = {str(node.uid): node for node in workflow.nodes.values() if node.uid}
     from vibecomfy.porting.emit.emit_constants import UI_ONLY_CLASS_TYPES
@@ -195,6 +196,7 @@ def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str,
         if uid in nodes:
             raise WorkflowBundleError(f"duplicate captured node UID {uid!r}")
         ids[native_id] = uid
+        raw_nodes_by_id[native_id] = node
         if isinstance(properties, Mapping) and properties.get("rejected"):
             raise WorkflowBundleError(f"known node {uid!r} contains rejected metadata; reconcile the node metadata")
         entry: dict[str, Any] = {}
@@ -237,6 +239,49 @@ def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str,
                 "content": content,
             })
     links: list[dict[str, Any]] = []
+
+    def semantic_port(uid: str, native_id: Any, slot: Any, direction: str) -> Any:
+        """Translate a LiteGraph socket slot to its Python native roster.
+
+        UI input arrays omit widget-backed Python parameters, so their slot
+        number can differ from the native input index retained by the
+        workflow. Matching the named socket is the evidence that joins those
+        two representations.
+        """
+        owner = workflow_by_uid.get(uid)
+        raw_node = raw_nodes_by_id.get(str(native_id))
+        sockets = (
+            raw_node.get("outputs" if direction == "output" else "inputs")
+            if isinstance(raw_node, Mapping)
+            else None
+        )
+        try:
+            slot_index = int(slot)
+        except (TypeError, ValueError):
+            return slot
+        name = None
+        if (
+            isinstance(sockets, list)
+            and 0 <= slot_index < len(sockets)
+            and isinstance(sockets[slot_index], Mapping)
+        ):
+            candidate_name = sockets[slot_index].get("name")
+            if isinstance(candidate_name, str):
+                name = candidate_name
+        roster = (
+            getattr(owner, f"native_{direction}_names", None)
+            if owner is not None
+            else None
+        )
+        if isinstance(roster, (list, tuple)) and name is not None:
+            matches = [index for index, roster_name in enumerate(roster) if roster_name == name]
+            if len(matches) == 1:
+                return matches[0]
+        prefix = "output_" if direction == "output" else "input_"
+        if isinstance(name, str) and name.startswith(prefix) and name[len(prefix):].isdigit():
+            return int(name[len(prefix):])
+        return slot
+
     for link in presentation.links if isinstance(presentation.links, list) else ():
         if isinstance(link, Mapping):
             allowed_link = {"id", "origin_id", "origin_slot", "target_id", "target_slot", "type", "reroute"}
@@ -263,7 +308,13 @@ def capture_ui_candidate_sidecar(workflow: VibeWorkflow, candidate: Mapping[str,
         target_entry = nodes.get(target, {})
         if source_entry.get("class_type") in UI_ONLY_CLASS_TYPES or target_entry.get("class_type") in UI_ONLY_CLASS_TYPES:
             continue
-        ref = {"scope_path": "", "from_uid": source, "from_port": link[2], "to_uid": target, "to_port": link[4]}
+        ref = {
+            "scope_path": "",
+            "from_uid": source,
+            "from_port": semantic_port(source, link[1], link[2], "output"),
+            "to_uid": target,
+            "to_port": semantic_port(target, link[3], link[4], "input"),
+        }
         item: dict[str, Any] = {
             "edge_ref": ref,
             "occurrence_index": sum(1 for prior in links if prior["edge_ref"] == ref),

@@ -48,6 +48,52 @@ class EditToolError(ValueError):
         self.retryable = retryable
 
 
+class _BatchTargetResolver:
+    """Resolve session targets plus explicit UIDs added earlier in one batch.
+
+    This deliberately tracks identities only. The canonical evaluator remains
+    the owner of graph state, validation, and atomic application.
+    """
+
+    def __init__(self, session: Any) -> None:
+        self.session = session
+        self._added: dict[tuple[str, str], str] = {}
+        workflow = getattr(session, "workflow", None)
+        self._existing_uids = {
+            str(getattr(node, "uid", "") or "")
+            for node in tuple(getattr(workflow, "nodes", {}).values())
+            if str(getattr(node, "uid", "") or "")
+        }
+
+    def resolve(self, target: Any, *, scope_path: str = "") -> str:
+        if isinstance(target, str):
+            normalized = target.strip()
+            added_uid = self._added.get((scope_path, normalized))
+            if added_uid is not None:
+                return added_uid
+        return resolve_target(self.session, target, scope_path=scope_path)
+
+    def register_add(self, operation: AddNodeOp) -> None:
+        # Generated identities are intentionally not exposed to later tool
+        # operations. A caller can refer only to a UID it explicitly chose.
+        raw_uid = str(operation.uid or "")
+        uid = raw_uid.strip()
+        if not uid:
+            return
+        if uid != raw_uid:
+            raise EditToolError(
+                "invalid_arguments",
+                "add_node uid must not have leading or trailing whitespace.",
+            )
+        key = (str(operation.scope_path or ""), uid)
+        if uid in self._existing_uids or key in self._added:
+            raise EditToolError(
+                "duplicate_identity",
+                f"add_node uid {uid!r} is already used by the workflow or this edit batch.",
+            )
+        self._added[key] = uid
+
+
 def _object(args: Any, *, tool: str) -> dict[str, Any]:
     if not isinstance(args, Mapping):
         raise EditToolError("invalid_arguments", f"{tool} requires an argument object.")
@@ -105,7 +151,13 @@ def resolve_target(session: Any, target: Any, *, scope_path: str = "") -> str:
     return str(uid)
 
 
-def _source_ref(session: Any, payload: Any, *, scope_path: str = "") -> LinkSourceRef:
+def _source_ref(
+    session: Any,
+    payload: Any,
+    *,
+    scope_path: str = "",
+    resolver: _BatchTargetResolver | None = None,
+) -> LinkSourceRef:
     if isinstance(payload, str):
         source, output = payload, 0
     elif isinstance(payload, Mapping):
@@ -119,10 +171,22 @@ def _source_ref(session: Any, payload: Any, *, scope_path: str = "") -> LinkSour
             "invalid_arguments",
             "a link source must be a binding, {source, output}, or [source, output].",
         )
-    return LinkSourceRef(scope_path, resolve_target(session, source, scope_path=scope_path), output)
+    uid = (
+        resolver.resolve(source, scope_path=scope_path)
+        if resolver is not None
+        else resolve_target(session, source, scope_path=scope_path)
+    )
+    return LinkSourceRef(scope_path, uid, output)
 
 
-def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
+def _lower_one(
+    session: Any,
+    tool: str,
+    raw_args: Any,
+    *,
+    resolver: _BatchTargetResolver | None = None,
+) -> tuple[EditOp, ...]:
+    target_resolver = resolver if resolver is not None else _BatchTargetResolver(session)
     if tool not in EDIT_TOOL_NAMES:
         raise EditToolError("unknown_tool", f"unknown typed edit tool {tool!r}.", retryable=False)
     args = _object(raw_args, tool=tool)
@@ -140,7 +204,16 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
             nested = str(item["op"])
             if nested == "edit_batch":
                 raise EditToolError("invalid_arguments", "nested edit_batch calls are not allowed.")
-            lowered.extend(_lower_one(session, nested, {k: v for k, v in item.items() if k != "op"}))
+            nested_ops = _lower_one(
+                session,
+                nested,
+                {k: v for k, v in item.items() if k != "op"},
+                resolver=target_resolver,
+            )
+            lowered.extend(nested_ops)
+            for operation in nested_ops:
+                if isinstance(operation, AddNodeOp):
+                    target_resolver.register_add(operation)
         return tuple(lowered)
 
     if tool == "edit_node":
@@ -154,7 +227,7 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
         return (
             SetNodeFieldOp(
                 "set_node_field",
-                NodeFieldTarget(scope_path, resolve_target(session, args["target"], scope_path=scope_path), field),
+                NodeFieldTarget(scope_path, target_resolver.resolve(args["target"], scope_path=scope_path), field),
                 args["value"],
             ),
         )
@@ -162,7 +235,7 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
     if tool == "remove_node":
         _keys(args, tool=tool, required=("target",), optional=("scope_path",))
         scope_path = str(args.get("scope_path", "") or "")
-        return (RemoveNodeOp("remove_node", NodeTarget(scope_path, resolve_target(session, args["target"], scope_path=scope_path))),)
+        return (RemoveNodeOp("remove_node", NodeTarget(scope_path, target_resolver.resolve(args["target"], scope_path=scope_path))),)
 
     if tool == "set_node_mode":
         _keys(args, tool=tool, required=("target", "mode"), optional=("scope_path",))
@@ -172,7 +245,7 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
         return (
             SetModeOp(
                 "set_mode",
-                NodeTarget(scope_path, resolve_target(session, args["target"], scope_path=scope_path)),
+                NodeTarget(scope_path, target_resolver.resolve(args["target"], scope_path=scope_path)),
                 _MODES[args["mode"]],
             ),
         )
@@ -186,7 +259,7 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
         return (
             RemoveLinkOp(
                 "remove_link",
-                target=LinkTargetRef(scope_path, resolve_target(session, args["target"], scope_path=scope_path), field),
+                target=LinkTargetRef(scope_path, target_resolver.resolve(args["target"], scope_path=scope_path), field),
             ),
         )
 
@@ -201,7 +274,7 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
         source_scope = str(args.get("source_scope_path", scope_path) or "")
         target_scope = str(args.get("target_scope_path", scope_path) or "")
         source = LinkSourceRef(
-            source_scope, resolve_target(session, args["source"], scope_path=source_scope), args.get("source_output", 0)
+            source_scope, target_resolver.resolve(args["source"], scope_path=source_scope), args.get("source_output", 0)
         )
         target_input = args["target_input"]
         if not isinstance(target_input, str) or not target_input:
@@ -210,7 +283,7 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
             UpsertLinkOp(
                 "upsert_link",
                 source,
-                LinkTargetRef(target_scope, resolve_target(session, args["target"], scope_path=target_scope), target_input),
+                LinkTargetRef(target_scope, target_resolver.resolve(args["target"], scope_path=target_scope), target_input),
             ),
         )
 
@@ -237,7 +310,15 @@ def _lower_one(session: Any, tool: str, raw_args: Any) -> tuple[EditOp, ...]:
             str(args.get("scope_path", "") or ""),
             args["class_type"],
             dict(fields),
-            {str(name): _source_ref(session, value, scope_path=str(args.get("scope_path", "") or "")) for name, value in inputs.items()},
+            {
+                str(name): _source_ref(
+                    session,
+                    value,
+                    scope_path=str(args.get("scope_path", "") or ""),
+                    resolver=target_resolver,
+                )
+                for name, value in inputs.items()
+            },
             uid=str(args["uid"]) if args.get("uid") is not None else None,
             node_id=str(args["node_id"]) if args.get("node_id") is not None else None,
         ),

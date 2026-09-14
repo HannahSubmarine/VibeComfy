@@ -9,6 +9,8 @@ __pycache__/
 # Generated indexes and runtime artifacts
 .coverage
 coverage.xml
+.object_info.lock
+.object_info.mirror
 workflow_index.json
 external_workflow_index.json
 node_index.json
@@ -47,6 +49,9 @@ docs/subagent_prompts/
 docs/megaplan_chains/node_resolution_epic/evidence/object_info_*.json
 docs/local_agent_text_to_graph_e2e.md
 .env
+.env.*
+!.env.example
+astrid.env
 this.env
 _debug_*.py
 _fix_t6.py

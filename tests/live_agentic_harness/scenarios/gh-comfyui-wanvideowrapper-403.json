@@ -2,16 +2,18 @@
  "id": "gh-comfyui-wanvideowrapper-403",
  "query": "Fun-Control workflow fails in WanVideoSampler with tensor size mismatch (111 vs 110) during sampling.",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/ComfyUI-WanVideoWrapper_403_p1.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "kijai diagnosed: an upstream node outputs a resolution not divisible by 16; resize the image after that node instead. OP confirmed \"Thank you, it work.\"",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "OP A/B confirmed a settings-level workaround: switch the 'Patch Sage Attention KJ' mode to sageattn_qk_int8_pv_fp16_cuda and the same workflow runs cleanly \u2014 crash is specific to the SM89 FP8-PV kernel, which remains unfixed upstream.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,17 @@
   "techniques": [
    "wan fun-control"
   ],
-  "solution_confirmed": true
- }
+  "solution_confirmed": true,
+  "pitfalls": [
+   "trivial"
+  ],
+  "update_trap": false,
+  "hidden_requirement": "Map an off-by-one tensor mismatch (111 vs 110) to Wan's latent dims needing divisibility by 16 and locate the upstream node emitting a non-conforming resolution.",
+  "eval_value": "medium",
+  "recommended_grade_mode": "strict",
+  "has_answer_guidance": true,
+  "task_type": "software-bug",
+  "failure_class": "software-bug"
+ },
+ "interaction_mode": "answer_only"
 }

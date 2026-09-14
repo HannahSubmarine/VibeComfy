@@ -2,16 +2,18 @@
  "id": "gh-comfyui-wanvideowrapper-1332",
  "query": "WanVideoModelLoader fails with AttributeError: 'NoneType' object has no attribute 'endswith' at extra_model[\"path\"].endswith('.gguf'); dropdown shows 'wan2.1_t2v_1.3B_fp16.safetensors' not in [].",
  "workflow_path": "tests/fixtures/live_agentic_corpus/corpus/ComfyUI-WanVideoWrapper_1332_p1.json",
- "apply": true,
+ "apply": false,
  "network": true,
  "timeout": 420,
  "assessment": {
-  "expect_graph_changed": true
+  "expect_graph_changed": false
  },
  "desired": {
   "outcome": "Confirmed by OP: the VACE module model loader was hidden underneath the main model loader in the graph and its model wasn't selected \u2014 you either use a main model with VACE built in, or a normal model + VACE module node; selecting it fixed the error.",
   "quality": "Diagnosis identifies correct root cause; fix actionable and directionally correct.",
-  "alternatives_ok": true
+  "alternatives_ok": true,
+  "answer_guidance": "Confirmed by OP: the VACE module model loader was hidden underneath the main model loader in the graph and its model wasn't selected \u2014 you either use a main model with VACE built in, or a normal model + VACE module node; selecting it fixed the error.",
+  "guidance_note": "Known fix from the original issue thread. Use to verify the diagnosis targets the right root cause; alternative fixes that resolve the same root cause are acceptable."
  },
  "hint_level": "none",
  "_tags": {
@@ -34,6 +36,15 @@
   "techniques": [
    "wan-vace"
   ],
-  "solution_confirmed": true
- }
+  "solution_confirmed": true,
+  "pitfalls": [],
+  "update_trap": false,
+  "hidden_requirement": "Inspect the full graph (including a hidden/overlapped VACE module loader) and notice its model selector is empty \u2014 then choose main-model-with-VACE vs normal-model+VACE-module correctly.",
+  "eval_value": "high",
+  "recommended_grade_mode": "strict",
+  "has_answer_guidance": true,
+  "task_type": "wrong-setting",
+  "failure_class": "wrong-setting"
+ },
+ "interaction_mode": "answer_only"
 }

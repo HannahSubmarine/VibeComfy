@@ -934,15 +934,35 @@ def _operation_mapping(operation: Any) -> Mapping[str, Any]:
     return {}
 
 
-def _add_identity(bucket: set[str], ref: Any) -> None:
+def _add_identity(
+    bucket: set[str],
+    ref: Any,
+    snapshot: SchemaSnapshot | Mapping[str, Any] | None = None,
+) -> None:
+    node_classes = _snapshot_node_class_map(snapshot)
+
+    def add(scope_path: str, value: Any) -> None:
+        identity = str(value)
+        if scope_path:
+            from vibecomfy.identity.uid import make_uid
+
+            qualified = make_uid(scope_path, identity)
+            # Prefer exact scoped evidence when present. Older snapshots may
+            # only carry the local alias, so retain that compatibility path.
+            if qualified in node_classes:
+                identity = qualified
+        bucket.add(identity)
+
     if isinstance(ref, Mapping):
+        scope_path = str(ref.get("scope_path") or "")
         for key in ("uid", "id", "node_id"):
             value = ref.get(key)
             if value is not None and str(value):
-                bucket.add(str(value))
+                add(scope_path, value)
         return
     if isinstance(ref, Sequence) and not isinstance(ref, (str, bytes)) and len(ref) >= 2 and ref[1] is not None:
-        bucket.add(str(ref[1]))
+        scope_path = str(ref[0] or "")
+        add(scope_path, ref[1])
         return
     if isinstance(ref, str) and ref:
         bucket.add(ref)
@@ -1006,22 +1026,22 @@ def _operation_schema_endpoints(
         explicit_classes.add(class_type)
 
     if op_name in {"set_node_field", "set_mode", "remove_node"}:
-        _add_identity(required, operation.get("target"))
+        _add_identity(required, operation.get("target"), snapshot)
     elif op_name in {"upsert_link", "remove_link"}:
-        _add_identity(required, operation.get("from") or operation.get("source"))
-        _add_identity(required, operation.get("to") or operation.get("target"))
+        _add_identity(required, operation.get("from") or operation.get("source"), snapshot)
+        _add_identity(required, operation.get("to") or operation.get("target"), snapshot)
     elif op_name == "add_node":
         inputs = operation.get("inputs")
         if isinstance(inputs, Mapping):
             for source in inputs.values():
-                _add_identity(required, source)
+                _add_identity(required, source, snapshot)
         anchor = operation.get("anchor")
         if isinstance(anchor, Mapping):
-            _add_identity(required, anchor.get("near"))
+            _add_identity(required, anchor.get("near"), snapshot)
             between = anchor.get("between")
             if isinstance(between, Sequence) and not isinstance(between, (str, bytes)):
                 for ref in between:
-                    _add_identity(required, ref)
+                    _add_identity(required, ref, snapshot)
     elif op_name == "set_node_geometry":
         if isinstance(operation.get("uid"), (str, int)):
             required.add(str(operation.get("uid")))

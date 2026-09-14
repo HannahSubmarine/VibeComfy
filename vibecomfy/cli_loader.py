@@ -26,6 +26,8 @@ def load_workflow_any(path_or_id: str) -> VibeWorkflow:
     direct_path = Path(value)
     if direct_path.is_file() and direct_path.suffix.lower() in {".py", ".json"}:
         return _load_workflow_path(direct_path)
+    if direct_path.is_dir():
+        return _load_workflow_path(Path(resolve_workflow_path(value)))
 
     discovery = ready_template_discovery()
     ready_id = _ready_id_for(value, discovery)

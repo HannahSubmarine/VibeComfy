@@ -72,7 +72,41 @@ patterns, making complex edits, and preserving the result. See
 
 ## Getting Started
 
-Each path below is meant to be copied directly into an agent. The ComfyUI path
+### Import an Existing Workflow
+
+With VibeComfy installed, start in your project directory:
+
+```bash
+vibecomfy import path/to/my_workflow.json
+vibecomfy inspect workflows/my_workflow
+vibecomfy edit workflows/my_workflow set sampler.steps 30
+vibecomfy validate workflows/my_workflow
+```
+
+The folder keeps your editable Python, its `.vibe.json` companion, and the
+unchanged original `source.json` together. Import prints the paths and next
+commands. Standalone commands are local and untracked by default; add
+`--project <name>` to import or edit while recording accepted changes in
+Astrid. You can also edit `workflow.py` directly, then run
+`vibecomfy edit <bundle> capture` to record that change. Use `doctor` to
+investigate dependency findings; validation does not run generation. Follow
+[Import and edit a ComfyUI workflow](docs/guides/workflow-onboarding.md) for
+batch edits, Astrid-native use, file responsibilities, and troubleshooting.
+
+Look up a node by its ComfyUI class name:
+
+```bash
+vibecomfy node SaveImage             # interface and available implementation source
+vibecomfy node SaveImage --inputs    # just input parameters
+vibecomfy node SaveImage --outputs   # just output sockets
+vibecomfy node SaveImage --source    # just the local implementation class
+```
+
+Filters can be combined; add `--json` for structured output. Cached schemas
+can describe the interface without local implementation source. The command
+reports that distinction explicitly.
+
+For installation, each path below can be copied directly into an agent. The ComfyUI path
 also includes a manual install block because it is a normal custom-node install.
 
 ### Use VibeComfy Inside ComfyUI
@@ -133,15 +167,16 @@ The canonical agent skill lives in `docs/agent-skill/SKILL.md`; there are no roo
 agent bootstrap copies. Run `python scripts/sync_agent_skill.py --apply` to check
 it, or `python scripts/sync_agent_skill.py --install-user` to install it globally.
 That installer uses SkillSinker: it symlinks the VibeComfy skill into detected Claude, Codex, and Hermes skill directories without overwriting existing entries, and it updates Codex's `AGENTS.md` with an idempotent fenced VibeComfy block.
-If I already have ComfyUI workflows or custom nodes, index them with `python -m vibecomfy.cli sources sync --official <official_workflow_dir> --external <my_workflow_dir> --custom-nodes <ComfyUI/custom_nodes> --json`, then use `workflows list`, `search`, `nodes list`, and `nodes spec` against that local context.
+If I already have ComfyUI workflows or custom nodes, index them with `python -m vibecomfy.cli sources sync --official <official_workflow_dir> --external <my_workflow_dir> --custom-nodes <ComfyUI/custom_nodes> --json`, then use `workflows list`, `search`, `nodes list`, and `node <ClassType>` against that local context.
 List ready templates with `python -m vibecomfy.cli workflows list --ready`.
 Inspect `image/z_image` with `python -m vibecomfy.cli inspect image/z_image`.
 Copy it to `recipes/my_z_image.py` with `python -m vibecomfy.cli copy-to-recipe image/z_image --out recipes/my_z_image.py`.
-If I give you an unfamiliar ComfyUI JSON workflow instead of a ready template, treat it as import evidence: run `python -m vibecomfy.cli port check <workflow.json> --json`, `python -m vibecomfy.cli nodes reconcile --workflow <workflow.json> --json`, and `python -m vibecomfy.cli nodes install-plan <workflow.json>` against the same local context. Then use the positional source with `python -m vibecomfy.cli port convert <workflow.json> --out out/scratchpads/<name>.py --json`; edit and validate the emitted Python, and use `load_bundle()` when reopening it.
-Edit the copied or converted Python itself: change prompts, seeds, steps, model choices, wiring, and output prefixes in the generated/template call sites, not by editing compiled API JSON.
-Validate the recipe with `python -m vibecomfy.cli validate recipes/my_z_image.py`.
-For converted scratchpads, validate `out/scratchpads/<name>.py` instead.
-Export the runtime API JSON with `python -m vibecomfy.cli port export recipes/my_z_image.py --to json --json`.
+If I give you an unfamiliar ComfyUI JSON workflow instead of a ready template, import it with `python -m vibecomfy.cli import <workflow.json>`. This creates `workflows/<source-stem>/` with editable `workflow.py`, its `workflow.vibe.json` bundle companion, and the byte-identical `source.json`. Use `--out <directory>` to choose another destination, `--dry-run` to preview, or `--json` for machine-readable output. Import preserves provenance in the existing bundle metadata; it does not install nodes or models, configure a runtime, or run the graph.
+Inspect the imported folder with `python -m vibecomfy.cli inspect workflows/<source-stem> --json` and `python -m vibecomfy.cli analyze info workflows/<source-stem>`. Edit `workflow.py` at the existing node call/value you want to change, using `node <ClassType> --inputs` to confirm unfamiliar sockets or widgets. For recipes using public handles, `VibeWorkflow` supports `set_prompt`, `set_seed`, `set_steps`, and `set_input`; check `inspect --field <name>` before calling a setter.
+Validate and diagnose the imported folder with `python -m vibecomfy.cli validate workflows/<source-stem> --json` and `python -m vibecomfy.cli doctor workflows/<source-stem> --json`. Existing `port check` and `port convert` remain available for advanced preflight, standalone scratchpad generation, and intentional ready-template conversion.
+Edit the copied, imported, or converted Python itself: change prompts, seeds, steps, model choices, wiring, and output prefixes in the Python authoring surface, not by editing compiled API JSON.
+Validate the artifact you actually edited: the imported folder for a direct edit, or `python -m vibecomfy.cli validate recipes/my_z_image.py` for the copied recipe. A separate variation must be validated at its own path, not at the source folder it loads.
+Export that same edited artifact with `python -m vibecomfy.cli port export <edited-folder-or-python-path> --to json --json`.
 If node packs are missing, use `python -m vibecomfy.cli nodes ensure <workflow>`. If model assets are missing, prefer normal `run` because it reconciles declared assets before queueing; use `fetch` only when explicitly staging authored model assets.
 Summarize what changed and show me the exact API JSON fields ComfyUI will receive before any GPU run.
 ```
@@ -152,7 +187,7 @@ Everything flows through `VibeWorkflow`.
 
 ```mermaid
 flowchart LR
-    A[ComfyUI JSON<br/>import/export format] -->|port convert| B[Python ready template<br/>or scratchpad]
+    A[ComfyUI JSON<br/>import/export format] -->|import| B[Python workflow bundle]
     B --> C[VibeWorkflow<br/>editable IR]
     Agent[Agent edits here] --> B
     C --> D[validate / patch / compose]

@@ -32,7 +32,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         else:
             report = workflow.validate(schema_provider=schema_provider)
         if getattr(args, "check_freshness", False) and report.ok:
-            drift = _subgraph_freshness_diagnostics(Path(args.path))
+            drift = _subgraph_freshness_diagnostics(bundle.python_path or Path(args.path))
             if drift:
                 raise SubgraphFreshnessError(
                     f"Subgraph freshness check failed for {args.path}",
@@ -91,7 +91,7 @@ def build_validate_payload(path: str, *, no_schema: bool = False, check_freshnes
     if not report.ok:
         return {"status": "error", "path": path, "issues": issues}
     if check_freshness:
-        drift = _subgraph_freshness_diagnostics(Path(path))
+        drift = _subgraph_freshness_diagnostics(bundle.python_path or Path(path))
         if drift:
             raise SubgraphFreshnessError(
                 f"Subgraph freshness check failed for {path}",

@@ -78,7 +78,7 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
             print(f"Next: {payload['recommended_command']}")
         return 1
     if lint:
-        for warning in _lint_untyped_raw_refs(Path(args.path)):
+        for warning in _lint_untyped_raw_refs(bundle.python_path or Path(args.path)):
             print(f"- untyped_raw_ref: {warning}")
     suggested_patches = patch_suggestions_payload(_patch_suggestions(workflow))
     drift_warning_findings, drift_error_findings = _nodepack_lockfile_drift()
