@@ -60,6 +60,7 @@ def test_import_creates_inspectable_origin_bundle_and_points_to_tools(
     bundle.require_canonical_authority("workflow validation")
     assert bundle.workflow.id == "port_workflow"
     assert bundle.provenance["operation"] == "imported"
+    assert bundle.revision_id == output["revision"]
     assert bundle.workflow.validate().ok
     relocated = tmp_path / "moved workflow"
     destination.rename(relocated)

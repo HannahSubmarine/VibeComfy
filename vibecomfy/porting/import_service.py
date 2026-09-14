@@ -22,7 +22,8 @@ from vibecomfy.porting.convert import (
 from vibecomfy.porting.workbench import analyze_source, load_port_source
 from vibecomfy.schema import ConversionSchemaProvider
 from vibecomfy.porting.widgets.schema import WIDGET_SCHEMA
-from vibecomfy.workflow_bundle import emit_bundle_with_candidate
+from vibecomfy.workflow_bundle import emit_bundle_with_candidate, load_bundle
+from vibecomfy.security.provenance import Provenance
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +163,11 @@ def import_workflow_bytes(
 
         python_bytes = python_path.read_bytes()
         companion_bytes = python_path.with_suffix(".vibe.json").read_bytes()
+        # The generated source is the canonical import artifact. Re-open that
+        # exact source/companion pair before reporting its identity, so report
+        # revision and digests describe what a later CLI/Astrid consumer loads
+        # rather than only the pre-render IR used to emit it.
+        bundle = load_bundle(python_path, trust=Provenance.USER_CONFIRMED)
         members = _member_digests(source_bytes, python_bytes, companion_bytes)
         validation = converted.validation.to_json()
         diagnostics = [issue.to_json() for issue in analysis.diagnostics]
