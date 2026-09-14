@@ -1,9 +1,35 @@
 {
   "Hy3DTools_BackProjectInpaint": {
+    "pack": "ComfyUI-Hunyuan3DTools",
+    "pack_version": "local-621fb54",
+    "python_module": "ComfyUI-Hunyuan3DTools.nodes",
     "category": "Hunyuan3DTools",
-    "description": "",
+    "name": "Hy3DTools_BackProjectInpaint",
     "display_name": "Hy3DTools_BackProjectInpaint",
-    "function": "back_project_inpaint",
+    "description": "",
+    "inputs": {
+      "required": {
+        "original_mesh": [
+          "TRIMESH"
+        ],
+        "inpainted_view": [
+          "IMAGE"
+        ],
+        "camera_params": [
+          "CAMERA_PARAMS"
+        ],
+        "blend_threshold": [
+          "FLOAT",
+          {
+            "default": 0.8,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01,
+            "tooltip": "Confidence threshold (from cos map) to use inpainted pixels."
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "original_mesh",
@@ -18,30 +44,6 @@
       "camera_params",
       "blend_threshold"
     ],
-    "inputs": {
-      "required": {
-        "blend_threshold": [
-          "FLOAT",
-          {
-            "default": 0.8,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.01,
-            "tooltip": "Confidence threshold (from cos map) to use inpainted pixels."
-          }
-        ],
-        "camera_params": [
-          "CAMERA_PARAMS"
-        ],
-        "inpainted_view": [
-          "IMAGE"
-        ],
-        "original_mesh": [
-          "TRIMESH"
-        ]
-      }
-    },
-    "name": "Hy3DTools_BackProjectInpaint",
     "object_info_widget_order": [
       "original_mesh",
       null,
@@ -50,20 +52,107 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "TRIMESH",
         "name": "updated_mesh",
-        "type": "TRIMESH"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Hunyuan3DTools",
-    "pack_version": "local-621fb54",
-    "python_module": "ComfyUI-Hunyuan3DTools.nodes"
+    "function": "back_project_inpaint"
   },
   "Hy3DTools_RenderSpecificView": {
+    "pack": "ComfyUI-Hunyuan3DTools",
+    "pack_version": "local-621fb54",
+    "python_module": "ComfyUI-Hunyuan3DTools.nodes",
     "category": "Hunyuan3DTools",
-    "description": "",
+    "name": "Hy3DTools_RenderSpecificView",
     "display_name": "Hy3DTools_RenderSpecificView",
-    "function": "render_view",
+    "description": "",
+    "inputs": {
+      "required": {
+        "trimesh": [
+          "TRIMESH"
+        ],
+        "render_size": [
+          "INT",
+          {
+            "default": 512,
+            "min": 64,
+            "max": 4096,
+            "step": 16
+          }
+        ],
+        "camera_type": [
+          [
+            "orth",
+            "perspective"
+          ],
+          {
+            "default": "orth"
+          }
+        ],
+        "camera_distance": [
+          "FLOAT",
+          {
+            "default": 1.45,
+            "min": 0.1,
+            "max": 10.0,
+            "step": 0.001
+          }
+        ],
+        "pan_x": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.01
+          }
+        ],
+        "pan_y": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.01
+          }
+        ],
+        "ortho_scale": [
+          "FLOAT",
+          {
+            "default": 1.2,
+            "min": 0.1,
+            "max": 10.0,
+            "step": 0.001
+          }
+        ],
+        "azimuth": [
+          "FLOAT",
+          {
+            "default": 0,
+            "min": -360,
+            "max": 360,
+            "step": 1
+          }
+        ],
+        "elevation": [
+          "FLOAT",
+          {
+            "default": 0,
+            "min": -360,
+            "max": 360,
+            "step": 1
+          }
+        ],
+        "bg_color_rgb": [
+          "STRING",
+          {
+            "default": "128, 128, 255",
+            "tooltip": "Background Color (RGB 0-255). Used for textured, world normal, and position views."
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "trimesh",
@@ -90,93 +179,6 @@
       "elevation",
       "bg_color_rgb"
     ],
-    "inputs": {
-      "required": {
-        "azimuth": [
-          "FLOAT",
-          {
-            "default": 0,
-            "max": 360,
-            "min": -360,
-            "step": 1
-          }
-        ],
-        "bg_color_rgb": [
-          "STRING",
-          {
-            "default": "128, 128, 255",
-            "tooltip": "Background Color (RGB 0-255). Used for textured, world normal, and position views."
-          }
-        ],
-        "camera_distance": [
-          "FLOAT",
-          {
-            "default": 1.45,
-            "max": 10.0,
-            "min": 0.1,
-            "step": 0.001
-          }
-        ],
-        "camera_type": [
-          [
-            "orth",
-            "perspective"
-          ],
-          {
-            "default": "orth"
-          }
-        ],
-        "elevation": [
-          "FLOAT",
-          {
-            "default": 0,
-            "max": 360,
-            "min": -360,
-            "step": 1
-          }
-        ],
-        "ortho_scale": [
-          "FLOAT",
-          {
-            "default": 1.2,
-            "max": 10.0,
-            "min": 0.1,
-            "step": 0.001
-          }
-        ],
-        "pan_x": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 1.0,
-            "min": -1.0,
-            "step": 0.01
-          }
-        ],
-        "pan_y": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 1.0,
-            "min": -1.0,
-            "step": 0.01
-          }
-        ],
-        "render_size": [
-          "INT",
-          {
-            "default": 512,
-            "max": 4096,
-            "min": 64,
-            "step": 16
-          }
-        ],
-        "trimesh": [
-          "TRIMESH"
-        ]
-      }
-    },
-    "name": "Hy3DTools_RenderSpecificView",
     "object_info_widget_order": [
       "trimesh",
       "render_size",
@@ -191,53 +193,51 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "textured_view",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "tangent_normal",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "world_normal",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "position",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "depth",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "MASK",
         "name": "mask",
-        "type": "MASK"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "TRIMESH",
         "name": "original_mesh_out",
-        "type": "TRIMESH"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "CAMERA_PARAMS",
         "name": "camera_params",
-        "type": "CAMERA_PARAMS"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "detected_texture_size_WH",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Hunyuan3DTools",
-    "pack_version": "local-621fb54",
-    "python_module": "ComfyUI-Hunyuan3DTools.nodes"
+    "function": "render_view"
   }
 }

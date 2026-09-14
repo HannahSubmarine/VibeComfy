@@ -1,40 +1,18 @@
 {
   "Qwen3AudioCompare": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS/Evaluation",
-    "description": "",
+    "name": "Qwen3AudioCompare",
     "display_name": "Qwen3AudioCompare",
-    "function": "compare",
-    "input_order": {
-      "optional": [
-        "local_model_path"
-      ],
-      "required": [
-        "reference_audio",
-        "generated_audio",
-        "speaker_encoder_model"
-      ]
-    },
-    "input_order_all": [
-      "reference_audio",
-      "generated_audio",
-      "speaker_encoder_model",
-      "local_model_path"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "local_model_path": [
-          "STRING",
-          {
-            "default": "",
-            "tooltip": "Optional custom path to model directory. If empty, uses default models/Qwen3-TTS/ location."
-          }
-        ]
-      },
       "required": {
-        "generated_audio": [
+        "reference_audio": [
           "AUDIO"
         ],
-        "reference_audio": [
+        "generated_audio": [
           "AUDIO"
         ],
         "speaker_encoder_model": [
@@ -44,9 +22,33 @@
             "tooltip": "Base model to load speaker encoder from (only loads ~76 weights, not the full model)"
           }
         ]
+      },
+      "optional": {
+        "local_model_path": [
+          "STRING",
+          {
+            "default": "",
+            "tooltip": "Optional custom path to model directory. If empty, uses default models/Qwen3-TTS/ location."
+          }
+        ]
       }
     },
-    "name": "Qwen3AudioCompare",
+    "input_order": {
+      "required": [
+        "reference_audio",
+        "generated_audio",
+        "speaker_encoder_model"
+      ],
+      "optional": [
+        "local_model_path"
+      ]
+    },
+    "input_order_all": [
+      "reference_audio",
+      "generated_audio",
+      "speaker_encoder_model",
+      "local_model_path"
+    ],
     "object_info_widget_order": [
       null,
       null,
@@ -55,70 +57,32 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "report",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "compare"
   },
   "Qwen3CustomVoice": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3CustomVoice",
     "display_name": "Qwen3CustomVoice",
-    "function": "generate",
-    "input_order": {
-      "optional": [
-        "instruct",
-        "custom_speaker_name",
-        "max_new_tokens"
-      ],
-      "required": [
-        "model",
-        "text",
-        "language",
-        "speaker",
-        "seed"
-      ]
-    },
-    "input_order_all": [
-      "model",
-      "text",
-      "language",
-      "speaker",
-      "seed",
-      "instruct",
-      "custom_speaker_name",
-      "max_new_tokens"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "custom_speaker_name": [
-          "STRING",
-          {
-            "default": ""
-          }
+      "required": {
+        "model": [
+          "QWEN3_MODEL"
         ],
-        "instruct": [
+        "text": [
           "STRING",
           {
-            "default": "",
             "multiline": true
           }
         ],
-        "max_new_tokens": [
-          "INT",
-          {
-            "default": 2048,
-            "max": 8192,
-            "min": 64,
-            "step": 64
-          }
-        ]
-      },
-      "required": {
         "language": [
           [
             "Auto",
@@ -137,17 +101,6 @@
             "default": "Auto"
           }
         ],
-        "model": [
-          "QWEN3_MODEL"
-        ],
-        "seed": [
-          "INT",
-          {
-            "default": 42,
-            "max": 18446744073709551615,
-            "min": 1
-          }
-        ],
         "speaker": [
           [
             "Vivian",
@@ -164,15 +117,64 @@
             "default": "Vivian"
           }
         ],
-        "text": [
+        "seed": [
+          "INT",
+          {
+            "default": 42,
+            "min": 1,
+            "max": 18446744073709551615
+          }
+        ]
+      },
+      "optional": {
+        "instruct": [
           "STRING",
           {
-            "multiline": true
+            "multiline": true,
+            "default": ""
+          }
+        ],
+        "custom_speaker_name": [
+          "STRING",
+          {
+            "default": ""
+          }
+        ],
+        "max_new_tokens": [
+          "INT",
+          {
+            "default": 2048,
+            "min": 64,
+            "max": 8192,
+            "step": 64
           }
         ]
       }
     },
-    "name": "Qwen3CustomVoice",
+    "input_order": {
+      "required": [
+        "model",
+        "text",
+        "language",
+        "speaker",
+        "seed"
+      ],
+      "optional": [
+        "instruct",
+        "custom_speaker_name",
+        "max_new_tokens"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "text",
+      "language",
+      "speaker",
+      "seed",
+      "instruct",
+      "custom_speaker_name",
+      "max_new_tokens"
+    ],
     "object_info_widget_order": [
       "model",
       "text",
@@ -185,20 +187,56 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "AUDIO",
         "name": "AUDIO",
-        "type": "AUDIO"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "generate"
   },
   "Qwen3DataPrep": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS/FineTuning",
-    "description": "",
+    "name": "Qwen3DataPrep",
     "display_name": "Qwen3DataPrep",
-    "function": "process",
+    "description": "",
+    "inputs": {
+      "required": {
+        "jsonl_path": [
+          "STRING",
+          {
+            "default": "",
+            "multiline": false
+          }
+        ],
+        "tokenizer_repo": [
+          [],
+          {
+            "default": "Qwen/Qwen3-TTS-Tokenizer-12Hz"
+          }
+        ],
+        "source": [
+          [
+            "HuggingFace",
+            "ModelScope"
+          ],
+          {
+            "default": "HuggingFace"
+          }
+        ],
+        "batch_size": [
+          "INT",
+          {
+            "default": 16,
+            "min": 1,
+            "max": 32,
+            "tooltip": "Number of audio files to process at once. Lower values use less VRAM."
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "jsonl_path",
@@ -213,42 +251,6 @@
       "source",
       "batch_size"
     ],
-    "inputs": {
-      "required": {
-        "batch_size": [
-          "INT",
-          {
-            "default": 16,
-            "max": 32,
-            "min": 1,
-            "tooltip": "Number of audio files to process at once. Lower values use less VRAM."
-          }
-        ],
-        "jsonl_path": [
-          "STRING",
-          {
-            "default": "",
-            "multiline": false
-          }
-        ],
-        "source": [
-          [
-            "HuggingFace",
-            "ModelScope"
-          ],
-          {
-            "default": "HuggingFace"
-          }
-        ],
-        "tokenizer_repo": [
-          [],
-          {
-            "default": "Qwen/Qwen3-TTS-Tokenizer-12Hz"
-          }
-        ]
-      }
-    },
-    "name": "Qwen3DataPrep",
     "object_info_widget_order": [
       "jsonl_path",
       "tokenizer_repo",
@@ -257,32 +259,21 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "processed_jsonl_path",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "process"
   },
   "Qwen3DatasetFromFolder": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS/FineTuning",
-    "description": "",
+    "name": "Qwen3DatasetFromFolder",
     "display_name": "Qwen3DatasetFromFolder",
-    "function": "create_dataset",
-    "input_order": {
-      "required": [
-        "folder_path",
-        "output_filename",
-        "ref_audio_path"
-      ]
-    },
-    "input_order_all": [
-      "folder_path",
-      "output_filename",
-      "ref_audio_path"
-    ],
+    "description": "",
     "inputs": {
       "required": {
         "folder_path": [
@@ -308,7 +299,18 @@
         ]
       }
     },
-    "name": "Qwen3DatasetFromFolder",
+    "input_order": {
+      "required": [
+        "folder_path",
+        "output_filename",
+        "ref_audio_path"
+      ]
+    },
+    "input_order_all": [
+      "folder_path",
+      "output_filename",
+      "ref_audio_path"
+    ],
     "object_info_widget_order": [
       "folder_path",
       "output_filename",
@@ -316,21 +318,227 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "jsonl_path",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "create_dataset"
   },
   "Qwen3FineTune": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS/FineTuning",
-    "description": "",
+    "name": "Qwen3FineTune",
     "display_name": "Qwen3FineTune",
-    "function": "train",
+    "description": "",
+    "inputs": {
+      "required": {
+        "train_jsonl": [
+          "STRING",
+          {
+            "default": "",
+            "multiline": false,
+            "tooltip": "Path to the preprocessed JSONL file containing training data with audio codes."
+          }
+        ],
+        "init_model": [
+          "base_models",
+          {
+            "default": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+            "tooltip": "Base model to fine-tune. Must be a 'Base' model variant."
+          }
+        ],
+        "source": [
+          [
+            "HuggingFace",
+            "ModelScope"
+          ],
+          {
+            "default": "HuggingFace",
+            "tooltip": "Download source if model is not found locally."
+          }
+        ],
+        "output_dir": [
+          "STRING",
+          {
+            "default": "output/finetuned_model",
+            "multiline": false,
+            "tooltip": "Directory to save checkpoints and final model."
+          }
+        ],
+        "epochs": [
+          "INT",
+          {
+            "default": 3,
+            "min": 1,
+            "max": 1000,
+            "tooltip": "Number of training epochs to run."
+          }
+        ],
+        "batch_size": [
+          "INT",
+          {
+            "default": 2,
+            "min": 1,
+            "max": 64,
+            "tooltip": "Number of samples per batch. Lower values use less VRAM."
+          }
+        ],
+        "lr": [
+          "FLOAT",
+          {
+            "default": 2e-06,
+            "step": 1e-07,
+            "tooltip": "Learning rate. Qwen default (2e-5) is too aggressive for small batches, causing noise output. Defaults to 2e-6 for stability."
+          }
+        ],
+        "speaker_name": [
+          "STRING",
+          {
+            "default": "my_speaker",
+            "tooltip": "Name for the custom speaker. Use this name when generating with the fine-tuned model."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 42,
+            "min": 0,
+            "max": 18446744073709551615,
+            "tooltip": "Random seed for reproducibility."
+          }
+        ]
+      },
+      "optional": {
+        "resume_training": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Continue training from the latest checkpoint in output_dir."
+          }
+        ],
+        "log_every_steps": [
+          "INT",
+          {
+            "default": 10,
+            "min": 1,
+            "max": 1000,
+            "tooltip": "Log training progress every N steps."
+          }
+        ],
+        "save_every_epochs": [
+          "INT",
+          {
+            "default": 1,
+            "min": 0,
+            "max": 100,
+            "tooltip": "Save checkpoint every N epochs. Set to 0 to only save final epoch. Ignored if save_every_steps > 0."
+          }
+        ],
+        "save_every_steps": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 100000,
+            "tooltip": "Save checkpoint every N steps. Set to 0 to use epoch-based saving instead."
+          }
+        ],
+        "mixed_precision": [
+          [
+            "bf16",
+            "fp32"
+          ],
+          {
+            "default": "bf16",
+            "tooltip": "bf16 recommended. Use fp32 only if GPU doesn't support bf16 (pre-Ampere)."
+          }
+        ],
+        "gradient_accumulation": [
+          "INT",
+          {
+            "default": 4,
+            "min": 1,
+            "max": 32,
+            "tooltip": "Accumulate gradients over N steps before updating. Effective batch size = batch_size * gradient_accumulation."
+          }
+        ],
+        "gradient_checkpointing": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Trade compute for VRAM by recomputing activations. Saves ~30-40% VRAM."
+          }
+        ],
+        "use_8bit_optimizer": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Use 8-bit AdamW optimizer. Saves ~50% optimizer VRAM. Requires bitsandbytes."
+          }
+        ],
+        "weight_decay": [
+          "FLOAT",
+          {
+            "default": 0.01,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.001,
+            "tooltip": "L2 regularization strength to prevent overfitting."
+          }
+        ],
+        "max_grad_norm": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": 0.1,
+            "max": 10.0,
+            "step": 0.1,
+            "tooltip": "Gradient clipping threshold to prevent exploding gradients."
+          }
+        ],
+        "warmup_steps": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 10000,
+            "tooltip": "Number of warmup steps. Set to 0 to disable warmup. Recommended: 5-10% of total steps."
+          }
+        ],
+        "warmup_ratio": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": 0.0,
+            "max": 0.5,
+            "step": 0.01,
+            "tooltip": "Warmup as ratio of total steps. Ignored if warmup_steps > 0. E.g., 0.1 = 10% warmup."
+          }
+        ],
+        "save_optimizer_state": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Save optimizer/scheduler state in checkpoints. Enables perfect resume but doubles checkpoint size."
+          }
+        ]
+      }
+    },
     "input_order": {
+      "required": [
+        "train_jsonl",
+        "init_model",
+        "source",
+        "output_dir",
+        "epochs",
+        "batch_size",
+        "lr",
+        "speaker_name",
+        "seed"
+      ],
       "optional": [
         "resume_training",
         "log_every_steps",
@@ -345,17 +553,6 @@
         "warmup_steps",
         "warmup_ratio",
         "save_optimizer_state"
-      ],
-      "required": [
-        "train_jsonl",
-        "init_model",
-        "source",
-        "output_dir",
-        "epochs",
-        "batch_size",
-        "lr",
-        "speaker_name",
-        "seed"
       ]
     },
     "input_order_all": [
@@ -382,201 +579,6 @@
       "warmup_ratio",
       "save_optimizer_state"
     ],
-    "inputs": {
-      "optional": {
-        "gradient_accumulation": [
-          "INT",
-          {
-            "default": 4,
-            "max": 32,
-            "min": 1,
-            "tooltip": "Accumulate gradients over N steps before updating. Effective batch size = batch_size * gradient_accumulation."
-          }
-        ],
-        "gradient_checkpointing": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Trade compute for VRAM by recomputing activations. Saves ~30-40% VRAM."
-          }
-        ],
-        "log_every_steps": [
-          "INT",
-          {
-            "default": 10,
-            "max": 1000,
-            "min": 1,
-            "tooltip": "Log training progress every N steps."
-          }
-        ],
-        "max_grad_norm": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 10.0,
-            "min": 0.1,
-            "step": 0.1,
-            "tooltip": "Gradient clipping threshold to prevent exploding gradients."
-          }
-        ],
-        "mixed_precision": [
-          [
-            "bf16",
-            "fp32"
-          ],
-          {
-            "default": "bf16",
-            "tooltip": "bf16 recommended. Use fp32 only if GPU doesn't support bf16 (pre-Ampere)."
-          }
-        ],
-        "resume_training": [
-          "BOOLEAN",
-          {
-            "default": false,
-            "tooltip": "Continue training from the latest checkpoint in output_dir."
-          }
-        ],
-        "save_every_epochs": [
-          "INT",
-          {
-            "default": 1,
-            "max": 100,
-            "min": 0,
-            "tooltip": "Save checkpoint every N epochs. Set to 0 to only save final epoch. Ignored if save_every_steps > 0."
-          }
-        ],
-        "save_every_steps": [
-          "INT",
-          {
-            "default": 0,
-            "max": 100000,
-            "min": 0,
-            "tooltip": "Save checkpoint every N steps. Set to 0 to use epoch-based saving instead."
-          }
-        ],
-        "save_optimizer_state": [
-          "BOOLEAN",
-          {
-            "default": false,
-            "tooltip": "Save optimizer/scheduler state in checkpoints. Enables perfect resume but doubles checkpoint size."
-          }
-        ],
-        "use_8bit_optimizer": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Use 8-bit AdamW optimizer. Saves ~50% optimizer VRAM. Requires bitsandbytes."
-          }
-        ],
-        "warmup_ratio": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 0.5,
-            "min": 0.0,
-            "step": 0.01,
-            "tooltip": "Warmup as ratio of total steps. Ignored if warmup_steps > 0. E.g., 0.1 = 10% warmup."
-          }
-        ],
-        "warmup_steps": [
-          "INT",
-          {
-            "default": 0,
-            "max": 10000,
-            "min": 0,
-            "tooltip": "Number of warmup steps. Set to 0 to disable warmup. Recommended: 5-10% of total steps."
-          }
-        ],
-        "weight_decay": [
-          "FLOAT",
-          {
-            "default": 0.01,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.001,
-            "tooltip": "L2 regularization strength to prevent overfitting."
-          }
-        ]
-      },
-      "required": {
-        "batch_size": [
-          "INT",
-          {
-            "default": 2,
-            "max": 64,
-            "min": 1,
-            "tooltip": "Number of samples per batch. Lower values use less VRAM."
-          }
-        ],
-        "epochs": [
-          "INT",
-          {
-            "default": 3,
-            "max": 1000,
-            "min": 1,
-            "tooltip": "Number of training epochs to run."
-          }
-        ],
-        "init_model": [
-          "base_models",
-          {
-            "default": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
-            "tooltip": "Base model to fine-tune. Must be a 'Base' model variant."
-          }
-        ],
-        "lr": [
-          "FLOAT",
-          {
-            "default": 2e-06,
-            "step": 1e-07,
-            "tooltip": "Learning rate. Qwen default (2e-5) is too aggressive for small batches, causing noise output. Defaults to 2e-6 for stability."
-          }
-        ],
-        "output_dir": [
-          "STRING",
-          {
-            "default": "output/finetuned_model",
-            "multiline": false,
-            "tooltip": "Directory to save checkpoints and final model."
-          }
-        ],
-        "seed": [
-          "INT",
-          {
-            "default": 42,
-            "max": 18446744073709551615,
-            "min": 0,
-            "tooltip": "Random seed for reproducibility."
-          }
-        ],
-        "source": [
-          [
-            "HuggingFace",
-            "ModelScope"
-          ],
-          {
-            "default": "HuggingFace",
-            "tooltip": "Download source if model is not found locally."
-          }
-        ],
-        "speaker_name": [
-          "STRING",
-          {
-            "default": "my_speaker",
-            "tooltip": "Name for the custom speaker. Use this name when generating with the fine-tuned model."
-          }
-        ],
-        "train_jsonl": [
-          "STRING",
-          {
-            "default": "",
-            "multiline": false,
-            "tooltip": "Path to the preprocessed JSONL file containing training data with audio codes."
-          }
-        ]
-      }
-    },
-    "name": "Qwen3FineTune",
     "object_info_widget_order": [
       "train_jsonl",
       "init_model",
@@ -603,25 +605,33 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "model_path",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "custom_speaker_name",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "train"
   },
   "Qwen3LoadPrompt": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3LoadPrompt",
     "display_name": "Qwen3LoadPrompt",
-    "function": "load_prompt",
+    "description": "",
+    "inputs": {
+      "required": {
+        "prompt_file": [
+          []
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "prompt_file"
@@ -630,84 +640,28 @@
     "input_order_all": [
       "prompt_file"
     ],
-    "inputs": {
-      "required": {
-        "prompt_file": [
-          []
-        ]
-      }
-    },
-    "name": "Qwen3LoadPrompt",
     "object_info_widget_order": [
       "prompt_file"
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "QWEN3_PROMPT",
         "name": "prompt",
-        "type": "QWEN3_PROMPT"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "load_prompt"
   },
   "Qwen3Loader": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3Loader",
     "display_name": "Qwen3Loader",
-    "function": "load_model",
-    "input_order": {
-      "optional": [
-        "local_model_path"
-      ],
-      "required": [
-        "repo_id",
-        "source",
-        "precision",
-        "attention"
-      ]
-    },
-    "input_order_all": [
-      "repo_id",
-      "source",
-      "precision",
-      "attention",
-      "local_model_path"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "local_model_path": [
-          "STRING",
-          {
-            "default": "",
-            "multiline": false,
-            "tooltip": "Path to local model or checkpoint. If checkpoint (no speech_tokenizer/), base model loads from repo_id first."
-          }
-        ]
-      },
       "required": {
-        "attention": [
-          [
-            "auto",
-            "flash_attention_2",
-            "sdpa",
-            "eager"
-          ],
-          {
-            "default": "auto"
-          }
-        ],
-        "precision": [
-          [
-            "fp16",
-            "bf16",
-            "fp32"
-          ],
-          {
-            "default": "bf16"
-          }
-        ],
         "repo_id": [
           [],
           {
@@ -722,10 +676,58 @@
           {
             "default": "HuggingFace"
           }
+        ],
+        "precision": [
+          [
+            "fp16",
+            "bf16",
+            "fp32"
+          ],
+          {
+            "default": "bf16"
+          }
+        ],
+        "attention": [
+          [
+            "auto",
+            "flash_attention_2",
+            "sdpa",
+            "eager"
+          ],
+          {
+            "default": "auto"
+          }
+        ]
+      },
+      "optional": {
+        "local_model_path": [
+          "STRING",
+          {
+            "default": "",
+            "multiline": false,
+            "tooltip": "Path to local model or checkpoint. If checkpoint (no speech_tokenizer/), base model loads from repo_id first."
+          }
         ]
       }
     },
-    "name": "Qwen3Loader",
+    "input_order": {
+      "required": [
+        "repo_id",
+        "source",
+        "precision",
+        "attention"
+      ],
+      "optional": [
+        "local_model_path"
+      ]
+    },
+    "input_order_all": [
+      "repo_id",
+      "source",
+      "precision",
+      "attention",
+      "local_model_path"
+    ],
     "object_info_widget_order": [
       "repo_id",
       "source",
@@ -735,48 +737,22 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "QWEN3_MODEL",
         "name": "model",
-        "type": "QWEN3_MODEL"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "load_model"
   },
   "Qwen3PromptMaker": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3PromptMaker",
     "display_name": "Qwen3PromptMaker",
-    "function": "create_prompt",
-    "input_order": {
-      "optional": [
-        "ref_audio_max_seconds"
-      ],
-      "required": [
-        "model",
-        "ref_audio",
-        "ref_text"
-      ]
-    },
-    "input_order_all": [
-      "model",
-      "ref_audio",
-      "ref_text",
-      "ref_audio_max_seconds"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "ref_audio_max_seconds": [
-          "FLOAT",
-          {
-            "default": 30.0,
-            "max": 120.0,
-            "min": -1.0,
-            "step": 5.0
-          }
-        ]
-      },
       "required": {
         "model": [
           "QWEN3_MODEL"
@@ -790,9 +766,35 @@
             "multiline": true
           }
         ]
+      },
+      "optional": {
+        "ref_audio_max_seconds": [
+          "FLOAT",
+          {
+            "default": 30.0,
+            "min": -1.0,
+            "max": 120.0,
+            "step": 5.0
+          }
+        ]
       }
     },
-    "name": "Qwen3PromptMaker",
+    "input_order": {
+      "required": [
+        "model",
+        "ref_audio",
+        "ref_text"
+      ],
+      "optional": [
+        "ref_audio_max_seconds"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "ref_audio",
+      "ref_text",
+      "ref_audio_max_seconds"
+    ],
     "object_info_widget_order": [
       "model",
       null,
@@ -801,20 +803,34 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "QWEN3_PROMPT",
         "name": "QWEN3_PROMPT",
-        "type": "QWEN3_PROMPT"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "create_prompt"
   },
   "Qwen3SavePrompt": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3SavePrompt",
     "display_name": "Qwen3SavePrompt",
-    "function": "save_prompt",
+    "description": "",
+    "inputs": {
+      "required": {
+        "prompt": [
+          "QWEN3_PROMPT"
+        ],
+        "filename": [
+          "STRING",
+          {
+            "default": "voice_embedding"
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "prompt",
@@ -825,67 +841,47 @@
       "prompt",
       "filename"
     ],
-    "inputs": {
-      "required": {
-        "filename": [
-          "STRING",
-          {
-            "default": "voice_embedding"
-          }
-        ],
-        "prompt": [
-          "QWEN3_PROMPT"
-        ]
-      }
-    },
-    "name": "Qwen3SavePrompt",
     "object_info_widget_order": [
       "prompt",
       "filename"
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "filepath",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "save_prompt"
   },
   "Qwen3VoiceClone": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3VoiceClone",
     "display_name": "Qwen3VoiceClone",
-    "function": "generate",
-    "input_order": {
-      "optional": [
-        "language",
-        "ref_audio",
-        "ref_text",
-        "prompt",
-        "max_new_tokens",
-        "ref_audio_max_seconds"
-      ],
-      "required": [
-        "model",
-        "text",
-        "seed"
-      ]
-    },
-    "input_order_all": [
-      "model",
-      "text",
-      "seed",
-      "language",
-      "ref_audio",
-      "ref_text",
-      "prompt",
-      "max_new_tokens",
-      "ref_audio_max_seconds"
-    ],
+    "description": "",
     "inputs": {
+      "required": {
+        "model": [
+          "QWEN3_MODEL"
+        ],
+        "text": [
+          "STRING",
+          {
+            "multiline": true
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 42,
+            "min": 1,
+            "max": 18446744073709551615
+          }
+        ]
+      },
       "optional": {
         "language": [
           [
@@ -905,58 +901,64 @@
             "default": "Auto"
           }
         ],
-        "max_new_tokens": [
-          "INT",
-          {
-            "default": 2048,
-            "max": 8192,
-            "min": 64,
-            "step": 64
-          }
-        ],
-        "prompt": [
-          "QWEN3_PROMPT"
-        ],
         "ref_audio": [
           "AUDIO"
-        ],
-        "ref_audio_max_seconds": [
-          "FLOAT",
-          {
-            "default": 30.0,
-            "max": 120.0,
-            "min": -1.0,
-            "step": 5.0
-          }
         ],
         "ref_text": [
           "STRING",
           {
             "multiline": true
           }
-        ]
-      },
-      "required": {
-        "model": [
-          "QWEN3_MODEL"
         ],
-        "seed": [
+        "prompt": [
+          "QWEN3_PROMPT"
+        ],
+        "max_new_tokens": [
           "INT",
           {
-            "default": 42,
-            "max": 18446744073709551615,
-            "min": 1
+            "default": 2048,
+            "min": 64,
+            "max": 8192,
+            "step": 64
           }
         ],
-        "text": [
-          "STRING",
+        "ref_audio_max_seconds": [
+          "FLOAT",
           {
-            "multiline": true
+            "default": 30.0,
+            "min": -1.0,
+            "max": 120.0,
+            "step": 5.0
           }
         ]
       }
     },
-    "name": "Qwen3VoiceClone",
+    "input_order": {
+      "required": [
+        "model",
+        "text",
+        "seed"
+      ],
+      "optional": [
+        "language",
+        "ref_audio",
+        "ref_text",
+        "prompt",
+        "max_new_tokens",
+        "ref_audio_max_seconds"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "text",
+      "seed",
+      "language",
+      "ref_audio",
+      "ref_text",
+      "prompt",
+      "max_new_tokens",
+      "ref_audio_max_seconds"
+    ],
     "object_info_widget_order": [
       "model",
       "text",
@@ -970,38 +972,32 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "AUDIO",
         "name": "AUDIO",
-        "type": "AUDIO"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "generate"
   },
   "Qwen3VoiceDesign": {
+    "pack": "ComfyUI-Qwen3-TTS",
+    "pack_version": "local-17c22ad",
+    "python_module": "ComfyUI-Qwen3-TTS.nodes",
     "category": "Qwen3-TTS",
-    "description": "",
+    "name": "Qwen3VoiceDesign",
     "display_name": "Qwen3VoiceDesign",
-    "function": "generate",
-    "input_order": {
-      "required": [
-        "model",
-        "text",
-        "instruct",
-        "language",
-        "seed"
-      ]
-    },
-    "input_order_all": [
-      "model",
-      "text",
-      "instruct",
-      "language",
-      "seed"
-    ],
+    "description": "",
     "inputs": {
       "required": {
+        "model": [
+          "QWEN3_MODEL"
+        ],
+        "text": [
+          "STRING",
+          {
+            "multiline": true
+          }
+        ],
         "instruct": [
           "STRING",
           {
@@ -1026,26 +1022,32 @@
             "default": "Auto"
           }
         ],
-        "model": [
-          "QWEN3_MODEL"
-        ],
         "seed": [
           "INT",
           {
             "default": 42,
-            "max": 18446744073709551615,
-            "min": 1
-          }
-        ],
-        "text": [
-          "STRING",
-          {
-            "multiline": true
+            "min": 1,
+            "max": 18446744073709551615
           }
         ]
       }
     },
-    "name": "Qwen3VoiceDesign",
+    "input_order": {
+      "required": [
+        "model",
+        "text",
+        "instruct",
+        "language",
+        "seed"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "text",
+      "instruct",
+      "language",
+      "seed"
+    ],
     "object_info_widget_order": [
       "model",
       "text",
@@ -1055,13 +1057,11 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "AUDIO",
         "name": "AUDIO",
-        "type": "AUDIO"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-Qwen3-TTS",
-    "pack_version": "local-17c22ad",
-    "python_module": "ComfyUI-Qwen3-TTS.nodes"
+    "function": "generate"
   }
 }

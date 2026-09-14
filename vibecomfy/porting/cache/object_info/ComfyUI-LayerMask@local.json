@@ -4,12 +4,6 @@
     "display_name": "LayerMask: Load SegmentAnything Models(Advance)",
     "inputs": {
       "required": {
-        "grounding_dino_model": [
-          [
-            "GroundingDINO_SwinT_OGC (694MB)",
-            "GroundingDINO_SwinB (938MB)"
-          ]
-        ],
         "sam_model": [
           [
             "sam_vit_h (2.56GB)",
@@ -20,148 +14,47 @@
             "sam_hq_vit_b (379MB)",
             "mobile_sam(39MB)"
           ]
+        ],
+        "grounding_dino_model": [
+          [
+            "GroundingDINO_SwinT_OGC (694MB)",
+            "GroundingDINO_SwinB (938MB)"
+          ]
         ]
       }
     },
-    "object_info_widget_order": [
-      "sam_model",
-      "grounding_dino_model"
-    ],
-    "outputs": [
-      {
-        "is_list": false,
-        "name": "sam_models",
-        "type": "LS_SAM_MODELS"
-      }
-    ],
+    "outputs": [{"is_list": false, "name": "sam_models", "type": "LS_SAM_MODELS"}],
     "pack": "ComfyUI_LayerStyle_Advance",
-    "pack_version": "local-7b678b4"
+    "pack_version": "local-7b678b4",
+    "object_info_widget_order": ["sam_model", "grounding_dino_model"]
   },
   "LayerMask: SegmentAnythingUltra V3": {
     "category": "😺dzNodes/LayerMask",
     "display_name": "LayerMask: SegmentAnythingUltra V3(Advance)",
     "inputs": {
       "required": {
-        "black_point": [
-          "FLOAT",
-          {
-            "default": 0.15,
-            "display": "slider",
-            "max": 0.98,
-            "min": 0.01,
-            "step": 0.01
-          }
-        ],
-        "detail_dilate": [
-          "INT",
-          {
-            "default": 6,
-            "max": 255,
-            "min": 1,
-            "step": 1
-          }
-        ],
-        "detail_erode": [
-          "INT",
-          {
-            "default": 6,
-            "max": 255,
-            "min": 1,
-            "step": 1
-          }
-        ],
+        "image": ["IMAGE", {}],
+        "sam_models": ["LS_SAM_MODELS", {}],
+        "threshold": ["FLOAT", {"default": 0.3, "max": 1.0, "min": 0, "step": 0.01}],
         "detail_method": [
-          [
-            "VITMatte",
-            "VITMatte(local)",
-            "vitmatte-base-composition-1k",
-            "PyMatting",
-            "GuidedFilter"
-          ]
+          ["VITMatte", "VITMatte(local)", "vitmatte-base-composition-1k", "PyMatting", "GuidedFilter"]
         ],
-        "device": [
-          [
-            "cuda",
-            "cpu"
-          ]
-        ],
-        "image": [
-          "IMAGE",
-          {}
-        ],
-        "max_megapixels": [
-          "FLOAT",
-          {
-            "default": 2.0,
-            "max": 999,
-            "min": 1,
-            "step": 0.1
-          }
-        ],
-        "process_detail": [
-          "BOOLEAN",
-          {
-            "default": true
-          }
-        ],
-        "prompt": [
-          "STRING",
-          {
-            "default": "subject"
-          }
-        ],
-        "sam_models": [
-          "LS_SAM_MODELS",
-          {}
-        ],
-        "threshold": [
-          "FLOAT",
-          {
-            "default": 0.3,
-            "max": 1.0,
-            "min": 0,
-            "step": 0.01
-          }
-        ],
-        "white_point": [
-          "FLOAT",
-          {
-            "default": 0.99,
-            "display": "slider",
-            "max": 0.99,
-            "min": 0.02,
-            "step": 0.01
-          }
-        ]
+        "detail_erode": ["INT", {"default": 6, "max": 255, "min": 1, "step": 1}],
+        "detail_dilate": ["INT", {"default": 6, "max": 255, "min": 1, "step": 1}],
+        "black_point": ["FLOAT", {"default": 0.15, "display": "slider", "max": 0.98, "min": 0.01, "step": 0.01}],
+        "white_point": ["FLOAT", {"default": 0.99, "display": "slider", "max": 0.99, "min": 0.02, "step": 0.01}],
+        "process_detail": ["BOOLEAN", {"default": true}],
+        "prompt": ["STRING", {"default": "subject"}],
+        "device": [["cuda", "cpu"]],
+        "max_megapixels": ["FLOAT", {"default": 2.0, "max": 999, "min": 1, "step": 0.1}]
       }
     },
-    "object_info_widget_order": [
-      null,
-      null,
-      "threshold",
-      "detail_method",
-      "detail_erode",
-      "detail_dilate",
-      "black_point",
-      "white_point",
-      "process_detail",
-      "prompt",
-      "device",
-      "max_megapixels"
-    ],
     "outputs": [
-      {
-        "is_list": false,
-        "name": "image",
-        "type": "IMAGE"
-      },
-      {
-        "is_list": false,
-        "name": "mask",
-        "type": "MASK"
-      }
+      {"is_list": false, "name": "image", "type": "IMAGE"},
+      {"is_list": false, "name": "mask", "type": "MASK"}
     ],
     "pack": "ComfyUI_LayerStyle_Advance",
-    "pack_version": "local-7b678b4"
+    "pack_version": "local-7b678b4",
+    "object_info_widget_order": [null, null, "threshold", "detail_method", "detail_erode", "detail_dilate", "black_point", "white_point", "process_detail", "prompt", "device", "max_megapixels"]
   }
 }

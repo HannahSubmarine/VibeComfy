@@ -1,9 +1,76 @@
 {
   "DrawViTPose": {
+    "pack": "ComfyUI-WanAnimatePreprocess",
+    "pack_version": "local-1a35b81",
+    "python_module": "ComfyUI-WanAnimatePreprocess.nodes",
     "category": "WanAnimatePreprocess",
-    "description": "",
+    "name": "DrawViTPose",
     "display_name": "Draws pose images from pose data.",
-    "function": "process",
+    "description": "",
+    "inputs": {
+      "required": {
+        "pose_data": [
+          "POSEDATA"
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 832,
+            "min": 64,
+            "max": 2048,
+            "step": 1,
+            "tooltip": "Width of the generation"
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 480,
+            "min": 64,
+            "max": 2048,
+            "step": 1,
+            "tooltip": "Height of the generation"
+          }
+        ],
+        "retarget_padding": [
+          "INT",
+          {
+            "default": 16,
+            "min": 0,
+            "max": 512,
+            "step": 1,
+            "tooltip": "When > 0, the retargeted pose image is padded and resized to the target size"
+          }
+        ],
+        "body_stick_width": [
+          "INT",
+          {
+            "default": -1,
+            "min": -1,
+            "max": 20,
+            "step": 1,
+            "tooltip": "Width of the body sticks. Set to 0 to disable body drawing, -1 for auto"
+          }
+        ],
+        "hand_stick_width": [
+          "INT",
+          {
+            "default": -1,
+            "min": -1,
+            "max": 20,
+            "step": 1,
+            "tooltip": "Width of the hand sticks. Set to 0 to disable hand drawing, -1 for auto"
+          }
+        ],
+        "draw_head": [
+          "BOOLEAN",
+          {
+            "default": "True",
+            "tooltip": "Whether to draw head keypoints"
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "pose_data",
@@ -24,71 +91,6 @@
       "hand_stick_width",
       "draw_head"
     ],
-    "inputs": {
-      "required": {
-        "body_stick_width": [
-          "INT",
-          {
-            "default": -1,
-            "max": 20,
-            "min": -1,
-            "step": 1,
-            "tooltip": "Width of the body sticks. Set to 0 to disable body drawing, -1 for auto"
-          }
-        ],
-        "draw_head": [
-          "BOOLEAN",
-          {
-            "default": "True",
-            "tooltip": "Whether to draw head keypoints"
-          }
-        ],
-        "hand_stick_width": [
-          "INT",
-          {
-            "default": -1,
-            "max": 20,
-            "min": -1,
-            "step": 1,
-            "tooltip": "Width of the hand sticks. Set to 0 to disable hand drawing, -1 for auto"
-          }
-        ],
-        "height": [
-          "INT",
-          {
-            "default": 480,
-            "max": 2048,
-            "min": 64,
-            "step": 1,
-            "tooltip": "Height of the generation"
-          }
-        ],
-        "pose_data": [
-          "POSEDATA"
-        ],
-        "retarget_padding": [
-          "INT",
-          {
-            "default": 16,
-            "max": 512,
-            "min": 0,
-            "step": 1,
-            "tooltip": "When > 0, the retargeted pose image is padded and resized to the target size"
-          }
-        ],
-        "width": [
-          "INT",
-          {
-            "default": 832,
-            "max": 2048,
-            "min": 64,
-            "step": 1,
-            "tooltip": "Width of the generation"
-          }
-        ]
-      }
-    },
-    "name": "DrawViTPose",
     "object_info_widget_order": [
       "pose_data",
       "width",
@@ -100,20 +102,47 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "pose_images",
-        "type": "IMAGE"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-WanAnimatePreprocess",
-    "pack_version": "local-1a35b81",
-    "python_module": "ComfyUI-WanAnimatePreprocess.nodes"
+    "function": "process"
   },
   "OnnxDetectionModelLoader": {
+    "pack": "ComfyUI-WanAnimatePreprocess",
+    "pack_version": "local-1a35b81",
+    "python_module": "ComfyUI-WanAnimatePreprocess.nodes",
     "category": "WanAnimatePreprocess",
-    "description": "",
+    "name": "OnnxDetectionModelLoader",
     "display_name": "Loads ONNX models for pose and face detection. ViTPose for pose estimation and YOLO for object detection.",
-    "function": "loadmodel",
+    "description": "",
+    "inputs": {
+      "required": {
+        "vitpose_model": [
+          [],
+          {
+            "tooltip": "These models are loaded from the 'ComfyUI/models/detection' -folder"
+          }
+        ],
+        "yolo_model": [
+          [],
+          {
+            "tooltip": "These models are loaded from the 'ComfyUI/models/detection' -folder"
+          }
+        ],
+        "onnx_device": [
+          [
+            "CUDAExecutionProvider",
+            "CPUExecutionProvider"
+          ],
+          {
+            "default": "CUDAExecutionProvider",
+            "tooltip": "Device to run the ONNX models on"
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "vitpose_model",
@@ -126,33 +155,6 @@
       "yolo_model",
       "onnx_device"
     ],
-    "inputs": {
-      "required": {
-        "onnx_device": [
-          [
-            "CUDAExecutionProvider",
-            "CPUExecutionProvider"
-          ],
-          {
-            "default": "CUDAExecutionProvider",
-            "tooltip": "Device to run the ONNX models on"
-          }
-        ],
-        "vitpose_model": [
-          [],
-          {
-            "tooltip": "These models are loaded from the 'ComfyUI/models/detection' -folder"
-          }
-        ],
-        "yolo_model": [
-          [],
-          {
-            "tooltip": "These models are loaded from the 'ComfyUI/models/detection' -folder"
-          }
-        ]
-      }
-    },
-    "name": "OnnxDetectionModelLoader",
     "object_info_widget_order": [
       "vitpose_model",
       "yolo_model",
@@ -160,30 +162,80 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "POSEMODEL",
         "name": "model",
-        "type": "POSEMODEL"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-WanAnimatePreprocess",
-    "pack_version": "local-1a35b81",
-    "python_module": "ComfyUI-WanAnimatePreprocess.nodes"
+    "function": "loadmodel"
   },
   "PoseAndFaceDetection": {
+    "pack": "ComfyUI-WanAnimatePreprocess",
+    "pack_version": "local-1a35b81",
+    "python_module": "ComfyUI-WanAnimatePreprocess.nodes",
     "category": "WanAnimatePreprocess",
-    "description": "",
+    "name": "PoseAndFaceDetection",
     "display_name": "Detects human poses and face images from input images. Optionally retargets poses based on a reference image.",
-    "function": "process",
+    "description": "",
+    "inputs": {
+      "required": {
+        "model": [
+          "POSEMODEL"
+        ],
+        "images": [
+          "IMAGE"
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 832,
+            "min": 64,
+            "max": 2048,
+            "step": 1,
+            "tooltip": "Width of the generation"
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 480,
+            "min": 64,
+            "max": 2048,
+            "step": 1,
+            "tooltip": "Height of the generation"
+          }
+        ]
+      },
+      "optional": {
+        "retarget_image": [
+          "IMAGE",
+          {
+            "default": null,
+            "tooltip": "Optional reference image for pose retargeting"
+          }
+        ],
+        "face_padding": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 512,
+            "step": 1,
+            "tooltip": "When > 0, the detected face images are padded and resized to 512x512"
+          }
+        ]
+      }
+    },
     "input_order": {
-      "optional": [
-        "retarget_image",
-        "face_padding"
-      ],
       "required": [
         "model",
         "images",
         "width",
         "height"
+      ],
+      "optional": [
+        "retarget_image",
+        "face_padding"
       ]
     },
     "input_order_all": [
@@ -194,56 +246,6 @@
       "retarget_image",
       "face_padding"
     ],
-    "inputs": {
-      "optional": {
-        "face_padding": [
-          "INT",
-          {
-            "default": 0,
-            "max": 512,
-            "min": 0,
-            "step": 1,
-            "tooltip": "When > 0, the detected face images are padded and resized to 512x512"
-          }
-        ],
-        "retarget_image": [
-          "IMAGE",
-          {
-            "default": null,
-            "tooltip": "Optional reference image for pose retargeting"
-          }
-        ]
-      },
-      "required": {
-        "height": [
-          "INT",
-          {
-            "default": 480,
-            "max": 2048,
-            "min": 64,
-            "step": 1,
-            "tooltip": "Height of the generation"
-          }
-        ],
-        "images": [
-          "IMAGE"
-        ],
-        "model": [
-          "POSEMODEL"
-        ],
-        "width": [
-          "INT",
-          {
-            "default": 832,
-            "max": 2048,
-            "min": 64,
-            "step": 1,
-            "tooltip": "Width of the generation"
-          }
-        ]
-      }
-    },
-    "name": "PoseAndFaceDetection",
     "object_info_widget_order": [
       "model",
       null,
@@ -254,75 +256,69 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "POSEDATA",
         "name": "pose_data",
-        "type": "POSEDATA"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "face_images",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "key_frame_body_points",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "BBOX",
         "name": "bboxes",
-        "type": "BBOX"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "BBOX,",
         "name": "face_bboxes",
-        "type": "BBOX,"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-WanAnimatePreprocess",
-    "pack_version": "local-1a35b81",
-    "python_module": "ComfyUI-WanAnimatePreprocess.nodes"
+    "function": "process"
   },
   "PoseDetectionOneToAllAnimation": {
+    "pack": "ComfyUI-WanAnimatePreprocess",
+    "pack_version": "local-1a35b81",
+    "python_module": "ComfyUI-WanAnimatePreprocess.nodes",
     "category": "WanAnimatePreprocess",
-    "description": "",
+    "name": "PoseDetectionOneToAllAnimation",
     "display_name": "Specialized pose detection and alignment for OneToAllAnimation model https://github.com/ssj9596/One-to-All-Animation. Detects poses from input images and aligns them based on a reference image if provided.",
-    "function": "process",
-    "input_order": {
-      "optional": [
-        "ref_image"
-      ],
-      "required": [
-        "model",
-        "images",
-        "width",
-        "height",
-        "align_to",
-        "draw_face_points",
-        "draw_head"
-      ]
-    },
-    "input_order_all": [
-      "model",
-      "images",
-      "width",
-      "height",
-      "align_to",
-      "draw_face_points",
-      "draw_head",
-      "ref_image"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "ref_image": [
-          "IMAGE",
-          {
-            "default": null,
-            "tooltip": "Optional reference image for pose retargeting"
-          }
-        ]
-      },
       "required": {
+        "model": [
+          "POSEMODEL"
+        ],
+        "images": [
+          "IMAGE"
+        ],
+        "width": [
+          "INT",
+          {
+            "default": 832,
+            "min": 64,
+            "max": 2048,
+            "step": 2,
+            "tooltip": "Width of the generation"
+          }
+        ],
+        "height": [
+          "INT",
+          {
+            "default": 480,
+            "min": 64,
+            "max": 2048,
+            "step": 2,
+            "tooltip": "Height of the generation"
+          }
+        ],
         "align_to": [
           [
             "ref",
@@ -355,36 +351,42 @@
             "default": "full",
             "tooltip": "Whether to draw head keypoints on the pose images"
           }
-        ],
-        "height": [
-          "INT",
+        ]
+      },
+      "optional": {
+        "ref_image": [
+          "IMAGE",
           {
-            "default": 480,
-            "max": 2048,
-            "min": 64,
-            "step": 2,
-            "tooltip": "Height of the generation"
-          }
-        ],
-        "images": [
-          "IMAGE"
-        ],
-        "model": [
-          "POSEMODEL"
-        ],
-        "width": [
-          "INT",
-          {
-            "default": 832,
-            "max": 2048,
-            "min": 64,
-            "step": 2,
-            "tooltip": "Width of the generation"
+            "default": null,
+            "tooltip": "Optional reference image for pose retargeting"
           }
         ]
       }
     },
-    "name": "PoseDetectionOneToAllAnimation",
+    "input_order": {
+      "required": [
+        "model",
+        "images",
+        "width",
+        "height",
+        "align_to",
+        "draw_face_points",
+        "draw_head"
+      ],
+      "optional": [
+        "ref_image"
+      ]
+    },
+    "input_order_all": [
+      "model",
+      "images",
+      "width",
+      "height",
+      "align_to",
+      "draw_face_points",
+      "draw_head",
+      "ref_image"
+    ],
     "object_info_widget_order": [
       "model",
       null,
@@ -397,35 +399,43 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "pose_images",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "ref_pose_image",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "IMAGE",
         "name": "ref_image",
-        "type": "IMAGE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "MASK",
         "name": "ref_mask",
-        "type": "MASK"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-WanAnimatePreprocess",
-    "pack_version": "local-1a35b81",
-    "python_module": "ComfyUI-WanAnimatePreprocess.nodes"
+    "function": "process"
   },
   "PoseRetargetPromptHelper": {
+    "pack": "ComfyUI-WanAnimatePreprocess",
+    "pack_version": "local-1a35b81",
+    "python_module": "ComfyUI-WanAnimatePreprocess.nodes",
     "category": "WanAnimatePreprocess",
-    "description": "",
+    "name": "PoseRetargetPromptHelper",
     "display_name": "Generates text prompts for pose retargeting based on visibility of arms and legs in the template pose. Originally used for Flux Kontext",
-    "function": "process",
+    "description": "",
+    "inputs": {
+      "required": {
+        "pose_data": [
+          "POSEDATA"
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "pose_data"
@@ -434,31 +444,21 @@
     "input_order_all": [
       "pose_data"
     ],
-    "inputs": {
-      "required": {
-        "pose_data": [
-          "POSEDATA"
-        ]
-      }
-    },
-    "name": "PoseRetargetPromptHelper",
     "object_info_widget_order": [
       "pose_data"
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "prompt",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "retarget_prompt",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-WanAnimatePreprocess",
-    "pack_version": "local-1a35b81",
-    "python_module": "ComfyUI-WanAnimatePreprocess.nodes"
+    "function": "process"
   }
 }

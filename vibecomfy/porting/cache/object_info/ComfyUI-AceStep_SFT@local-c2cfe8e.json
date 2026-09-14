@@ -1,10 +1,340 @@
 {
   "AceStepSFTGenerate": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTGenerate",
     "display_name": "AceStepSFTGenerate",
-    "function": "generate",
+    "description": "",
+    "inputs": {
+      "required": {
+        "model": [
+          "MODEL",
+          {
+            "tooltip": "AceStep 1.5 diffusion model (from Load Diffusion Model or with LoRA applied)."
+          }
+        ],
+        "positive": [
+          "CONDITIONING",
+          {
+            "tooltip": "Positive conditioning from AceStep 1.5 SFT TextEncode."
+          }
+        ],
+        "negative": [
+          "CONDITIONING",
+          {
+            "tooltip": "Negative conditioning from AceStep 1.5 SFT TextEncode."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615,
+            "control_after_generate": true
+          }
+        ],
+        "steps": [
+          "INT",
+          {
+            "default": 50,
+            "min": 1,
+            "max": 200,
+            "step": 1,
+            "tooltip": "Diffusion inference steps."
+          }
+        ],
+        "cfg": [
+          "FLOAT",
+          {
+            "default": 7.0,
+            "min": 1.0,
+            "max": 20.0,
+            "step": 0.1,
+            "tooltip": "Classifier-free guidance scale."
+          }
+        ],
+        "sampler_name": [
+          "<class '__main__.KSampler.SAMPLERS'>",
+          {
+            "default": "euler"
+          }
+        ],
+        "scheduler": [
+          "<class '__main__.KSampler.SCHEDULERS'>",
+          {
+            "default": "normal"
+          }
+        ],
+        "denoise": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01,
+            "tooltip": "Denoise strength. 1.0 = full generation. < 1.0 requires latent_or_audio."
+          }
+        ],
+        "duration": [
+          "FLOAT",
+          {
+            "default": 60.0,
+            "min": 0.0,
+            "max": 600.0,
+            "step": 0.1,
+            "tooltip": "Duration in seconds. Set to 0 for auto from latent_or_audio."
+          }
+        ],
+        "infer_method": [
+          [
+            "ode",
+            "sde"
+          ],
+          {
+            "default": "ode",
+            "tooltip": "ode = deterministic diffusion. sde = stochastic (remaps sampler)."
+          }
+        ],
+        "guidance_mode": [
+          [
+            "apg",
+            "adg",
+            "standard_cfg"
+          ],
+          {
+            "default": "apg",
+            "tooltip": "APG = Adaptive Projected Guidance. ADG = Angle-based Dynamic Guidance. standard_cfg = normal CFG."
+          }
+        ]
+      },
+      "optional": {
+        "vae": [
+          "VAE",
+          {
+            "tooltip": "VAE for decoding latents to audio. Audio output requires this."
+          }
+        ],
+        "latent_or_audio": [
+          "AUDIO,LATENT",
+          {
+            "tooltip": "Base input for refinement (img2img). Use denoise < 1.0."
+          }
+        ],
+        "batch_size": [
+          "INT",
+          {
+            "default": 1,
+            "min": 1,
+            "max": 16,
+            "tooltip": "Number of audios to generate in parallel."
+          }
+        ],
+        "latent_shift": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -0.2,
+            "max": 0.2,
+            "step": 0.01,
+            "tooltip": "Additive shift on latents before VAE decode."
+          }
+        ],
+        "latent_rescale": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": 0.5,
+            "max": 1.5,
+            "step": 0.01,
+            "tooltip": "Multiplicative scale on latents before VAE decode."
+          }
+        ],
+        "fade_in_duration": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": 0.0,
+            "max": 10.0,
+            "step": 0.1
+          }
+        ],
+        "fade_out_duration": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": 0.0,
+            "max": 10.0,
+            "step": 0.1
+          }
+        ],
+        "use_tiled_vae": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Use tiled VAE for long audio / low VRAM."
+          }
+        ],
+        "unload_models_after_generate": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Unload models from memory after generation."
+          }
+        ],
+        "voice_boost": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -12.0,
+            "max": 12.0,
+            "step": 0.5,
+            "tooltip": "Voice boost in dB."
+          }
+        ],
+        "apg_eta": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -10.0,
+            "max": 10.0,
+            "step": 0.05,
+            "tooltip": "APG eta: parallel component retention."
+          }
+        ],
+        "apg_momentum": [
+          "FLOAT",
+          {
+            "default": -0.75,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.05,
+            "tooltip": "APG momentum buffer coefficient."
+          }
+        ],
+        "apg_norm_threshold": [
+          "FLOAT",
+          {
+            "default": 2.5,
+            "min": 0.0,
+            "max": 15.0,
+            "step": 0.1,
+            "tooltip": "APG norm threshold for gradient clipping."
+          }
+        ],
+        "guidance_interval": [
+          "FLOAT",
+          {
+            "default": 0.5,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.01,
+            "tooltip": "Guidance interval width. -1 = use legacy cfg_interval_start/end."
+          }
+        ],
+        "guidance_interval_decay": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.01
+          }
+        ],
+        "min_guidance_scale": [
+          "FLOAT",
+          {
+            "default": 3.0,
+            "min": 0.0,
+            "max": 30.0,
+            "step": 0.1
+          }
+        ],
+        "guidance_scale_text": [
+          "FLOAT",
+          {
+            "default": -1.0,
+            "min": -1.0,
+            "max": 30.0,
+            "step": 0.1,
+            "tooltip": "Split text guidance. Active when both text and lyric > 1.0."
+          }
+        ],
+        "guidance_scale_lyric": [
+          "FLOAT",
+          {
+            "default": -1.0,
+            "min": -1.0,
+            "max": 30.0,
+            "step": 0.1,
+            "tooltip": "Split lyric guidance. Active when both text and lyric > 1.0."
+          }
+        ],
+        "omega_scale": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -8.0,
+            "max": 8.0,
+            "step": 0.05
+          }
+        ],
+        "erg_scale": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": -0.9,
+            "max": 2.0,
+            "step": 0.05
+          }
+        ],
+        "cfg_interval_start": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.05
+          }
+        ],
+        "cfg_interval_end": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.05
+          }
+        ],
+        "shift": [
+          "FLOAT",
+          {
+            "default": 3.0,
+            "min": 0.0,
+            "max": 5.0,
+            "step": 0.1,
+            "tooltip": "Timestep schedule shift. ACEStep15 default is 3.0."
+          }
+        ]
+      }
+    },
     "input_order": {
+      "required": [
+        "model",
+        "positive",
+        "negative",
+        "seed",
+        "steps",
+        "cfg",
+        "sampler_name",
+        "scheduler",
+        "denoise",
+        "duration",
+        "infer_method",
+        "guidance_mode"
+      ],
       "optional": [
         "vae",
         "latent_or_audio",
@@ -29,20 +359,6 @@
         "cfg_interval_start",
         "cfg_interval_end",
         "shift"
-      ],
-      "required": [
-        "model",
-        "positive",
-        "negative",
-        "seed",
-        "steps",
-        "cfg",
-        "sampler_name",
-        "scheduler",
-        "denoise",
-        "duration",
-        "infer_method",
-        "guidance_mode"
       ]
     },
     "input_order_all": [
@@ -82,320 +398,6 @@
       "cfg_interval_end",
       "shift"
     ],
-    "inputs": {
-      "optional": {
-        "apg_eta": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 10.0,
-            "min": -10.0,
-            "step": 0.05,
-            "tooltip": "APG eta: parallel component retention."
-          }
-        ],
-        "apg_momentum": [
-          "FLOAT",
-          {
-            "default": -0.75,
-            "max": 1.0,
-            "min": -1.0,
-            "step": 0.05,
-            "tooltip": "APG momentum buffer coefficient."
-          }
-        ],
-        "apg_norm_threshold": [
-          "FLOAT",
-          {
-            "default": 2.5,
-            "max": 15.0,
-            "min": 0.0,
-            "step": 0.1,
-            "tooltip": "APG norm threshold for gradient clipping."
-          }
-        ],
-        "batch_size": [
-          "INT",
-          {
-            "default": 1,
-            "max": 16,
-            "min": 1,
-            "tooltip": "Number of audios to generate in parallel."
-          }
-        ],
-        "cfg_interval_end": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.05
-          }
-        ],
-        "cfg_interval_start": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.05
-          }
-        ],
-        "erg_scale": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 2.0,
-            "min": -0.9,
-            "step": 0.05
-          }
-        ],
-        "fade_in_duration": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 10.0,
-            "min": 0.0,
-            "step": 0.1
-          }
-        ],
-        "fade_out_duration": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 10.0,
-            "min": 0.0,
-            "step": 0.1
-          }
-        ],
-        "guidance_interval": [
-          "FLOAT",
-          {
-            "default": 0.5,
-            "max": 1.0,
-            "min": -1.0,
-            "step": 0.01,
-            "tooltip": "Guidance interval width. -1 = use legacy cfg_interval_start/end."
-          }
-        ],
-        "guidance_interval_decay": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.01
-          }
-        ],
-        "guidance_scale_lyric": [
-          "FLOAT",
-          {
-            "default": -1.0,
-            "max": 30.0,
-            "min": -1.0,
-            "step": 0.1,
-            "tooltip": "Split lyric guidance. Active when both text and lyric > 1.0."
-          }
-        ],
-        "guidance_scale_text": [
-          "FLOAT",
-          {
-            "default": -1.0,
-            "max": 30.0,
-            "min": -1.0,
-            "step": 0.1,
-            "tooltip": "Split text guidance. Active when both text and lyric > 1.0."
-          }
-        ],
-        "latent_or_audio": [
-          "AUDIO,LATENT",
-          {
-            "tooltip": "Base input for refinement (img2img). Use denoise < 1.0."
-          }
-        ],
-        "latent_rescale": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 1.5,
-            "min": 0.5,
-            "step": 0.01,
-            "tooltip": "Multiplicative scale on latents before VAE decode."
-          }
-        ],
-        "latent_shift": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 0.2,
-            "min": -0.2,
-            "step": 0.01,
-            "tooltip": "Additive shift on latents before VAE decode."
-          }
-        ],
-        "min_guidance_scale": [
-          "FLOAT",
-          {
-            "default": 3.0,
-            "max": 30.0,
-            "min": 0.0,
-            "step": 0.1
-          }
-        ],
-        "omega_scale": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 8.0,
-            "min": -8.0,
-            "step": 0.05
-          }
-        ],
-        "shift": [
-          "FLOAT",
-          {
-            "default": 3.0,
-            "max": 5.0,
-            "min": 0.0,
-            "step": 0.1,
-            "tooltip": "Timestep schedule shift. ACEStep15 default is 3.0."
-          }
-        ],
-        "unload_models_after_generate": [
-          "BOOLEAN",
-          {
-            "default": false,
-            "tooltip": "Unload models from memory after generation."
-          }
-        ],
-        "use_tiled_vae": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Use tiled VAE for long audio / low VRAM."
-          }
-        ],
-        "vae": [
-          "VAE",
-          {
-            "tooltip": "VAE for decoding latents to audio. Audio output requires this."
-          }
-        ],
-        "voice_boost": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 12.0,
-            "min": -12.0,
-            "step": 0.5,
-            "tooltip": "Voice boost in dB."
-          }
-        ]
-      },
-      "required": {
-        "cfg": [
-          "FLOAT",
-          {
-            "default": 7.0,
-            "max": 20.0,
-            "min": 1.0,
-            "step": 0.1,
-            "tooltip": "Classifier-free guidance scale."
-          }
-        ],
-        "denoise": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.01,
-            "tooltip": "Denoise strength. 1.0 = full generation. < 1.0 requires latent_or_audio."
-          }
-        ],
-        "duration": [
-          "FLOAT",
-          {
-            "default": 60.0,
-            "max": 600.0,
-            "min": 0.0,
-            "step": 0.1,
-            "tooltip": "Duration in seconds. Set to 0 for auto from latent_or_audio."
-          }
-        ],
-        "guidance_mode": [
-          [
-            "apg",
-            "adg",
-            "standard_cfg"
-          ],
-          {
-            "default": "apg",
-            "tooltip": "APG = Adaptive Projected Guidance. ADG = Angle-based Dynamic Guidance. standard_cfg = normal CFG."
-          }
-        ],
-        "infer_method": [
-          [
-            "ode",
-            "sde"
-          ],
-          {
-            "default": "ode",
-            "tooltip": "ode = deterministic diffusion. sde = stochastic (remaps sampler)."
-          }
-        ],
-        "model": [
-          "MODEL",
-          {
-            "tooltip": "AceStep 1.5 diffusion model (from Load Diffusion Model or with LoRA applied)."
-          }
-        ],
-        "negative": [
-          "CONDITIONING",
-          {
-            "tooltip": "Negative conditioning from AceStep 1.5 SFT TextEncode."
-          }
-        ],
-        "positive": [
-          "CONDITIONING",
-          {
-            "tooltip": "Positive conditioning from AceStep 1.5 SFT TextEncode."
-          }
-        ],
-        "sampler_name": [
-          "<class '__main__.KSampler.SAMPLERS'>",
-          {
-            "default": "euler"
-          }
-        ],
-        "scheduler": [
-          "<class '__main__.KSampler.SCHEDULERS'>",
-          {
-            "default": "normal"
-          }
-        ],
-        "seed": [
-          "INT",
-          {
-            "control_after_generate": true,
-            "default": 0,
-            "max": 18446744073709551615,
-            "min": 0
-          }
-        ],
-        "steps": [
-          "INT",
-          {
-            "default": 50,
-            "max": 200,
-            "min": 1,
-            "step": 1,
-            "tooltip": "Diffusion inference steps."
-          }
-        ]
-      }
-    },
-    "name": "AceStepSFTGenerate",
     "object_info_widget_order": [
       null,
       null,
@@ -435,45 +437,88 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "MODEL",
         "name": "model",
-        "type": "MODEL"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "VAE",
         "name": "vae",
-        "type": "VAE"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "CONDITIONING",
         "name": "positive",
-        "type": "CONDITIONING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "CONDITIONING",
         "name": "negative",
-        "type": "CONDITIONING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "LATENT",
         "name": "latent",
-        "type": "LATENT"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "AUDIO",
         "name": "audio",
-        "type": "AUDIO"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "generate"
   },
   "AceStepSFTLoraLoader": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTLoraLoader",
     "display_name": "AceStepSFTLoraLoader",
-    "function": "load_lora",
+    "description": "",
+    "inputs": {
+      "required": {
+        "model": [
+          "MODEL",
+          {
+            "tooltip": "MODEL from Model Loader or previous Lora Loader."
+          }
+        ],
+        "clip": [
+          "CLIP",
+          {
+            "tooltip": "CLIP from Model Loader or previous Lora Loader."
+          }
+        ],
+        "lora_name": [
+          [],
+          {
+            "tooltip": "Adapter file to apply: LoRA, DoRA, LoKr, LoHa, OFT. PEFT/Kohya/LyCORIS/Diffusers/OneTrainer naming is auto-remapped."
+          }
+        ],
+        "strength_model": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": -100.0,
+            "max": 100.0,
+            "step": 0.01,
+            "tooltip": "How strongly to modify the diffusion model."
+          }
+        ],
+        "strength_clip": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": -100.0,
+            "max": 100.0,
+            "step": 0.01,
+            "tooltip": "How strongly to modify the CLIP/text encoder model."
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "model",
@@ -490,49 +535,6 @@
       "strength_model",
       "strength_clip"
     ],
-    "inputs": {
-      "required": {
-        "clip": [
-          "CLIP",
-          {
-            "tooltip": "CLIP from Model Loader or previous Lora Loader."
-          }
-        ],
-        "lora_name": [
-          [],
-          {
-            "tooltip": "Adapter file to apply: LoRA, DoRA, LoKr, LoHa, OFT. PEFT/Kohya/LyCORIS/Diffusers/OneTrainer naming is auto-remapped."
-          }
-        ],
-        "model": [
-          "MODEL",
-          {
-            "tooltip": "MODEL from Model Loader or previous Lora Loader."
-          }
-        ],
-        "strength_clip": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 100.0,
-            "min": -100.0,
-            "step": 0.01,
-            "tooltip": "How strongly to modify the CLIP/text encoder model."
-          }
-        ],
-        "strength_model": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 100.0,
-            "min": -100.0,
-            "step": 0.01,
-            "tooltip": "How strongly to modify the diffusion model."
-          }
-        ]
-      }
-    },
-    "name": "AceStepSFTLoraLoader",
     "object_info_widget_order": [
       null,
       null,
@@ -542,39 +544,26 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "MODEL",
         "name": "model",
-        "type": "MODEL"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "CLIP",
         "name": "clip",
-        "type": "CLIP"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "load_lora"
   },
   "AceStepSFTModelLoader": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTModelLoader",
     "display_name": "AceStepSFTModelLoader",
-    "function": "load_model",
-    "input_order": {
-      "required": [
-        "diffusion_model",
-        "text_encoder_1",
-        "text_encoder_2",
-        "vae_name"
-      ]
-    },
-    "input_order_all": [
-      "diffusion_model",
-      "text_encoder_1",
-      "text_encoder_2",
-      "vae_name"
-    ],
+    "description": "",
     "inputs": {
       "required": {
         "diffusion_model": [
@@ -603,7 +592,20 @@
         ]
       }
     },
-    "name": "AceStepSFTModelLoader",
+    "input_order": {
+      "required": [
+        "diffusion_model",
+        "text_encoder_1",
+        "text_encoder_2",
+        "vae_name"
+      ]
+    },
+    "input_order_all": [
+      "diffusion_model",
+      "text_encoder_1",
+      "text_encoder_2",
+      "vae_name"
+    ],
     "object_info_widget_order": [
       "diffusion_model",
       "text_encoder_1",
@@ -612,31 +614,155 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "MODEL",
         "name": "model",
-        "type": "MODEL"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "CLIP",
         "name": "clip",
-        "type": "CLIP"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "VAE",
         "name": "vae",
-        "type": "VAE"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "load_model"
   },
   "AceStepSFTMusicAnalyzer": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTMusicAnalyzer",
     "display_name": "AceStepSFTMusicAnalyzer",
-    "function": "analyze",
+    "description": "",
+    "inputs": {
+      "required": {
+        "audio": [
+          "AUDIO",
+          {
+            "tooltip": "Audio to analyze for style, BPM and key/scale."
+          }
+        ],
+        "get_tags": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Extract descriptive tags from the audio using the native ACE-Step transcriber."
+          }
+        ],
+        "get_bpm": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Detect BPM from audio using librosa."
+          }
+        ],
+        "get_keyscale": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Detect key and scale from audio using librosa."
+          }
+        ]
+      },
+      "optional": {
+        "max_new_tokens": [
+          "INT",
+          {
+            "default": 256,
+            "min": 64,
+            "max": 2000,
+            "step": 16,
+            "tooltip": "Maximum tokens for the native ACE-Step transcription output. Higher values preserve more lyric/structure detail."
+          }
+        ],
+        "audio_duration": [
+          "INT",
+          {
+            "default": 60,
+            "min": 10,
+            "max": 300,
+            "step": 5,
+            "tooltip": "Max seconds of audio to analyze (center crop). ACE-Step Transcriber benefits from more context for sections and lyrics."
+          }
+        ],
+        "unload_model": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Unload the ACE-Step transcriber after use to free VRAM for generation."
+          }
+        ],
+        "use_flash_attn": [
+          "BOOLEAN",
+          {
+            "default": false,
+            "tooltip": "Use FlashAttention-2 for the ACE-Step transcriber. Requires flash-attn package installed. Faster and uses less VRAM."
+          }
+        ],
+        "temperature": [
+          "FLOAT",
+          {
+            "default": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "step": 0.05,
+            "tooltip": "Sampling temperature for transcription generation. 0 = deterministic and recommended for stable structure extraction."
+          }
+        ],
+        "top_p": [
+          "FLOAT",
+          {
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.05,
+            "tooltip": "Nucleus sampling for transcription generation. Keep at 1.0 for native deterministic behavior unless you are experimenting."
+          }
+        ],
+        "top_k": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 200,
+            "step": 1,
+            "tooltip": "Top-K sampling for transcription generation. 0 preserves the native default behavior."
+          }
+        ],
+        "repetition_penalty": [
+          "FLOAT",
+          {
+            "default": 1.1,
+            "min": 1.0,
+            "max": 3.0,
+            "step": 0.05,
+            "tooltip": "Penalty against repeated tokens in the transcription output. 1.1 is a mild safeguard against loops."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615,
+            "control_after_generate": true,
+            "tooltip": "Random seed for reproducible transcription generation when sampling is enabled."
+          }
+        ]
+      }
+    },
     "input_order": {
+      "required": [
+        "audio",
+        "get_tags",
+        "get_bpm",
+        "get_keyscale"
+      ],
       "optional": [
         "max_new_tokens",
         "audio_duration",
@@ -647,12 +773,6 @@
         "top_k",
         "repetition_penalty",
         "seed"
-      ],
-      "required": [
-        "audio",
-        "get_tags",
-        "get_bpm",
-        "get_keyscale"
       ]
     },
     "input_order_all": [
@@ -670,124 +790,6 @@
       "repetition_penalty",
       "seed"
     ],
-    "inputs": {
-      "optional": {
-        "audio_duration": [
-          "INT",
-          {
-            "default": 60,
-            "max": 300,
-            "min": 10,
-            "step": 5,
-            "tooltip": "Max seconds of audio to analyze (center crop). ACE-Step Transcriber benefits from more context for sections and lyrics."
-          }
-        ],
-        "max_new_tokens": [
-          "INT",
-          {
-            "default": 256,
-            "max": 2000,
-            "min": 64,
-            "step": 16,
-            "tooltip": "Maximum tokens for the native ACE-Step transcription output. Higher values preserve more lyric/structure detail."
-          }
-        ],
-        "repetition_penalty": [
-          "FLOAT",
-          {
-            "default": 1.1,
-            "max": 3.0,
-            "min": 1.0,
-            "step": 0.05,
-            "tooltip": "Penalty against repeated tokens in the transcription output. 1.1 is a mild safeguard against loops."
-          }
-        ],
-        "seed": [
-          "INT",
-          {
-            "control_after_generate": true,
-            "default": 0,
-            "max": 18446744073709551615,
-            "min": 0,
-            "tooltip": "Random seed for reproducible transcription generation when sampling is enabled."
-          }
-        ],
-        "temperature": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 2.0,
-            "min": 0.0,
-            "step": 0.05,
-            "tooltip": "Sampling temperature for transcription generation. 0 = deterministic and recommended for stable structure extraction."
-          }
-        ],
-        "top_k": [
-          "INT",
-          {
-            "default": 0,
-            "max": 200,
-            "min": 0,
-            "step": 1,
-            "tooltip": "Top-K sampling for transcription generation. 0 preserves the native default behavior."
-          }
-        ],
-        "top_p": [
-          "FLOAT",
-          {
-            "default": 1.0,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.05,
-            "tooltip": "Nucleus sampling for transcription generation. Keep at 1.0 for native deterministic behavior unless you are experimenting."
-          }
-        ],
-        "unload_model": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Unload the ACE-Step transcriber after use to free VRAM for generation."
-          }
-        ],
-        "use_flash_attn": [
-          "BOOLEAN",
-          {
-            "default": false,
-            "tooltip": "Use FlashAttention-2 for the ACE-Step transcriber. Requires flash-attn package installed. Faster and uses less VRAM."
-          }
-        ]
-      },
-      "required": {
-        "audio": [
-          "AUDIO",
-          {
-            "tooltip": "Audio to analyze for style, BPM and key/scale."
-          }
-        ],
-        "get_bpm": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Detect BPM from audio using librosa."
-          }
-        ],
-        "get_keyscale": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Detect key and scale from audio using librosa."
-          }
-        ],
-        "get_tags": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Extract descriptive tags from the audio using the native ACE-Step transcriber."
-          }
-        ]
-      }
-    },
-    "name": "AceStepSFTMusicAnalyzer",
     "object_info_widget_order": [
       null,
       "get_tags",
@@ -805,43 +807,36 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "tags",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "INT",
         "name": "bpm",
-        "type": "INT"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "keyscale",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "music_infos",
-        "type": "STRING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "analyze"
   },
   "AceStepSFTPreviewAudio": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTPreviewAudio",
     "display_name": "AceStepSFTPreviewAudio",
-    "function": "preview_audio",
-    "input_order": {
-      "required": [
-        "audio"
-      ]
-    },
-    "input_order_all": [
-      "audio"
-    ],
+    "description": "",
     "inputs": {
       "required": {
         "audio": [
@@ -852,53 +847,29 @@
         ]
       }
     },
-    "name": "AceStepSFTPreviewAudio",
+    "input_order": {
+      "required": [
+        "audio"
+      ]
+    },
+    "input_order_all": [
+      "audio"
+    ],
     "object_info_widget_order": [
       null
     ],
     "outputs": [],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "preview_audio"
   },
   "AceStepSFTSaveAudio": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTSaveAudio",
     "display_name": "AceStepSFTSaveAudio",
-    "function": "save_audio",
-    "input_order": {
-      "optional": [
-        "quality"
-      ],
-      "required": [
-        "audio",
-        "filename_prefix",
-        "format"
-      ]
-    },
-    "input_order_all": [
-      "audio",
-      "filename_prefix",
-      "format",
-      "quality"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "quality": [
-          [
-            "V0",
-            "64k",
-            "96k",
-            "128k",
-            "192k",
-            "320k"
-          ],
-          {
-            "default": "128k",
-            "tooltip": "Quality/bitrate for MP3 and Opus formats. Ignored for FLAC."
-          }
-        ]
-      },
       "required": {
         "audio": [
           "AUDIO",
@@ -924,9 +895,40 @@
             "tooltip": "Audio format to save."
           }
         ]
+      },
+      "optional": {
+        "quality": [
+          [
+            "V0",
+            "64k",
+            "96k",
+            "128k",
+            "192k",
+            "320k"
+          ],
+          {
+            "default": "128k",
+            "tooltip": "Quality/bitrate for MP3 and Opus formats. Ignored for FLAC."
+          }
+        ]
       }
     },
-    "name": "AceStepSFTSaveAudio",
+    "input_order": {
+      "required": [
+        "audio",
+        "filename_prefix",
+        "format"
+      ],
+      "optional": [
+        "quality"
+      ]
+    },
+    "input_order_all": [
+      "audio",
+      "filename_prefix",
+      "format",
+      "quality"
+    ],
     "object_info_widget_order": [
       null,
       "filename_prefix",
@@ -934,187 +936,40 @@
       "quality"
     ],
     "outputs": [],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "save_audio"
   },
   "AceStepSFTTextEncode": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTTextEncode",
     "display_name": "AceStepSFTTextEncode",
-    "function": "encode",
-    "input_order": {
-      "optional": [
-        "generate_audio_codes",
-        "lm_cfg_scale",
-        "lm_temperature",
-        "lm_top_p",
-        "lm_top_k",
-        "lm_min_p",
-        "lm_negative_prompt",
-        "style_tags",
-        "style_bpm",
-        "style_keyscale"
-      ],
-      "required": [
-        "clip",
-        "caption",
-        "lyrics",
-        "instrumental",
-        "seed",
-        "duration",
-        "bpm",
-        "timesignature",
-        "language",
-        "keyscale"
-      ]
-    },
-    "input_order_all": [
-      "clip",
-      "caption",
-      "lyrics",
-      "instrumental",
-      "seed",
-      "duration",
-      "bpm",
-      "timesignature",
-      "language",
-      "keyscale",
-      "generate_audio_codes",
-      "lm_cfg_scale",
-      "lm_temperature",
-      "lm_top_p",
-      "lm_top_k",
-      "lm_min_p",
-      "lm_negative_prompt",
-      "style_tags",
-      "style_bpm",
-      "style_keyscale"
-    ],
+    "description": "",
     "inputs": {
-      "optional": {
-        "generate_audio_codes": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Enable LLM audio code generation for semantic structure."
-          }
-        ],
-        "lm_cfg_scale": [
-          "FLOAT",
-          {
-            "default": 2.0,
-            "max": 100.0,
-            "min": 0.0,
-            "step": 0.1,
-            "tooltip": "LLM classifier-free guidance scale."
-          }
-        ],
-        "lm_min_p": [
-          "FLOAT",
-          {
-            "default": 0.0,
-            "max": 1.0,
-            "min": 0.0,
-            "step": 0.001
-          }
-        ],
-        "lm_negative_prompt": [
-          "STRING",
-          {
-            "default": "",
-            "multiline": true,
-            "placeholder": "Negative prompt for LLM audio code generation",
-            "tooltip": "Negative text prompt for LLM CFG."
-          }
-        ],
-        "lm_temperature": [
-          "FLOAT",
-          {
-            "default": 0.85,
-            "max": 2.0,
-            "min": 0.0,
-            "step": 0.01,
-            "tooltip": "LLM sampling temperature."
-          }
-        ],
-        "lm_top_k": [
-          "INT",
-          {
-            "default": 0,
-            "max": 100,
-            "min": 0
-          }
-        ],
-        "lm_top_p": [
-          "FLOAT",
-          {
-            "default": 0.9,
-            "max": 2000.0,
-            "min": 0.0,
-            "step": 0.01
-          }
-        ],
-        "style_bpm": [
-          "INT",
-          {
-            "default": 0,
-            "forceInput": true,
-            "max": 300,
-            "min": 0,
-            "tooltip": "BPM from the Music Analyzer node. Overrides bpm when > 0."
-          }
-        ],
-        "style_keyscale": [
-          "STRING",
-          {
-            "default": "",
-            "forceInput": true,
-            "tooltip": "Key/scale from the Music Analyzer node. Overrides keyscale when not empty."
-          }
-        ],
-        "style_tags": [
-          "STRING",
-          {
-            "default": "",
-            "forceInput": true,
-            "tooltip": "Tags from the Music Analyzer node. Appended to caption when connected."
-          }
-        ]
-      },
       "required": {
-        "bpm": [
-          "INT",
-          {
-            "default": 0,
-            "max": 300,
-            "min": 0,
-            "tooltip": "Beats per minute. 0 = auto (N/A, let model decide)."
-          }
-        ],
-        "caption": [
-          "STRING",
-          {
-            "default": "",
-            "multiline": true,
-            "placeholder": "Describe the music: genre, mood, instruments, style...",
-            "tooltip": "Text description of the music to generate (tags/caption)."
-          }
-        ],
         "clip": [
           "CLIP",
           {
             "tooltip": "CLIP model (loaded via DualCLIPLoaderAudio or similar)."
           }
         ],
-        "duration": [
-          "FLOAT",
+        "caption": [
+          "STRING",
           {
-            "default": 60.0,
-            "max": 600.0,
-            "min": 0.0,
-            "step": 0.1,
-            "tooltip": "Duration in seconds. Set to 0 for auto duration from lyrics."
+            "multiline": true,
+            "default": "",
+            "placeholder": "Describe the music: genre, mood, instruments, style...",
+            "tooltip": "Text description of the music to generate (tags/caption)."
+          }
+        ],
+        "lyrics": [
+          "STRING",
+          {
+            "multiline": true,
+            "default": "[Instrumental]",
+            "placeholder": "Song lyrics or [Instrumental]",
+            "tooltip": "Lyrics for the music. Use [Instrumental] for instrumental tracks."
           }
         ],
         "instrumental": [
@@ -1122,6 +977,78 @@
           {
             "default": true,
             "tooltip": "Force instrumental mode (overrides lyrics with [Instrumental])."
+          }
+        ],
+        "seed": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 18446744073709551615,
+            "control_after_generate": true
+          }
+        ],
+        "duration": [
+          "FLOAT",
+          {
+            "default": 60.0,
+            "min": 0.0,
+            "max": 600.0,
+            "step": 0.1,
+            "tooltip": "Duration in seconds. Set to 0 for auto duration from lyrics."
+          }
+        ],
+        "bpm": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 300,
+            "tooltip": "Beats per minute. 0 = auto (N/A, let model decide)."
+          }
+        ],
+        "timesignature": [
+          [
+            "auto",
+            "4",
+            "3",
+            "2",
+            "6"
+          ],
+          {
+            "default": "auto",
+            "tooltip": "Time signature numerator. 'auto' = let model decide."
+          }
+        ],
+        "language": [
+          [
+            "en",
+            "ja",
+            "zh",
+            "es",
+            "de",
+            "fr",
+            "pt",
+            "ru",
+            "it",
+            "nl",
+            "pl",
+            "tr",
+            "vi",
+            "cs",
+            "fa",
+            "id",
+            "ko",
+            "uk",
+            "hu",
+            "ar",
+            "sv",
+            "ro",
+            "el"
+          ],
+          {
+            "default": "en",
+            "tooltip": "Language tag for lyrics conditioning."
           }
         ],
         "keyscale": [
@@ -1166,72 +1093,147 @@
             "default": "auto",
             "tooltip": "Key and scale. 'auto' = let model decide."
           }
-        ],
-        "language": [
-          [
-            "en",
-            "ja",
-            "zh",
-            "es",
-            "de",
-            "fr",
-            "pt",
-            "ru",
-            "it",
-            "nl",
-            "pl",
-            "tr",
-            "vi",
-            "cs",
-            "fa",
-            "id",
-            "ko",
-            "uk",
-            "hu",
-            "ar",
-            "sv",
-            "ro",
-            "el"
-          ],
+        ]
+      },
+      "optional": {
+        "generate_audio_codes": [
+          "BOOLEAN",
           {
-            "default": "en",
-            "tooltip": "Language tag for lyrics conditioning."
+            "default": true,
+            "tooltip": "Enable LLM audio code generation for semantic structure."
           }
         ],
-        "lyrics": [
-          "STRING",
+        "lm_cfg_scale": [
+          "FLOAT",
           {
-            "default": "[Instrumental]",
-            "multiline": true,
-            "placeholder": "Song lyrics or [Instrumental]",
-            "tooltip": "Lyrics for the music. Use [Instrumental] for instrumental tracks."
+            "default": 2.0,
+            "min": 0.0,
+            "max": 100.0,
+            "step": 0.1,
+            "tooltip": "LLM classifier-free guidance scale."
           }
         ],
-        "seed": [
+        "lm_temperature": [
+          "FLOAT",
+          {
+            "default": 0.85,
+            "min": 0.0,
+            "max": 2.0,
+            "step": 0.01,
+            "tooltip": "LLM sampling temperature."
+          }
+        ],
+        "lm_top_p": [
+          "FLOAT",
+          {
+            "default": 0.9,
+            "min": 0.0,
+            "max": 2000.0,
+            "step": 0.01
+          }
+        ],
+        "lm_top_k": [
           "INT",
           {
-            "control_after_generate": true,
             "default": 0,
-            "max": 18446744073709551615,
-            "min": 0
+            "min": 0,
+            "max": 100
           }
         ],
-        "timesignature": [
-          [
-            "auto",
-            "4",
-            "3",
-            "2",
-            "6"
-          ],
+        "lm_min_p": [
+          "FLOAT",
           {
-            "default": "auto",
-            "tooltip": "Time signature numerator. 'auto' = let model decide."
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.001
+          }
+        ],
+        "lm_negative_prompt": [
+          "STRING",
+          {
+            "multiline": true,
+            "default": "",
+            "placeholder": "Negative prompt for LLM audio code generation",
+            "tooltip": "Negative text prompt for LLM CFG."
+          }
+        ],
+        "style_tags": [
+          "STRING",
+          {
+            "default": "",
+            "forceInput": true,
+            "tooltip": "Tags from the Music Analyzer node. Appended to caption when connected."
+          }
+        ],
+        "style_bpm": [
+          "INT",
+          {
+            "default": 0,
+            "min": 0,
+            "max": 300,
+            "forceInput": true,
+            "tooltip": "BPM from the Music Analyzer node. Overrides bpm when > 0."
+          }
+        ],
+        "style_keyscale": [
+          "STRING",
+          {
+            "default": "",
+            "forceInput": true,
+            "tooltip": "Key/scale from the Music Analyzer node. Overrides keyscale when not empty."
           }
         ]
       }
     },
-    "name": "AceStepSFTTextEncode",
+    "input_order": {
+      "required": [
+        "clip",
+        "caption",
+        "lyrics",
+        "instrumental",
+        "seed",
+        "duration",
+        "bpm",
+        "timesignature",
+        "language",
+        "keyscale"
+      ],
+      "optional": [
+        "generate_audio_codes",
+        "lm_cfg_scale",
+        "lm_temperature",
+        "lm_top_p",
+        "lm_top_k",
+        "lm_min_p",
+        "lm_negative_prompt",
+        "style_tags",
+        "style_bpm",
+        "style_keyscale"
+      ]
+    },
+    "input_order_all": [
+      "clip",
+      "caption",
+      "lyrics",
+      "instrumental",
+      "seed",
+      "duration",
+      "bpm",
+      "timesignature",
+      "language",
+      "keyscale",
+      "generate_audio_codes",
+      "lm_cfg_scale",
+      "lm_temperature",
+      "lm_top_p",
+      "lm_top_k",
+      "lm_min_p",
+      "lm_negative_prompt",
+      "style_tags",
+      "style_bpm",
+      "style_keyscale"
+    ],
     "object_info_widget_order": [
       null,
       "caption",
@@ -1256,25 +1258,64 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "CONDITIONING",
         "name": "positive",
-        "type": "CONDITIONING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "CONDITIONING",
         "name": "negative",
-        "type": "CONDITIONING"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "encode"
   },
   "AceStepSFTTurboTagAdapter": {
+    "pack": "ComfyUI-AceStep_SFT",
+    "pack_version": "local-c2cfe8e",
+    "python_module": "ComfyUI-AceStep_SFT.nodes",
     "category": "audio/AceStep SFT",
-    "description": "",
+    "name": "AceStepSFTTurboTagAdapter",
     "display_name": "AceStepSFTTurboTagAdapter",
-    "function": "adapt",
+    "description": "",
+    "inputs": {
+      "required": {
+        "turbo_tags": [
+          "STRING",
+          {
+            "multiline": true,
+            "default": "",
+            "placeholder": "Aggressive Brazilian Funk Mandelao, Ritualistic Phonk atmosphere, Heavy distorted 808 bass",
+            "tooltip": "Turbo-style tags or caption to adapt for AceStep 1.5 SFT. Best results when tags are comma-separated."
+          }
+        ],
+        "adaptation_strength": [
+          [
+            "conservative",
+            "balanced",
+            "aggressive"
+          ],
+          {
+            "default": "balanced",
+            "tooltip": "How strongly to rewrite Turbo phrasing into SFT-style tags."
+          }
+        ],
+        "keep_unknown_tags": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Keep tags that were not explicitly mapped, after simplification."
+          }
+        ],
+        "add_sft_bias_tags": [
+          "BOOLEAN",
+          {
+            "default": true,
+            "tooltip": "Add a few extra SFT-oriented anchor tags for genre, groove, and mood."
+          }
+        ]
+      }
+    },
     "input_order": {
       "required": [
         "turbo_tags",
@@ -1289,45 +1330,6 @@
       "keep_unknown_tags",
       "add_sft_bias_tags"
     ],
-    "inputs": {
-      "required": {
-        "adaptation_strength": [
-          [
-            "conservative",
-            "balanced",
-            "aggressive"
-          ],
-          {
-            "default": "balanced",
-            "tooltip": "How strongly to rewrite Turbo phrasing into SFT-style tags."
-          }
-        ],
-        "add_sft_bias_tags": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Add a few extra SFT-oriented anchor tags for genre, groove, and mood."
-          }
-        ],
-        "keep_unknown_tags": [
-          "BOOLEAN",
-          {
-            "default": true,
-            "tooltip": "Keep tags that were not explicitly mapped, after simplification."
-          }
-        ],
-        "turbo_tags": [
-          "STRING",
-          {
-            "default": "",
-            "multiline": true,
-            "placeholder": "Aggressive Brazilian Funk Mandelao, Ritualistic Phonk atmosphere, Heavy distorted 808 bass",
-            "tooltip": "Turbo-style tags or caption to adapt for AceStep 1.5 SFT. Best results when tags are comma-separated."
-          }
-        ]
-      }
-    },
-    "name": "AceStepSFTTurboTagAdapter",
     "object_info_widget_order": [
       "turbo_tags",
       "adaptation_strength",
@@ -1336,28 +1338,26 @@
     ],
     "outputs": [
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "sft_tags",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "STRING",
         "name": "notes",
-        "type": "STRING"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "FLOAT",
         "name": "suggested_cfg",
-        "type": "FLOAT"
+        "is_list": false
       },
       {
-        "is_list": false,
+        "type": "INT",
         "name": "suggested_steps",
-        "type": "INT"
+        "is_list": false
       }
     ],
-    "pack": "ComfyUI-AceStep_SFT",
-    "pack_version": "local-c2cfe8e",
-    "python_module": "ComfyUI-AceStep_SFT.nodes"
+    "function": "adapt"
   }
 }
