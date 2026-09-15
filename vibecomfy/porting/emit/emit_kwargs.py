@@ -843,6 +843,18 @@ def _edge_ref_expr(
             return var_names[from_node_str]
         safe_name = _safe_output_name(workflow_nodes, from_node_str, from_slot)
         if safe_name is not None:
+            source_node = workflow_nodes.get(from_node_str) if workflow_nodes is not None else None
+            source_metadata = getattr(source_node, "metadata", {}) if source_node is not None else {}
+            # First-class Python declarations return ``Handles`` keyed by
+            # semantic output name. They intentionally do not expose the
+            # native builder's ``.out(...)`` method, so preserve the named
+            # handle when a generated downstream call consumes one.
+            if isinstance(source_metadata, Mapping) and (
+                "python_authoring" in source_metadata or "python_source" in source_metadata
+            ):
+                if safe_name.isidentifier():
+                    return f"{var_names[from_node_str]}.{safe_name}"
+                return f"{var_names[from_node_str]}[{safe_name!r}]"
             return f"{var_names[from_node_str]}.out({safe_name!r})"
         if diagnostics is not None and workflow_nodes is not None:
             _output_fallback_diagnostic(

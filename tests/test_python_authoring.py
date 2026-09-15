@@ -140,6 +140,32 @@ def test_canonical_emitter_writes_readable_definition_and_reloads_it(tmp_path: P
     assert rebuilt.nodes[second.value.node_id].inputs["in_1"] == 4
 
 
+def test_canonical_emitter_uses_named_python_handle_for_downstream_wrapper(tmp_path: Path) -> None:
+    from vibecomfy.nodes.core import SaveImage
+    from vibecomfy.porting.emitter import emit_scratchpad_python
+
+    workflow = VibeWorkflow("python-node-downstream", WorkflowSource("python-node-downstream"))
+    image = invert(workflow, image=7)
+    SaveImage(workflow, images=image.image, filename_prefix="python-node-downstream")
+
+    emitted = emit_scratchpad_python(workflow, workflow_id=workflow.id)
+    assert ".image" in emitted
+    assert ".out('image')" not in emitted
+    ast.parse(emitted)
+
+    path = tmp_path / "workflow.py"
+    path.write_text(emitted, encoding="utf-8")
+    module_spec = importlib.util.spec_from_file_location("emitted_python_node_downstream", path)
+    assert module_spec is not None and module_spec.loader is not None
+    module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
+    rebuilt = module.build()
+    save_node = next(node for node in rebuilt.nodes.values() if node.class_type == "SaveImage")
+    assert [(edge.from_node, edge.from_output, edge.to_node, edge.to_input) for edge in rebuilt.edges] == [
+        ("1", "0", save_node.id, "images")
+    ]
+
+
 def test_invalid_variadic_declaration_is_rejected_during_decoration() -> None:
     with pytest.raises(PythonAuthoringError, match="variadic"):
 
