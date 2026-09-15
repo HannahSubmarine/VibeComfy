@@ -291,9 +291,18 @@ def _node_output_names(node: Any) -> list[str]:
     # metadata may expose a localized display label (for example ``Audio VAE``)
     # while the authored link names the actual socket ``VAE``.  Prefer the
     # native roster so registry enrichment cannot make a valid link ambiguous.
+    metadata = getattr(node, "metadata", {})
+    # The exec node's native Comfy sockets are the fixed physical ``out_N``
+    # pool, while its declared Python outputs are semantic names.  Once the
+    # latter are present they are the only readable authority for Python
+    # source emission; UI materialization still retains the physical roster.
+    if str(getattr(node, "class_type", "")) == "vibecomfy.exec":
+        semantic_names = metadata.get("output_names") if isinstance(metadata, Mapping) else None
+        if isinstance(semantic_names, (list, tuple)) and semantic_names:
+            return [name if isinstance(name, str) else "" for name in semantic_names]
     output_names = getattr(node, "native_output_names", None)
     if not isinstance(output_names, (list, tuple)):
-        output_names = getattr(node, "metadata", {}).get("output_names")
+        output_names = metadata.get("output_names") if isinstance(metadata, Mapping) else None
     if not isinstance(output_names, (list, tuple)):
         return []
     result: list[str] = []

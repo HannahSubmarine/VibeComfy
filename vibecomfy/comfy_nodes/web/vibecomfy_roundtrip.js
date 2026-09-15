@@ -1241,7 +1241,12 @@ function readIntentMetadata(node, fallbackClassType = null) {
   const runtimeExecMode = typeof payload?.runtime?.execution_mode === "string" && payload.runtime.execution_mode
     ? payload.runtime.execution_mode
     : "";
-  const executionMode = widgetExecMode || vibecomfyExecMode || runtimeExecMode || "sandboxed_loose";
+  // ``vibecomfy.exec`` is the existing full-power in-process runtime.  The
+  // sandboxed modes belong to ``vibecomfy.code`` and must never be inferred
+  // for an exec node from stale generic properties.
+  const executionMode = classType === "vibecomfy.exec"
+    ? "Python · in process"
+    : (widgetExecMode || vibecomfyExecMode || runtimeExecMode || "sandboxed_loose");
   return {
     classType,
     kind,
