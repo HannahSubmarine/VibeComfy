@@ -106,3 +106,25 @@ vibecomfy run workflows/custom-python --runtime server --server-url http://127.0
 The server must already have the declared installed packages, custom nodes,
 and models. A no-GPU unit call is useful for contract tests but does not prove
 that Comfy's queue accepted and executed the graph.
+
+## Pip-installed ComfyUI validation
+
+The optional `comfy` extra exercises the installed ComfyUI package without
+requiring a full checkout:
+
+```bash
+python3.11 -m venv .venv-comfy-smoke
+.venv-comfy-smoke/bin/python -m pip install -e '.[dev,comfy]' \
+  --extra-index-url https://nodes.appmana.com/simple/
+VIBECOMFY_COMFY_SMOKE=1 .venv-comfy-smoke/bin/python -m pytest -q \
+  tests/test_porting_ui_emitter.py::test_comfy_release_smoke_convert_ui_to_api \
+  tests/test_layer4_smoke.py::test_layer4_zod_conformance
+```
+
+The Layer 4 test also needs the `zod` npm package available to Node.js. These
+smokes validate the emitted LiteGraph envelope and ComfyUI's
+`convert_ui_to_api`; they do not download models or claim that a queue ran.
+The corpus-wide Layer 3 gate remains a separate compatibility check because
+the pip converter intentionally omits virtual and subgraph-interior UI nodes;
+VibeComfy keeps its identity-preserving fail-closed behavior when that output
+cannot be mapped bijectively to the source UI graph.
